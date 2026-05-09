@@ -111,7 +111,9 @@ def _extract_pages_text(exported: dict[str, Any], markdown: str) -> tuple[str, .
         if page_texts:
             return page_texts
     if isinstance(pages, list):
-        page_texts = tuple(text for page in pages if (text := _collect_text(page).strip()))
+        page_texts = tuple(
+            text for page in pages if (text := _collect_text(page).strip())
+        )
         if page_texts:
             return page_texts
     return (markdown,) if markdown else ()

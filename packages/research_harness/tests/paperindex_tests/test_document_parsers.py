@@ -144,7 +144,9 @@ def test_docling_parser_uses_optional_python_api(monkeypatch, tmp_path: Path):
     pipeline_options_module.PdfPipelineOptions = FakePdfPipelineOptions
     monkeypatch.setitem(sys.modules, "docling", docling_module)
     monkeypatch.setitem(sys.modules, "docling.document_converter", converter_module)
-    monkeypatch.setitem(sys.modules, "docling.datamodel.base_models", base_models_module)
+    monkeypatch.setitem(
+        sys.modules, "docling.datamodel.base_models", base_models_module
+    )
     monkeypatch.setitem(
         sys.modules, "docling.datamodel.pipeline_options", pipeline_options_module
     )

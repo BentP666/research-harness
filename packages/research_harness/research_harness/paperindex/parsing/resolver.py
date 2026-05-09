@@ -25,8 +25,7 @@ def resolve_document_parser(parser: ParserInput = None) -> DocumentParser:
         if normalized == "docling":
             return DoclingDocumentParser()
         raise ValueError(
-            "Unknown document parser "
-            f"'{parser}'. Expected one of: pymupdf, docling."
+            f"Unknown document parser '{parser}'. Expected one of: pymupdf, docling."
         )
 
     if isinstance(parser, DocumentParser):
@@ -41,7 +40,9 @@ def resolve_document_parser(parser: ParserInput = None) -> DocumentParser:
 class _ParserAdapter:
     def __init__(self, parser: Any):
         self._parser = parser
-        self.parser_name = str(getattr(parser, "parser_name", parser.__class__.__name__))
+        self.parser_name = str(
+            getattr(parser, "parser_name", parser.__class__.__name__)
+        )
 
     def parse(self, pdf_path: str | Path) -> ParsedDocument:
         return self._parser.parse(pdf_path)
