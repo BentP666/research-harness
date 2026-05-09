@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   useReactTable,
@@ -235,18 +236,18 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
       </p>
       {!hasFilters && (
         <div className="mt-4 flex gap-2">
-          <a
+          <Link
             href="/topics/new"
             className="rounded-md bg-foreground px-4 py-2 text-xs font-medium text-background hover:bg-foreground/90"
           >
             {t("library.ctaStartTopic")}
-          </a>
-          <a
+          </Link>
+          <Link
             href="/research"
             className="rounded-md border bg-background px-4 py-2 text-xs font-medium hover:bg-muted"
           >
             {t("library.ctaExploreTopics")}
-          </a>
+          </Link>
         </div>
       )}
     </div>
@@ -492,6 +493,7 @@ export default function LibraryPage() {
   );
 
   // -- TanStack Table instance ----------------------------------------------
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table intentionally returns table helpers/functions.
   const table = useReactTable({
     data: papers,
     columns,

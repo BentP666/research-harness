@@ -1,4 +1,4 @@
-# Research Harness v1.0 — Comprehensive QA Report
+# Research Harness v0.3.0 — Comprehensive QA Report
 
 **Date:** 2026-04-25
 **Tester:** Claude (autonomous)
@@ -170,4 +170,4 @@ Per Codex's review, the topic detail page (1000+ lines, 12+ sections in one scro
 
 ## Summary
 
-All 4 P0 bugs fixed, 30+ i18n issues fixed, topic detail UX restructured into 4 tabs (cognitive load down ~75% on the busiest page), UI polished with subtle global refinements. **System ready for v1.0.0 release.**
+All 4 P0 bugs fixed, 30+ i18n issues fixed, topic detail UX restructured into 4 tabs (cognitive load down ~75% on the busiest page), UI polished with subtle global refinements. **System ready for v0.3.0 release.**

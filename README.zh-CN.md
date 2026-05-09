@@ -344,6 +344,14 @@ extension_points:
 
 公共仓库每轮迭代的核心工作，最新在上。
 
+### 2026-05-09 — v0.3.0 一体化科研工作流发布
+
+- **科研工作流扩展**：CS Research Workflow v2 增加 candidate seed/upsert、red-ocean 评分、gap 交叉验证、推荐排序、experiment handoff，以及单入口 workflow resume 能力。
+- **Web 产品化**：Next.js 控制台覆盖 agent 配置、预算、发现、onboarding、论文阅读、报告、topic 阶段面板、venue decision、method atoms、goal pool、retrieval log 等核心路径。
+- **LLM 路由增强**：支持 LiteLLM 生态 provider、tier routing、token accounting、并行 deep-read provider pool、provider 自隔离和单篇超时。
+- **Paperindex 内嵌**：PDF/card/retrieval 能力迁入 `research_harness.paperindex`，`paperindex` package 保留为兼容 shim。
+- **发布整理**：系统版本统一到 `0.3.0`；本地 Python ruff、Python tests、web lint、web tests、web build 均通过。
+
 ### 2026-04-22 — 公共仓库 CI 修复
 
 - CI matrix 移除 Python 3.10：`research_harness_mcp` 已声明 `>=3.11`，不再假装兼容。
@@ -353,9 +361,9 @@ extension_points:
 
 ## 项目状态
 
-**0.1.0** —— 首个公开版本。三个 package 合计 987+ 单元测试、69 个原语、112 个 MCP 工具、6 个阶段。版本说明见 [`CHANGELOG.md`](CHANGELOG.md)。
+**0.3.0** —— 一体化科研工作流版本。当前轻量 gate 下本地 40 个 Python 测试通过，69 个原语继续可用，Web 控制台已覆盖 agent、预算、发现、报告、论文阅读和 topic 工作流。版本说明见 [`CHANGELOG.md`](CHANGELOG.md)。
 
-已支持的 LLM Provider：OpenAI、Anthropic、Kimi / Moonshot。Qwen、DeepSeek、GLM 通过 tier 路由接入在近期路线图中。
+已支持的 LLM Provider：OpenAI、Anthropic、Kimi / Moonshot，并通过 LiteLLM / tier routing 接入 DeepSeek、Qwen / 通义、Zhipu / GLM、Doubao、MiniMax、Yi / Baichuan、SiliconFlow 等 provider。
 
 已知边界：
 

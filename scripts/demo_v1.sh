@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Research Harness v1.0 Demo
+# Research Harness v0.3.0 Demo
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# End-to-end walk-through of the v1.0 pipeline:
+# End-to-end walk-through of the v0.3.0 pipeline:
 #
 #   1. Create a research topic (default: LLM Agents for Time-Series Reasoning)
 #   2. Seed it with 15 arXiv papers via `paper_search` + `paper_ingest`

@@ -10,7 +10,6 @@ import { useT } from "@/lib/i18n-provider";
 import {
   fetchExperimentMatrix, buildExperimentMatrix, runMatrixProxy,
 } from "@/lib/api";
-import type { MatrixCell } from "@/lib/api";
 
 interface Props {
   topicId: number;

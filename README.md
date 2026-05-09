@@ -356,12 +356,20 @@ Primitives are registered via `@register_primitive(spec)`; gates subclass `GateE
 | [`docs/plugin-guide.md`](docs/plugin-guide.md) | Writing custom primitives, gates, backends |
 | [`docs/PAPER_MANAGEMENT.md`](docs/PAPER_MANAGEMENT.md) | Canonical paper-storage protocol |
 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common errors (LLM routing, ledger 422, deep-read edge cases) and how to fix them |
-| [`docs/DEMO.md`](docs/DEMO.md) | v1.0 walk-through: clone → backend → expansion with multi-provider pool |
-| [`docs/RELEASE_NOTES_v1.0.0.md`](docs/RELEASE_NOTES_v1.0.0.md) | What shipped in v1.0, known limits, upgrade notes |
+| [`docs/DEMO.md`](docs/DEMO.md) | v0.3.0 walk-through: clone → backend → expansion with multi-provider pool |
+| [`docs/RELEASE_NOTES_v0.3.0.md`](docs/RELEASE_NOTES_v0.3.0.md) | What shipped in v0.3.0, known limits, upgrade notes |
 
 ## Recent Updates
 
 A running log of the iterations that shape the public fork. Most recent first.
+
+### 2026-05-09 — v0.3.0 integrated research workflow release
+
+- **Workflow expansion** — CS research workflow v2 adds candidate seeding/upsert, red-ocean scoring, gap cross-verification, ranked recommendations, experiment handoff, and a single workflow-entry primitive for resuming topic work.
+- **Productized web dashboard** — Next.js app now covers agent setup, budgets, discovery, onboarding, paper reading, reports, topic-stage workflow panels, venue decisions, method atoms, goal pools, and retrieval logs.
+- **LLM routing and execution** — LiteLLM-backed providers, tier routing, token accounting, parallel deep-read pools, provider quarantine, and wall-clock timeouts make bulk paper reading more robust.
+- **Paperindex merge** — PDF/card/retrieval functionality now lives under `research_harness.paperindex`; `paperindex` remains as a compatibility shim.
+- **Release polish** — package versions are aligned to `0.3.0`; Python ruff, Python tests, web lint, web tests, and web build all pass locally.
 
 ### 2026-04-22 — HTTP API + Web dashboard, concurrent provider search
 
@@ -378,9 +386,9 @@ A running log of the iterations that shape the public fork. Most recent first.
 
 ## Status
 
-**Version 0.1.0** — first public release. 987+ tests across the three packages, 69 primitives, 112 MCP tools, 6 stages. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
+**Version 0.3.0** — integrated research workflow release. 40 local Python tests pass in the current lightweight gate, 69 primitives remain available, and the web dashboard now covers agents, budgets, discovery, reports, paper reading, and topic workflow operations. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
 
-Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot. Qwen, DeepSeek, and GLM through the tier-routing system are on the near-term roadmap.
+Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot, plus LiteLLM-backed DeepSeek, Qwen/Tongyi, Zhipu/GLM, Doubao, MiniMax, Yi/Baichuan, and SiliconFlow through tier routing.
 
 Known limits:
 

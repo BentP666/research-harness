@@ -114,7 +114,7 @@ None. All v3 features are additive. Existing v2 endpoints and workflows continue
 3. venue_style_kit returns 409 when target venue has <3 matching papers in pool (by design — Q4 red line)
 4. Proxy pass in experiment_matrix uses sandbox subprocess; long-running experiments may timeout
 
-## v1.0.0 Polish (final pass before GA)
+## v0.3.0 Polish (final pass before GA)
 
 - **Bug fix** `stage-graph.tsx`: framer-motion array keyframes on SVG `<circle r>` triggered "Expected length, undefined" errors. Replaced with CSS `@keyframes rh-pulse-ring` (opacity-only, SVG-safe across browsers).
 - **Bug fix** `experiment-matrix-card.tsx`: shorthand `<>...</>` Fragment in map without key triggered React key warning. Replaced with `<Fragment key={...}>`.

@@ -83,8 +83,8 @@ export default function ReconcilePage() {
     queryFn: fetchDomains,
   });
 
-  const topics = topicsQ.data ?? [];
-  const domains = domainsQ.data ?? [];
+  const topics = useMemo(() => topicsQ.data ?? [], [topicsQ.data]);
+  const domains = useMemo(() => domainsQ.data ?? [], [domainsQ.data]);
 
   const unassigned = useMemo(
     () => topics.filter((t) => t.domain_id == null),
@@ -204,8 +204,9 @@ export default function ReconcilePage() {
           return next;
         });
         setOverrides((prev) => {
-          const { [topicId]: _, ...rest } = prev;
-          return rest;
+          const next = { ...prev };
+          delete next[topicId];
+          return next;
         });
         qc.invalidateQueries({ queryKey: ["topics"] });
         qc.invalidateQueries({ queryKey: ["domains"] });
@@ -405,8 +406,9 @@ export default function ReconcilePage() {
                                   return next;
                                 });
                                 setOverrides((prev) => {
-                                  const { [topic.id]: _, ...rest } = prev;
-                                  return rest;
+                                  const next = { ...prev };
+                                  delete next[topic.id];
+                                  return next;
                                 });
                               }}
                             >

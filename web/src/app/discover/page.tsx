@@ -77,7 +77,7 @@ export default function DiscoverPage() {
     },
   });
 
-  const trends = trendsQ.data ?? [];
+  const trends = useMemo(() => trendsQ.data ?? [], [trendsQ.data]);
   const sorted = useMemo(
     () => [...trends].sort((a, b) => b.velocity_yoy - a.velocity_yoy),
     [trends]

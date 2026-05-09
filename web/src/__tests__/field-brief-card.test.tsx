@@ -26,7 +26,6 @@ const MOCK_BRIEF = {
 
 let mockFetchResult: unknown = undefined;
 let mockFetchError = false;
-let mockFetchLoading = false;
 
 vi.mock("@/lib/api", () => ({
   fetchFieldBrief: vi.fn(() => {
@@ -44,7 +43,6 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 beforeEach(() => {
   mockFetchResult = undefined;
   mockFetchError = false;
-  mockFetchLoading = false;
 });
 
 describe("FieldBriefCard", () => {

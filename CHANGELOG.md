@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+## [0.3.0] — 2026-05-09
+
 ### Added — CS Research Workflow v2 (Phases 3–4)
 
 End-to-end recommendation + experiment-handoff pipeline for the
@@ -54,10 +58,9 @@ harvest, classification + red-ocean) already shipped under
   orchestrator_advance) so agents can resume any topic without
   threading multiple tool calls.
 
-## [0.3.1] — 2026-04-23
+### Fixed — Calibration, rollback mode, and web polish
 
-Post-GA audit follow-up: tightens three spec deviations found after the
-v0.3.0 tag, and moves three CLI-only actions into the web UI.
+Release stabilization: tightens three spec deviations found during the v0.3.0 audit and moves three CLI-only actions into the web UI.
 
 ### Fixed
 
@@ -100,9 +103,7 @@ v0.3.0 tag, and moves three CLI-only actions into the web UI.
   present, falling back to venue-tier defaults only when no calibration
   row exists.
 
-## [0.3.0] — 2026-04-22
-
-### Added
+### Added — Agent platform, budgets, judge, and trends
 
 - **Agent registry + onboarding wizard (S2a).** Multi-agent management with
   provider configuration, agent pairings (generator/judge/challenger), preset
@@ -129,7 +130,7 @@ v0.3.0 tag, and moves three CLI-only actions into the web UI.
 
 - **Auto-rollback enabled by default.** `RUBRIC_AUTO_ROLLBACK` now defaults to
   `true`. Shadow mode (observation without enforcement) can be restored by
-  setting `RUBRIC_AUTO_ROLLBACK=false`. (Reverted in 0.3.1 — see below.)
+  setting `RUBRIC_AUTO_ROLLBACK=false`. (Folded into 0.3.0 — see stabilization notes above.)
 
 ### Infrastructure
 

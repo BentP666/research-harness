@@ -102,7 +102,10 @@ export default function BudgetsPage() {
   // Derive month-scoped totals from the same ledger source the by-model card
   // uses. Avoids the regression where the KPI showed all-time totals while
   // "by model" said "no usage this month".
-  const modelRows = (byAgentQ.data ?? []) as Array<Record<string, unknown>>;
+  const modelRows = useMemo(
+    () => (byAgentQ.data ?? []) as Array<Record<string, unknown>>,
+    [byAgentQ.data]
+  );
   const monthTotals = useMemo<{ prompt: number; completion: number }>(() => {
     return modelRows.reduce(
       (acc: { prompt: number; completion: number }, row) => {
@@ -140,7 +143,10 @@ export default function BudgetsPage() {
   const modelTotal = pieData.reduce((s, r) => s + r.value, 0);
 
   // -- Stage bar data -------------------------------------------------------
-  const stageRows = (byStageQ.data ?? []) as Array<Record<string, unknown>>;
+  const stageRows = useMemo(
+    () => (byStageQ.data ?? []) as Array<Record<string, unknown>>,
+    [byStageQ.data]
+  );
   const barData = useMemo(() => {
     const stageMap = new Map<string, { prompt: number; completion: number }>();
     for (const r of stageRows) {
@@ -165,7 +171,10 @@ export default function BudgetsPage() {
   }, [stageRows]);
 
   // -- Daily trend area data (server-aggregated) ----------------------------
-  const recentRows = (recentQ.data ?? []) as Array<Record<string, unknown>>;
+  const recentRows = useMemo(
+    () => (recentQ.data ?? []) as Array<Record<string, unknown>>,
+    [recentQ.data]
+  );
   const trendData = useMemo(() => {
     const rows = dailyQ.data ?? [];
     return rows.map((r) => ({

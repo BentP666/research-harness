@@ -63,15 +63,6 @@ interface StageBlock {
   steps: Step[];
 }
 
-const STAGE_ORDER: ResearchStage[] = [
-  "init",
-  "build",
-  "analyze",
-  "propose",
-  "experiment",
-  "write",
-];
-
 const STAGE_META: Record<
   string,
   { num: string; title: string; subtitle: string }
@@ -201,7 +192,9 @@ export function WorkflowPipeline({
   const [stepSummary, setStepSummary] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (currentStage) setExpandedStage(currentStage);
+    if (!currentStage) return;
+    const frame = requestAnimationFrame(() => setExpandedStage(currentStage));
+    return () => cancelAnimationFrame(frame);
   }, [currentStage]);
 
   const stages: StageBlock[] = [

@@ -1,9 +1,9 @@
-# Research Harness v1.0.0 — Release Notes
+# Research Harness v0.3.0 — Release Notes
 
-**Release date:** 2026-04-24
+**Release date:** 2026-05-09
 **Status:** Stable
 
-Research Harness v1.0 ships the full agent-first literature-review pipeline
+Research Harness v0.3.0 ships the full agent-first literature-review pipeline
 end-to-end. Papers search → ingest → deep-read → topic reports all run
 on a single SQLite pool, orchestrated through a FastAPI backend and a
 Next.js / shadcn frontend. LLM dispatch uses a pluggable multi-provider

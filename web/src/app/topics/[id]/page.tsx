@@ -24,9 +24,7 @@ import {
 import Link from "next/link";
 import {
   fetchTopicDetail,
-  fetchTopicArtifacts,
   fetchTopicEvents,
-  fetchTopicDecisions,
   fetchTopicIssues,
   fetchTopicAutonomy,
   updateTopicAutonomy,
@@ -73,7 +71,6 @@ import { TopicCostCard } from "@/components/topic/topic-cost-card";
 import { ClaimVerificationPanel } from "@/components/topic/claim-verification-panel";
 import { NextStageHero } from "@/components/topic/next-stage-hero";
 import {
-  StageGraph,
   type StageGraphSummary,
 } from "@/components/topic/stage-graph";
 import { StageDrawer } from "@/components/topic/stage-drawer";
@@ -513,18 +510,6 @@ export default function TopicDetailPage() {
   const eventsQ = useQuery({
     queryKey: ["topic-events", topicId],
     queryFn: () => fetchTopicEvents(topicId),
-    enabled: !isNaN(topicId),
-  });
-
-  const decisionsQ = useQuery({
-    queryKey: ["topic-decisions", topicId],
-    queryFn: () => fetchTopicDecisions(topicId),
-    enabled: !isNaN(topicId),
-  });
-
-  const rollbackLogQ = useQuery({
-    queryKey: ["topic-rollback-log-page", topicId],
-    queryFn: () => fetchRollbackLog(topicId),
     enabled: !isNaN(topicId),
   });
 

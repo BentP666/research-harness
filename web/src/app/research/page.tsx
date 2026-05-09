@@ -85,7 +85,6 @@ function InlineEditName({
 
   useEffect(() => {
     if (editing) {
-      setDraft(value);
       // Small delay so the input is mounted before we focus
       requestAnimationFrame(() => inputRef.current?.select());
     }
@@ -128,7 +127,10 @@ function InlineEditName({
   return (
     <span
       className={cn("group/edit inline-flex items-center gap-1 cursor-pointer", className)}
-      onDoubleClick={() => setEditing(true)}
+      onDoubleClick={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
       title={t("research.editHint")}
     >
       <span>{value}</span>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  MapPin, AlertCircle, Loader2, Clock, RefreshCw, ChevronDown, ChevronUp,
+  MapPin, AlertCircle, Loader2, RefreshCw, ChevronDown, ChevronUp,
   BookOpen, Quote, FileText,
 } from "lucide-react";
 import {
@@ -15,7 +15,6 @@ import {
   fetchVenueDecision, decideVenue,
   fetchVenueStyleKit, buildVenueStyleKit,
 } from "@/lib/api";
-import type { VenueDecisionData, VenueStyleKitData } from "@/lib/api";
 
 interface Props {
   topicId: number;

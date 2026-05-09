@@ -63,7 +63,7 @@ export default function ReportsHubPage() {
     enabled: topicIds.length > 0,
   });
 
-  const allRows = allReportsQ.data ?? [];
+  const allRows = useMemo(() => allReportsQ.data ?? [], [allReportsQ.data]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return allRows.filter((r) => {

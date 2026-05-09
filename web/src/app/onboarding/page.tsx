@@ -9,7 +9,6 @@ import {
   createAgentPairing,
   fetchAgentPresets,
   updateUserPreferences,
-  setIntakeProfile,
 } from "@/lib/api";
 import type { Persona, VenueConstraint, ComputeBudget } from "@/lib/api";
 import type { AgentPreset } from "@/lib/types";

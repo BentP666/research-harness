@@ -516,8 +516,8 @@ export default function TrendsExplorerPage() {
     [router, searchParams]
   );
 
-  const domains = domainsQ.data ?? [];
-  const topics = topicsQ.data ?? [];
+  const domains = useMemo(() => domainsQ.data ?? [], [domainsQ.data]);
+  const topics = useMemo(() => topicsQ.data ?? [], [topicsQ.data]);
   const trends = trendsQ.data ?? [];
 
   const info = useMemo(() => parseScope(scope, domains, topics), [

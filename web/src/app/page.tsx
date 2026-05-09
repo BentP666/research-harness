@@ -86,13 +86,11 @@ function CountUp({ value }: { value: string | number }) {
   // animation snappy (650 ms) so the page feels alive without dragging.
   const text = String(value);
   const parsed = Number(text.replace(/,/g, ""));
+  const isNumeric = Number.isFinite(parsed);
   const [display, setDisplay] = useState<string>(text);
 
   useEffect(() => {
-    if (!Number.isFinite(parsed)) {
-      setDisplay(text);
-      return;
-    }
+    if (!isNumeric) return;
     const start = performance.now();
     const duration = 650;
     let raf = 0;
@@ -106,9 +104,9 @@ function CountUp({ value }: { value: string | number }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [parsed, text]);
+  }, [isNumeric, parsed]);
 
-  return <>{display}</>;
+  return <>{isNumeric ? display : text}</>;
 }
 
 function StatCardSkeleton() {

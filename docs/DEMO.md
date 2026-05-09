@@ -1,6 +1,6 @@
-# Research Harness v1.0 Demo
+# Research Harness v0.3.0 Demo
 
-A ~10 minute walk-through of the v1.0 pipeline, from fresh clone to a
+A ~10 minute walk-through of the v0.3.0 pipeline, from fresh clone to a
 completed expansion job with 20+ deep-read papers analysed in parallel.
 
 ## Prerequisites
@@ -138,7 +138,7 @@ Look for the `deep_read_note` fields: `algorithm_walkthrough`,
 ## 6. Common issues
 
 See [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md). Most reported bugs
-during the v1.0 freeze are already fixed and marked ✅; a handful of
+during the v0.3.0 freeze are already fixed and marked ✅; a handful of
 environment gotchas still need attention (e.g. `uvicorn --reload` kills
 running expansion jobs, listed prominently).
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-router"
-version = "0.3.1"
+version = "0.3.0"
 description = "Pluggable multi-provider LLM router with tier-based task routing"
 requires-python = ">=3.11"
 license = "MIT"

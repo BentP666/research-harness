@@ -26,7 +26,7 @@ Known limitations from CP2 review. Not blocking v3 release, tracked for future i
 
 **Original issue**: iter-09 只完成了后端（迁移 061 + endpoint 包装 + retrieval_log 写入）和 `web/src/lib/api.ts` 里的 typed function，前端 UI 入口缺失。
 
-**Resolution (commit pending v1.0.0 GA)**:
+**Resolution (commit pending v0.3.0 GA)**:
 - 新建 `web/src/components/topic/retrieval-trigger-button.tsx`：Search icon ghost button + Dialog modal（5 reason chips + query textarea + success/error 反馈）
 - 挂载在 4 个 panel CardHeader：field-brief-card (build) / analysis-panel (analyze) / experiment-leaderboard-card (experiment) / write-panel (write)
 - 新建 `web/src/components/topic/retrieval-log-timeline.tsx`：在 topic 详情页 activity 区下方显示 retrieval_log 历史，🔍 icon + reason badge 区分

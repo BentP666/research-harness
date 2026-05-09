@@ -149,9 +149,6 @@ export function PaperSearchPanel({ topicId }: PaperSearchPanelProps) {
     importMut.mutate();
   };
 
-  const isLoading =
-    searchMut.isPending || ingestMut.isPending || importMut.isPending;
-
   return (
     <Card>
       <CardHeader>

@@ -134,7 +134,7 @@ because of this; it does not appear in production builds.
 
 ### ✅ Parallel deep-read across the agent pool
 
-**Added in v1.0:** expansion jobs now deep-read papers in parallel across
+**Added in v0.3.0:** expansion jobs now deep-read papers in parallel across
 every available LLM provider (e.g. `anthropic`, `openai`, `kimi`,
 `cursor_agent`). Each
 worker round-robins through the pool, so fan-out hits diverse model

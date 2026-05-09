@@ -36,7 +36,10 @@ export function Celebration({
   tone?: "success" | "info";
 }) {
   const [internal, setInternal] = useState(show);
-  useEffect(() => setInternal(show), [show]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setInternal(show));
+    return () => cancelAnimationFrame(frame);
+  }, [show]);
 
   useEffect(() => {
     if (!internal || !autoHideMs) return;

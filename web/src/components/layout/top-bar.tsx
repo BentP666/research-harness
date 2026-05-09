@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -195,14 +194,13 @@ function ThemeToggle() {
 }
 
 function CommandPaletteHint() {
-  const [isMac, setIsMac] = useState<boolean | null>(null);
-  useEffect(() => {
-    setIsMac(/Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent));
-  }, []);
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
 
   const trigger = () => {
     if (typeof window === "undefined") return;
-    const useMeta = isMac ?? false;
+    const useMeta = isMac;
     window.dispatchEvent(
       new KeyboardEvent("keydown", {
         key: "k",
@@ -225,7 +223,7 @@ function CommandPaletteHint() {
         suppressHydrationWarning
         className="ml-2 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]"
       >
-        {isMac == null ? "⌘K" : isMac ? "⌘K" : "Ctrl K"}
+        {isMac ? "⌘K" : "Ctrl K"}
       </kbd>
     </button>
   );

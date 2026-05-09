@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CloudOff, Cloud } from "lucide-react";
 import { useOnline } from "@/lib/use-online";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Offline indicator — surfaces in the TopBar only when offline, and briefly
@@ -13,19 +13,22 @@ import { useEffect, useState } from "react";
 export function OfflineIndicator() {
   const online = useOnline();
   const [justReconnected, setJustReconnected] = useState(false);
+  const wasOfflineRef = useRef(false);
 
   useEffect(() => {
-    if (online && justReconnected === false) {
-      // no-op on initial mount
+    if (!online) {
+      wasOfflineRef.current = true;
+      return;
     }
-  }, [online, justReconnected]);
-
-  useEffect(() => {
-    if (!online) return;
+    if (!wasOfflineRef.current) return;
     // When flipping offline → online, show a 3s 'reconnected' pulse.
-    setJustReconnected(true);
-    const t = setTimeout(() => setJustReconnected(false), 3000);
-    return () => clearTimeout(t);
+    wasOfflineRef.current = false;
+    const show = window.setTimeout(() => setJustReconnected(true), 0);
+    const hide = window.setTimeout(() => setJustReconnected(false), 3000);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
   }, [online]);
 
   return (

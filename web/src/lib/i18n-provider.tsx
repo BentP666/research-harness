@@ -40,6 +40,18 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+function getInitialLocale(): Locale {
+  if (typeof window === "undefined") return "en";
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved === "en" || saved === "zh") return saved;
+    const browserLang = window.navigator.language?.toLowerCase() ?? "";
+    return browserLang.startsWith("zh") ? "zh" : "en";
+  } catch {
+    return "en";
+  }
+}
+
 function getByPath(obj: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {
     if (acc && typeof acc === "object" && key in (acc as Record<string, unknown>)) {
@@ -60,25 +72,16 @@ function interpolate(
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
+  const [locale, setLocaleState] = useState<Locale>(() => getInitialLocale());
 
   useEffect(() => {
+    setGlossaryLocale(locale);
     try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved === "en" || saved === "zh") {
-        setLocaleState(saved);
-        setGlossaryLocale(saved);
-        return;
-      }
-      // Auto-detect from browser
-      const browserLang = window.navigator.language?.toLowerCase() ?? "";
-      const inferred: Locale = browserLang.startsWith("zh") ? "zh" : "en";
-      setLocaleState(inferred);
-      setGlossaryLocale(inferred);
+      window.localStorage.setItem(STORAGE_KEY, locale);
     } catch {
-      // localStorage blocked — use default
+      // localStorage blocked — keep in-memory locale
     }
-  }, []);
+  }, [locale]);
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);

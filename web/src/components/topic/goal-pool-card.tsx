@@ -11,7 +11,6 @@ import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { useT } from "@/lib/i18n-provider";
-import Link from "next/link";
 
 interface Props {
   topicId: number;

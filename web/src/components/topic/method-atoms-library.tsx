@@ -2,13 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2, AlertCircle, Grid3x3, Play, Trash2,
+  Loader2, AlertCircle, Grid3x3, Trash2,
 } from "lucide-react";
 import {
-  fetchMethodAtoms, fetchGoals, harvestAtoms,
+  fetchMethodAtoms,
   deleteAtom,
 } from "@/lib/api";
-import type { MethodAtom, Goal } from "@/lib/api";
+import type { MethodAtom } from "@/lib/api";
 import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card";
