@@ -29,19 +29,22 @@ import {
 import { fetchTopics, fetchPapers } from "@/lib/api";
 
 const NAV_ITEMS = [
-  { label: "今日概览 / Dashboard", href: "/", icon: Home },
-  { label: "研究中心 / Research", href: "/research", icon: FlaskConical },
-  { label: "学术发现 / Discover", href: "/discover", icon: Telescope },
-  { label: "趋势 / Trends", href: "/research/trends", icon: TrendingUp },
-  { label: "文献资料 / Library", href: "/library", icon: Library },
-  { label: "研究汇报 / Reports", href: "/reports", icon: FileText },
+  { label: "工作台 / Workbench", href: "/", icon: Home },
+  { label: "科研流程 / Workflow", href: "/research", icon: FlaskConical },
+  { label: "文献库 / Library", href: "/library", icon: Library },
+  { label: "报告 / Reports", href: "/reports", icon: FileText },
+];
+
+const LAB_ITEMS = [
+  { label: "趋势实验室 / Trends Lab", href: "/research/trends", icon: TrendingUp },
+  { label: "发现实验室 / Discover Lab", href: "/discover", icon: Telescope },
   { label: "模型配置 / Models", href: "/agents", icon: Cpu },
   { label: "系统设置 / Settings", href: "/settings", icon: Settings },
 ];
 
 const ACTION_ITEMS = [
-  { label: "新建 topic / Create new topic", href: "/topics/new", icon: Plus },
-  { label: "新建 domain / Create new domain", href: "/domains/new", icon: Plus },
+  { label: "新建研究课题 / Create research topic", href: "/topics/new", icon: Plus },
+  { label: "新建领域 / Create domain", href: "/domains/new", icon: Plus },
 ];
 
 export function CommandPalette() {
@@ -87,7 +90,7 @@ export function CommandPalette() {
         <CommandList>
         <CommandEmpty>没有匹配项。</CommandEmpty>
 
-        <CommandGroup heading="Navigation">
+        <CommandGroup heading="Core">
           {NAV_ITEMS.map((it) => (
             <CommandItem
               key={it.href}
@@ -107,6 +110,21 @@ export function CommandPalette() {
             <CommandItem
               key={it.href}
               value={`action ${it.label}`}
+              onSelect={() => go(it.href)}
+            >
+              <it.icon className="size-4 shrink-0" />
+              <span>{it.label}</span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Labs / Advanced">
+          {LAB_ITEMS.map((it) => (
+            <CommandItem
+              key={it.href}
+              value={`lab ${it.label}`}
               onSelect={() => go(it.href)}
             >
               <it.icon className="size-4 shrink-0" />

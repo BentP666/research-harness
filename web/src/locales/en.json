@@ -1,18 +1,20 @@
 {
   "brand": {
-    "name": "Atlas",
-    "tagline": "Your AI research partner",
+    "name": "Research Harness",
+    "tagline": "AI research workbench",
     "poweredBy": "Powered by Research Harness"
   },
   "nav": {
-    "dashboard": "Today",
-    "research": "Research",
+    "dashboard": "Workbench",
+    "research": "Workflow",
     "library": "Library",
-    "discover": "Discover",
+    "discover": "Discover Lab",
     "reports": "Reports",
     "agents": "Models",
     "budgets": "Budget",
-    "settings": "Settings"
+    "settings": "Settings",
+    "trends": "Trends Lab",
+    "labs": "Labs / Advanced"
   },
   "sidebar": {
     "todayGroup": "TODAY",
@@ -57,7 +59,76 @@
     "topVenues": "Top venues",
     "statPapers": "Papers",
     "statDomains": "Domains",
-    "statTopics": "Topics"
+    "statTopics": "Topics",
+    "workbench": {
+      "eyebrow": "Built for agentic research",
+      "title": "From research question to evidence you can write with.",
+      "subtitle": "Research Harness gives your AI coding agent a clean workspace for papers, deep reading, gaps, reports, and provenance — so every research step is visible, reusable, and ready to review.",
+      "demoCta": "View product demo",
+      "questionKicker": "Start from the job to be done",
+      "question": "Move research forward in one click.",
+      "questionHint": "Choose the outcome. RH keeps the state; your agent handles the loop.",
+      "viewWorkflow": "Open workflow",
+      "actions": {
+        "search": {
+          "title": "Create a topic",
+          "body": "Turn a rough idea into a tracked research workspace with a focused paper pool.",
+          "cta": "Start topic"
+        },
+        "read": {
+          "title": "Deep-read papers",
+          "body": "Convert PDFs and metadata into structured notes, claims, limitations, and reusable evidence.",
+          "cta": "Open library"
+        },
+        "gap": {
+          "title": "Find research gaps",
+          "body": "Surface contradictions, missing baselines, and directions worth testing next.",
+          "cta": "Review workflow"
+        },
+        "write": {
+          "title": "Write from evidence",
+          "body": "Assemble related work, proposals, and reports from recorded artifacts instead of chat history.",
+          "cta": "Open reports"
+        }
+      },
+      "preview": {
+        "kicker": "Live workspace preview",
+        "title": "AI Agents for Scientific Discovery",
+        "status": "On track",
+        "papers": "papers",
+        "evidence": "evidence",
+        "gaps": "gaps",
+        "pipeline": "Research flow",
+        "stage1": "Paper pool curated",
+        "stage2": "Claims extracted",
+        "stage3": "Gap review in progress",
+        "nextLabel": "Recommended next step",
+        "nextAction": "Ask your agent to cross-check the top gaps, then promote one direction into an experiment brief."
+      },
+      "empty": {
+        "badge": "First workspace",
+        "title": "Start with one research question.",
+        "body": "Create a topic in the UI, or hand the starter prompt to your coding agent. RH will keep the research state organized from the first paper onward."
+      },
+      "handoff": {
+        "label": "Agent handoff prompt",
+        "prompt": "Read AGENTS.md, docs/agent-guide.md, and skills/. Create a topic for <my research question>, then start literature search and record outputs in RH."
+      },
+      "recent": {
+        "kicker": "Current work",
+        "title": "Continue where you left off"
+      },
+      "agentFirst": {
+        "title": "Designed for human review and agent execution.",
+        "body": "Use the interface to see the state of the research. Use Claude Code, Codex, Cursor, or another MCP-capable agent to run the heavier loops: search, deep-read, extract, compare, and draft."
+      },
+      "labs": {
+        "eyebrow": "Labs",
+        "title": "Trend analysis stays available, but out of the core path.",
+        "body": "Hot-direction discovery is promising for future product exploration. For RH 1.0, the main surface stays focused on the research workflow."
+      }
+    },
+    "statArtifacts": "Artifacts"
   },
   "welcome": {
     "title": "Welcome to Atlas",

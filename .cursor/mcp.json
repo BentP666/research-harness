@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "research-harness": {
+      "type": "stdio",
+      "command": "/Users/biajin/miniconda3/envs/research-harness/bin/python",
+      "args": ["-m", "research_harness_mcp"],
+      "envFile": ".env",
+      "env": {
+        "RESEARCH_HARNESS_DB_PATH": ".research-harness/pool.db",
+        "RESEARCH_HARNESS_BACKEND": "research_harness"
+      }
+    }
+  }
+}

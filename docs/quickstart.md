@@ -9,7 +9,7 @@
 ## Installation
 
 ```bash
-git clone https://github.com/your-org/research-harness.git
+git clone https://github.com/Biajin-PKU/research-harness.git
 cd research-harness
 ./setup.sh
 ```
@@ -35,9 +35,9 @@ Edit `.env` and set at least one LLM provider key. The minimum required block:
 
 ```bash
 # Pick one (more than one is fine too)
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-KIMI_API_KEY=sk-...                # Kimi / Moonshot — domestic-friendly option
+OPENAI_API_KEY=<your-openai-key>
+ANTHROPIC_API_KEY=<your-anthropic-key>
+KIMI_API_KEY=<your-kimi-key>                # Kimi / Moonshot — domestic-friendly option
 ```
 
 More domestic providers (Qwen, DeepSeek, GLM, etc.) will follow. If you want
@@ -165,14 +165,21 @@ rh auto-runner start --topic-id 1 --mode standard \
   --direction "your research direction here"
 ```
 
-## Launch the Dashboard
+## Launch the Web Workbench
 
 ```bash
-pip install -r web_dashboard/requirements.txt
-python web_dashboard/app.py
+# Backend
+pip install -e "packages/research_harness_mcp[api]"
+python -m research_harness_mcp.http_api
+
+# Frontend
+cd web
+npm install
+npm run dev
 ```
 
-Open <http://127.0.0.1:18080>.
+Open <http://localhost:3000>. For a no-key product walkthrough, open
+<http://localhost:3000/demo>.
 
 ## Run Tests
 

@@ -11,6 +11,8 @@ import {
   Bot,
   FileText,
   Sparkles,
+  TrendingUp,
+  Settings,
   X,
 } from "lucide-react";
 import {
@@ -28,14 +30,18 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const { t } = useT();
 
-  // Settings + budgets live in the TopBar gear dropdown now.
-  const items = [
+  const primaryItems = [
     { key: "dashboard", label: t("nav.dashboard"), href: "/", icon: LayoutDashboard },
     { key: "research", label: t("nav.research"), href: "/research", icon: FlaskConical },
-    { key: "discover", label: t("nav.discover"), href: "/discover", icon: Compass },
     { key: "library", label: t("nav.library"), href: "/library", icon: Library },
     { key: "reports", label: t("nav.reports"), href: "/reports", icon: FileText },
+  ];
+
+  const labItems = [
+    { key: "trends", label: t("nav.trends"), href: "/research/trends", icon: TrendingUp },
+    { key: "discover", label: t("nav.discover"), href: "/discover", icon: Compass },
     { key: "agents", label: t("nav.agents"), href: "/agents", icon: Bot },
+    { key: "settings", label: t("nav.settings"), href: "/settings", icon: Settings },
   ];
 
   function isActive(href: string): boolean {
@@ -70,10 +76,10 @@ export function MobileNav() {
               </div>
               <div>
                 <div className="text-sm font-semibold text-white font-serif">
-                  Atlas
+                  Research Harness
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  AI research partner
+                  AI research workbench
                 </div>
               </div>
             </Link>
@@ -87,7 +93,7 @@ export function MobileNav() {
             </button>
           </div>
           <nav className="flex flex-1 flex-col gap-1 p-2">
-            {items.map((item) => {
+            {primaryItems.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -106,6 +112,31 @@ export function MobileNav() {
                 </Link>
               );
             })}
+
+            <div className="mt-4 border-t border-slate-800 pt-3">
+              <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                {t("nav.labs")}
+              </p>
+              {labItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-slate-800 text-white"
+                        : "text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
+                    )}
+                  >
+                    <item.icon className="size-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </nav>
         </div>
       </SheetContent>

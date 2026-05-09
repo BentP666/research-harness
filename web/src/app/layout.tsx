@@ -9,9 +9,9 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { I18nProvider } from "@/lib/i18n-provider";
 
 export const metadata: Metadata = {
-  title: "Atlas — Your AI research partner",
+  title: "Research Harness — AI research workbench",
   description:
-    "Discover papers that matter, spot research gaps, and draft with evidence.",
+    "A lightweight workbench for paper search, deep reading, gap analysis, and evidence-based research writing.",
 };
 
 export default function RootLayout({

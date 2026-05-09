@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useState } from "react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/lib/theme-provider";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n-provider";

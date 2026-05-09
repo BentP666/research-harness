@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Search,
   Settings,
@@ -16,8 +17,9 @@ import {
   Bot,
   FileText,
   Sparkles,
+  TrendingUp,
 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/lib/theme-provider";
 import { motion } from "framer-motion";
 import { ModelStatusChip } from "@/components/brand/model-status-chip";
 import { TokenBudgetChip } from "@/components/tokens/token-budget-chip";
@@ -34,8 +36,9 @@ import { useT } from "@/lib/i18n-provider";
 import { cn } from "@/lib/utils";
 
 /**
- * Sticky top header — Atlas brand on the left, primary nav tabs in the center,
- * status chips + utilities on the right. Replaces the old left sidebar.
+ * Sticky top header for the 1.0 workbench surface.
+ * Keep only the core research path in primary nav; advanced/lab surfaces live in
+ * the gear menu so the first-run experience stays lightweight.
  */
 export function TopBar() {
   return (
@@ -76,10 +79,10 @@ function Brand() {
       </div>
       <div className="hidden sm:flex flex-col leading-none">
         <span className="font-serif text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">
-          Atlas
+          Research Harness
         </span>
         <span className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-500">
-          AI research partner
+          AI research workbench
         </span>
       </div>
     </Link>
@@ -111,12 +114,6 @@ function PrimaryNav() {
       icon: FlaskConical,
     },
     {
-      key: "discover",
-      label: t("nav.discover"),
-      href: "/discover",
-      icon: Compass,
-    },
-    {
       key: "library",
       label: t("nav.library"),
       href: "/library",
@@ -128,7 +125,6 @@ function PrimaryNav() {
       href: "/reports",
       icon: FileText,
     },
-    { key: "agents", label: t("nav.agents"), href: "/agents", icon: Bot },
   ];
 
   function isActive(href: string): boolean {
@@ -194,9 +190,13 @@ function ThemeToggle() {
 }
 
 function CommandPaletteHint() {
-  const isMac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    window.queueMicrotask(() => {
+      setIsMac(/Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent));
+    });
+  }, []);
 
   const trigger = () => {
     if (typeof window === "undefined") return;
@@ -249,9 +249,21 @@ function SettingsMenu() {
           <Gauge className="mr-2 size-4" />
           {t("nav.settings") || "Settings"}
         </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/agents" />}>
+          <Bot className="mr-2 size-4" />
+          {t("nav.agents") || "Models"}
+        </DropdownMenuItem>
         <DropdownMenuItem render={<Link href="/budgets" />}>
           <DollarSign className="mr-2 size-4" />
           {t("nav.budgets") || "Budgets"}
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/research/trends" />}>
+          <TrendingUp className="mr-2 size-4" />
+          {t("nav.trends") || "Trends Lab"}
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/discover" />}>
+          <Compass className="mr-2 size-4" />
+          {t("nav.discover") || "Discover Lab"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,72 +1,102 @@
 {
-  "init:topic_frame:stub_hash_001": {
+  "init:topic_frame:30e55062572e2611": {
     "stage": "init",
     "primitive": "topic_frame",
     "response": "Auto-bidding in online advertising optimizes bid strategies in real-time auctions to maximize advertiser ROI under budget constraints. Key research directions include reinforcement learning approaches, constrained optimization, and multi-objective bidding.",
-    "tokens": {"prompt": 150, "completion": 80},
+    "tokens": {
+      "prompt": 150,
+      "completion": 80
+    },
     "latency_ms": 1200
   },
-  "build:paper_search:stub_hash_002": {
+  "build:paper_search:30e55062572e2611": {
     "stage": "build",
     "primitive": "paper_search",
     "response": "[{\"title\": \"Budget-Constrained Bidding in Repeated Auctions\", \"year\": 2023, \"venue\": \"NeurIPS\"}, {\"title\": \"Reinforcement Learning for Real-Time Bidding\", \"year\": 2024, \"venue\": \"AAAI\"}]",
-    "tokens": {"prompt": 200, "completion": 120},
+    "tokens": {
+      "prompt": 200,
+      "completion": 120
+    },
     "latency_ms": 2000
   },
-  "analyze:gap_detect:stub_hash_003": {
+  "analyze:gap_detect:30e55062572e2611": {
     "stage": "analyze",
     "primitive": "gap_detect",
     "response": "Key gaps identified: (1) Limited work on multi-agent bidding equilibria under budget constraints, (2) No unified framework for combining RL-based and optimization-based approaches, (3) Lack of benchmarks for non-stationary auction environments.",
-    "tokens": {"prompt": 500, "completion": 150},
+    "tokens": {
+      "prompt": 500,
+      "completion": 150
+    },
     "latency_ms": 3000
   },
-  "analyze:claim_extract:stub_hash_004": {
+  "analyze:claim_extract:30e55062572e2611": {
     "stage": "analyze",
     "primitive": "claim_extract",
     "response": "[{\"claim\": \"RL-based bidders converge to optimal strategies in stationary environments\", \"type\": \"finding\", \"paper_ids\": [1]}, {\"claim\": \"Budget pacing reduces over-spend by 40% compared to greedy bidding\", \"type\": \"finding\", \"paper_ids\": [2]}]",
-    "tokens": {"prompt": 400, "completion": 180},
+    "tokens": {
+      "prompt": 400,
+      "completion": 180
+    },
     "latency_ms": 2500
   },
-  "propose:direction_ranking:stub_hash_005": {
+  "propose:direction_ranking:30e55062572e2611": {
     "stage": "propose",
     "primitive": "direction_ranking",
     "response": "[{\"direction\": \"Multi-agent equilibrium-aware bidding\", \"novelty\": 8.2, \"feasibility\": 7.5, \"impact\": 8.0}, {\"direction\": \"Hybrid RL-optimization framework\", \"novelty\": 7.8, \"feasibility\": 8.0, \"impact\": 7.5}]",
-    "tokens": {"prompt": 600, "completion": 200},
+    "tokens": {
+      "prompt": 600,
+      "completion": 200
+    },
     "latency_ms": 3500
   },
-  "propose:adversarial_review:stub_hash_006": {
+  "propose:adversarial_review:30e55062572e2611": {
     "stage": "propose",
     "primitive": "adversarial_review",
     "response": "Challenger critique: The multi-agent equilibrium approach assumes complete information about competitor strategies, which is unrealistic in real ad auctions. The paper should address partial observability and demonstrate robustness under misspecified models.",
-    "tokens": {"prompt": 800, "completion": 250},
+    "tokens": {
+      "prompt": 800,
+      "completion": 250
+    },
     "latency_ms": 4000
   },
-  "experiment:code_gen:stub_hash_007": {
+  "experiment:code_gen:30e55062572e2611": {
     "stage": "experiment",
     "primitive": "code_gen",
     "response": "# Simulated experiment code\nimport numpy as np\n\ndef run_auction_simulation(n_agents=5, n_rounds=1000, budget=100):\n    results = {'roi': 1.45, 'spend_ratio': 0.92, 'win_rate': 0.38}\n    return results",
-    "tokens": {"prompt": 700, "completion": 300},
+    "tokens": {
+      "prompt": 700,
+      "completion": 300
+    },
     "latency_ms": 5000
   },
-  "write:outline_generate:stub_hash_008": {
+  "write:outline_generate:30e55062572e2611": {
     "stage": "write",
     "primitive": "outline_generate",
     "response": "1. Introduction\\n2. Related Work\\n  2.1 Budget-Constrained Bidding\\n  2.2 RL in Auctions\\n3. Problem Formulation\\n4. Proposed Method\\n5. Experiments\\n  5.1 Setup\\n  5.2 Results\\n6. Conclusion",
-    "tokens": {"prompt": 500, "completion": 150},
+    "tokens": {
+      "prompt": 500,
+      "completion": 150
+    },
     "latency_ms": 2000
   },
-  "write:section_draft:stub_hash_009": {
+  "write:section_draft:30e55062572e2611": {
     "stage": "write",
     "primitive": "section_draft",
     "response": "We propose a multi-agent equilibrium-aware bidding framework that combines reinforcement learning with constrained optimization. Unlike prior work that treats each bidder independently, our approach models the auction as a stochastic game where agents learn best-response strategies under budget constraints.",
-    "tokens": {"prompt": 900, "completion": 400},
+    "tokens": {
+      "prompt": 900,
+      "completion": 400
+    },
     "latency_ms": 6000
   },
-  "write:review:stub_hash_010": {
+  "write:review:30e55062572e2611": {
     "stage": "write",
     "primitive": "review",
     "response": "{\"verdict\": \"minor_revision\", \"score\": 7.2, \"strengths\": [\"Novel formulation\", \"Strong empirical results\"], \"weaknesses\": [\"Limited theoretical analysis\", \"Could discuss scalability\"]}",
-    "tokens": {"prompt": 1000, "completion": 200},
+    "tokens": {
+      "prompt": 1000,
+      "completion": 200
+    },
     "latency_ms": 3000
   }
 }

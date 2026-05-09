@@ -1,24 +1,89 @@
-<p align="center">
-  <img src="docs/assets/hero.png" alt="Research Harness" width="720"/>
-</p>
+# Research Harness
 
-<h1 align="center">Research Harness</h1>
+**面向长周期 AI 科研 agent 的 harness。**
+
+Research Harness 把 AI 辅助科研变成一条可持续、可审查的工作流：
+从文献检索、论文精读、gap 分析，到实验设计和论文撰写。
+
+它为 Codex、Claude Code、Cursor、OpenClaw 等工具提供科研所需的状态管理、
+工具调用、阶段门控和溯源记录，让严肃科研工作可以跨 session 持续推进，
+而不是散落在一次次聊天记录里。
 
 <p align="center">
   <a href="README.md">English</a> · <a href="README.zh-CN.md"><b>简体中文</b></a>
 </p>
 
 <p align="center">
-  面向科研文献工作的 Agent Harness —— 持久化状态、类型化原语、阶段门禁推进、可追溯的调用记录。
-</p>
-
-<p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-red.svg" alt="License"/></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"/>
-  <img src="https://img.shields.io/badge/tests-987%2B-green.svg" alt="Tests"/>
-  <img src="https://img.shields.io/badge/primitives-69-purple.svg" alt="Primitives"/>
-  <img src="https://img.shields.io/badge/MCP-112_tools-orange.svg" alt="MCP tools"/>
+  <img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version"/>
+  <img src="https://img.shields.io/badge/MCP-compatible-orange.svg" alt="MCP"/>
 </p>
+
+## RH 能帮你把科研流程管起来
+
+- 建立持续增长的 paper pool，而不是一次性的论文清单。
+- 把论文精读成可复用的笔记、claims、局限和证据。
+- 比较方法、baseline、矛盾和开放的 research gap。
+- 把有潜力的 gap 推进成实验 brief：包括假设、指标、baseline、评估方案。
+- 基于已记录证据起草 related work、proposal、报告和论文章节。
+- 在不同 agent、模型、机器和 session 之间继续同一个研究状态。
+
+## 最简单的开始方式
+
+你不需要一开始就读完所有配置。先把项目 clone 下来，进入目录，
+然后让你正在使用的 Codex、Claude Code、Cursor 或 OpenClaw 帮你完成本地安装。
+
+```bash
+git clone https://github.com/Biajin-PKU/research-harness.git
+cd research-harness
+```
+
+可以直接把下面这段话交给它：
+
+```text
+请帮我在当前 repo 安装和配置 Research Harness。
+
+请你：
+1. 先阅读 README.md、docs/quickstart.md、AGENTS.md 和 docs/agent-guide.md。
+2. 检测我的环境：操作系统、shell、Python、包管理器、当前使用的 coding 工具。
+3. 用最安全的本地模式安装 Research Harness。
+4. 如果可以，请帮我配置当前工具使用的 Research Harness MCP server。
+5. 不要硬编码任何密钥。如果需要 API key，请明确告诉我要设置哪个环境变量。
+6. 运行可用的 doctor / smoke check。
+7. 最后告诉我：
+   - 安装了什么；
+   - 当前使用哪个 Python 环境；
+   - 如何启动或验证 MCP server；
+   - 如何启动可选的 web workbench；
+   - 下一步我可以直接使用的一条科研 prompt。
+```
+
+如果当前工具不能自动修改 MCP 配置，请让它输出准确的配置片段，并告诉你应该粘贴到哪里。
+
+## 安装后怎么开始科研
+
+安装完成后，直接用科研语言描述任务，而不是记工具命令：
+
+```text
+围绕「robust budget pacing for online advertising」创建一个研究 topic。
+检索近期论文，筛选有用论文入库，并建立第一版 literature map。
+```
+
+```text
+精读这个 topic 里最相关的论文。
+提取它们的 claims、假设、局限、数据集、指标和可复现性风险。
+```
+
+```text
+基于已记录证据，找出可以推进成实验的 research gaps。
+针对排名第一的方向，准备实验 brief：包括 baseline、metric、ablation 和可能失败的情况。
+```
+
+```text
+基于已记录 claims 和 evidence 起草 related work。
+请保证引用和观点都能追溯到源论文。
+```
 
 ---
 
@@ -59,7 +124,7 @@ Research Harness 把这三点当成一等公民：状态持久化在数据库里
 需要 Python 3.10+。一把 LLM API key（OpenAI、Anthropic 或 Kimi）即可起步。
 
 ```bash
-git clone https://github.com/your-org/research-harness.git
+git clone https://github.com/Biajin-PKU/research-harness.git
 cd research-harness
 ./setup.sh                    # 创建虚拟环境，安装三个 package
 cp .env.example .env          # 填入一把 API key

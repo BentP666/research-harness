@@ -1,24 +1,96 @@
-<p align="center">
-  <img src="docs/assets/hero.png" alt="Research Harness" width="720"/>
-</p>
+# Research Harness
 
-<h1 align="center">Research Harness</h1>
+**A harness for long-running AI research agents.**
+
+Research Harness turns AI-assisted research into a persistent, reviewable
+workflow — from literature search and deep reading to gap analysis, experiment
+design, and paper writing.
+
+It gives Codex, Claude Code, Cursor, OpenClaw, and similar tools the state,
+research operations, checkpoints, and provenance needed to carry a project
+across sessions instead of losing progress in chat history.
 
 <p align="center">
   <a href="README.md"><b>English</b></a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
 <p align="center">
-  An agent harness for scientific literature work — persistent state, typed primitives, stage-gated progression, and provenance on every recorded call.
-</p>
-
-<p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-red.svg" alt="License"/></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"/>
-  <img src="https://img.shields.io/badge/tests-987%2B-green.svg" alt="Tests"/>
-  <img src="https://img.shields.io/badge/primitives-69-purple.svg" alt="Primitives"/>
-  <img src="https://img.shields.io/badge/MCP-112_tools-orange.svg" alt="MCP tools"/>
+  <img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version"/>
+  <img src="https://img.shields.io/badge/MCP-compatible-orange.svg" alt="MCP"/>
 </p>
+
+## What RH helps with
+
+- Build a living paper pool instead of a one-off reading list.
+- Deep-read papers into reusable notes, claims, limitations, and evidence.
+- Compare methods, baselines, contradictions, and open research gaps.
+- Turn promising gaps into experiment briefs with assumptions, metrics,
+  baselines, and evaluation plans.
+- Draft related work, proposals, reports, and paper sections from recorded
+  evidence.
+- Resume the same research state across agents, models, machines, and sessions.
+
+## The easiest way to start
+
+You do not need to learn the whole configuration surface up front. Clone the
+repo, open it in the coding tool you already use, and ask that tool to set up
+Research Harness for your local environment.
+
+```bash
+git clone https://github.com/Biajin-PKU/research-harness.git
+cd research-harness
+```
+
+Then give this prompt to Codex, Claude Code, Cursor, OpenClaw, or another
+agent-capable coding tool:
+
+```text
+You are helping me install and configure Research Harness in this repo.
+
+Please:
+1. Read README.md, docs/quickstart.md, AGENTS.md, and docs/agent-guide.md.
+2. Detect my environment: OS, shell, Python, package manager, and current coding tool.
+3. Install Research Harness in the safest local mode for this machine.
+4. Configure the Research Harness MCP server for the tool I am using if possible.
+5. Do not hardcode secrets. If an API key is needed, tell me exactly which environment variable to set.
+6. Run the available doctor / smoke checks.
+7. Report back with:
+   - what was installed;
+   - which Python environment is being used;
+   - how to start or verify the MCP server;
+   - how to launch the optional web workbench;
+   - one research prompt I can use next.
+```
+
+If the tool cannot edit its own MCP configuration, ask it to print the exact
+config snippet and where to paste it.
+
+## Start researching after setup
+
+Once RH is installed, use research-language prompts instead of tool-language
+commands:
+
+```text
+Create a topic on robust budget pacing for online advertising.
+Search for recent papers, ingest the useful ones, and build a first literature map.
+```
+
+```text
+Deep-read the most relevant papers in this topic.
+Extract their claims, assumptions, limitations, datasets, metrics, and reproducibility risks.
+```
+
+```text
+Based on the recorded evidence, identify research gaps that could become experiments.
+For the top direction, prepare an experiment brief with baselines, metrics, ablations, and expected failure modes.
+```
+
+```text
+Draft a related-work section from the recorded claims and evidence.
+Keep the citations and claims traceable to the source papers.
+```
 
 ---
 
@@ -59,7 +131,7 @@ Best fit when a human reviews artifacts at stage boundaries — that is where th
 Requires Python 3.10+. One LLM API key (OpenAI, Anthropic, or Kimi) is enough to start.
 
 ```bash
-git clone https://github.com/your-org/research-harness.git
+git clone https://github.com/Biajin-PKU/research-harness.git
 cd research-harness
 ./setup.sh                    # creates venv, installs the three packages
 cp .env.example .env          # add one API key

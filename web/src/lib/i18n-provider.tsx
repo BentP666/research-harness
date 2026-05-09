@@ -40,8 +40,7 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function getInitialLocale(): Locale {
-  if (typeof window === "undefined") return "en";
+function getClientLocale(): Locale {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved === "en" || saved === "zh") return saved;
@@ -72,25 +71,34 @@ function interpolate(
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => getInitialLocale());
+  // Keep the first client render identical to SSR. Reading localStorage or
+  // navigator.language during the initial render causes hydration mismatches
+  // (for example server renders "Workbench" while client renders "工作台").
+  const [locale, setLocaleState] = useState<Locale>("en");
+  const [localeResolved, setLocaleResolved] = useState(false);
 
   useEffect(() => {
+    const next = getClientLocale();
+    window.queueMicrotask(() => {
+      setLocaleState(next);
+      setGlossaryLocale(next);
+      setLocaleResolved(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!localeResolved) return;
     setGlossaryLocale(locale);
     try {
       window.localStorage.setItem(STORAGE_KEY, locale);
     } catch {
       // localStorage blocked — keep in-memory locale
     }
-  }, [locale]);
+  }, [locale, localeResolved]);
 
   const setLocale = useCallback((next: Locale) => {
+    setLocaleResolved(true);
     setLocaleState(next);
-    setGlossaryLocale(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      // ignore
-    }
   }, []);
 
   const t = useCallback(

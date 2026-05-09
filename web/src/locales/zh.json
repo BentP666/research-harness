@@ -1,18 +1,20 @@
 {
   "brand": {
-    "name": "Atlas",
-    "tagline": "你的 AI 研究伙伴",
+    "name": "Research Harness",
+    "tagline": "AI 科研工作台",
     "poweredBy": "Powered by Research Harness"
   },
   "nav": {
-    "dashboard": "今日概览",
-    "research": "研究中心",
-    "library": "文献资料",
-    "discover": "学术发现",
-    "reports": "研究汇报",
-    "agents": "模型配置",
+    "dashboard": "工作台",
+    "research": "科研流程",
+    "library": "文献库",
+    "discover": "发现实验室",
+    "reports": "报告",
+    "agents": "模型",
     "budgets": "用量统计",
-    "settings": "系统设置"
+    "settings": "系统设置",
+    "trends": "趋势实验室",
+    "labs": "实验区 / 高级"
   },
   "sidebar": {
     "todayGroup": "今日",
@@ -57,7 +59,76 @@
     "topVenues": "主要会议 / 期刊",
     "statPapers": "论文",
     "statDomains": "领域",
-    "statTopics": "课题"
+    "statTopics": "课题",
+    "workbench": {
+      "eyebrow": "为 agentic research 设计",
+      "title": "从一个研究问题，推进到可写作的证据链。",
+      "subtitle": "Research Harness 给你的 AI coding agent 一个干净的科研工作台：论文、精读、gap、报告和溯源都留在这里，每一步都可见、可复用、可审查。",
+      "demoCta": "查看产品演示",
+      "questionKicker": "从科研任务开始",
+      "question": "一键推进今天的研究。",
+      "questionHint": "你选择目标；RH 保留状态；agent 负责执行复杂循环。",
+      "viewWorkflow": "打开科研流程",
+      "actions": {
+        "search": {
+          "title": "创建研究课题",
+          "body": "把一个粗略想法变成可追踪的研究工作区，并建立聚焦的论文池。",
+          "cta": "开始课题"
+        },
+        "read": {
+          "title": "精读论文",
+          "body": "把 PDF 和元数据转成结构化笔记、claims、局限和可复用证据。",
+          "cta": "打开文献库"
+        },
+        "gap": {
+          "title": "发现 research gap",
+          "body": "从矛盾、缺失 baseline 和未验证方向里找到下一步值得测试的问题。",
+          "cta": "查看流程"
+        },
+        "write": {
+          "title": "基于证据写作",
+          "body": "从已记录 artifacts 组织 related work、proposal 和报告，而不是翻聊天记录。",
+          "cta": "打开报告"
+        }
+      },
+      "preview": {
+        "kicker": "工作区预览",
+        "title": "AI Agents for Scientific Discovery",
+        "status": "推进中",
+        "papers": "论文",
+        "evidence": "证据",
+        "gaps": "gap",
+        "pipeline": "科研流程",
+        "stage1": "论文池已整理",
+        "stage2": "claims 已提取",
+        "stage3": "gap 审查进行中",
+        "nextLabel": "建议下一步",
+        "nextAction": "让 agent 交叉验证排名靠前的 gaps，并把一个方向推进成实验 brief。"
+      },
+      "empty": {
+        "badge": "第一个工作区",
+        "title": "从一个研究问题开始。",
+        "body": "你可以在界面里创建 topic，也可以把启动 prompt 交给 coding agent。RH 会从第一篇论文开始管理研究状态。"
+      },
+      "handoff": {
+        "label": "Agent 启动 prompt",
+        "prompt": "请阅读 AGENTS.md、docs/agent-guide.md 和 skills/。围绕「我的研究问题」创建 topic，然后开始文献检索，并把产出记录到 RH。"
+      },
+      "recent": {
+        "kicker": "当前研究",
+        "title": "从上次停下的地方继续"
+      },
+      "agentFirst": {
+        "title": "为人类审查和 agent 执行共同设计。",
+        "body": "界面负责让你看懂研究状态；Claude Code、Codex、Cursor 或其他 MCP agent 负责执行更重的循环：检索、精读、提取、比较和起草。"
+      },
+      "labs": {
+        "eyebrow": "实验区",
+        "title": "趋势分析保留，但不进入核心路径。",
+        "body": "热门方向发现很适合未来产品探索。RH 1.0 的主界面先聚焦科研 workflow 本身。"
+      }
+    },
+    "statArtifacts": "产出"
   },
   "welcome": {
     "title": "欢迎来到 Atlas",
