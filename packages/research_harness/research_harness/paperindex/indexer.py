@@ -6,9 +6,14 @@ from typing import Any
 from .cards.extraction import build_paper_card
 from .extraction.section_extractor import extract_section_content
 from .indexing.page_index import extract_structure_tree
-from .indexing.section_text import attach_section_text, normalize_section_title
+from .indexing.section_text import (
+    attach_markdown_section_text,
+    attach_section_text,
+    normalize_section_title,
+)
 from .library import PaperLibrary
 from llm_router.client import resolve_llm_config
+from .parsing import ParserInput, resolve_document_parser
 from .retrieval import find_structure_matches, search_catalog, search_records
 from .types import (
     EXTRACTABLE_SECTIONS,
@@ -25,15 +30,29 @@ from .cards.schema import PaperCard
 
 
 class PaperIndexer:
-    def __init__(self, llm_config: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        llm_config: dict[str, Any] | None = None,
+        parser: ParserInput = None,
+    ):
         self._llm_config = resolve_llm_config(llm_config).to_dict()
+        self._parser = resolve_document_parser(parser)
+
+    @property
+    def parser_name(self) -> str:
+        return self._parser.parser_name
 
     def extract_structure(self, pdf_path: str | Path) -> StructureResult:
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
             raise FileNotFoundError(pdf_path)
-        tree, raw = extract_structure_tree(pdf_path, llm_config=self._llm_config)
-        attach_section_text(tree, raw.get("pages_text", []))
+        tree, raw = extract_structure_tree(
+            pdf_path, llm_config=self._llm_config, parser=self._parser
+        )
+        if raw.get("structure_source") == "markdown_headings" and raw.get("markdown"):
+            attach_markdown_section_text(tree, str(raw.get("markdown") or ""))
+        else:
+            attach_section_text(tree, raw.get("pages_text", []))
         return StructureResult(
             doc_name=pdf_path.name,
             tree=tree,

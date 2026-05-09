@@ -75,6 +75,24 @@ python -m pytest packages/ -q --ignore=packages/research_harness_eval
 
 See [`docs/quickstart.md`](docs/quickstart.md) for the full setup walkthrough, including Conda, GPU, and offline notes.
 
+
+## PDF parsing quality modes
+
+Research Harness keeps the default PDF path lightweight: `pymupdf` extracts
+text and embedded TOC metadata quickly and needs no model downloads. For
+high-quality deep reading, install the optional Docling backend and run it only
+for papers that need richer Markdown, tables, and layout-aware headings:
+
+```bash
+pip install -e "packages/research_harness[docling]"
+PAPERINDEX_PARSER=docling rh paper annotate <paper_id>
+```
+
+Docling runs locally and does not call an LLM API. Its first run downloads
+Docling layout/table model assets from HuggingFace, then reuses the local cache.
+OCR is disabled by default for born-digital academic PDFs; scanned-paper OCR can
+be added later as a separate parser profile.
+
 ## A First End-to-End Run
 
 Same autonomous workflow, three entry points — pick the one that fits your session. All three drive the project through the six stages and pause at the same human-only checkpoints (direction selection, experiment-design approval, finalize). All three write to the same `pool.db`, so you can start in one and resume in another.

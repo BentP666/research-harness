@@ -9,6 +9,7 @@ from .cards.extraction import CARD_EXTRACTION_SECTIONS
 from .indexer import PaperIndexer
 from .indexing.markdown import structure_to_markdown_outline
 from .library import DEFAULT_LIBRARY_DIRNAME
+from .parsing import resolve_document_parser
 from llm_router.client import resolve_llm_config
 
 
@@ -16,16 +17,45 @@ def _default_library_root() -> Path:
     return Path.cwd() / DEFAULT_LIBRARY_DIRNAME
 
 
+def _parser_option(func):
+    return click.option(
+        "--parser",
+        "parser_name",
+        type=click.Choice(["pymupdf", "docling"]),
+        default=None,
+        help="PDF parser backend. Defaults to PAPERINDEX_PARSER or pymupdf.",
+    )(func)
+
+
 @click.group()
 def main() -> None:
     """Developer CLI for paperindex."""
 
 
+@main.command("parse")
+@click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@_parser_option
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["markdown", "json"]),
+    default="markdown",
+    show_default=True,
+)
+def parse_cmd(pdf_path: Path, parser_name: str | None, output_format: str) -> None:
+    parsed = resolve_document_parser(parser_name).parse(pdf_path)
+    if output_format == "json":
+        click.echo(json.dumps(parsed.to_raw_dict(), ensure_ascii=False, default=str))
+        return
+    click.echo(parsed.markdown or "\n\n".join(parsed.pages_text))
+
+
 @main.command("structure")
 @click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@_parser_option
 @click.option("--json-output", "json_output", is_flag=True, default=False)
-def structure_cmd(pdf_path: Path, json_output: bool) -> None:
-    result = PaperIndexer().extract_structure(pdf_path)
+def structure_cmd(pdf_path: Path, parser_name: str | None, json_output: bool) -> None:
+    result = PaperIndexer(parser=parser_name).extract_structure(pdf_path)
     if json_output:
         click.echo(json.dumps(result.to_dict(), ensure_ascii=False, default=str))
         return
@@ -34,10 +64,16 @@ def structure_cmd(pdf_path: Path, json_output: bool) -> None:
 
 @main.command("section")
 @click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@_parser_option
 @click.option("--section", "section_name", required=True)
 @click.option("--json-output", "json_output", is_flag=True, default=False)
-def section_cmd(pdf_path: Path, section_name: str, json_output: bool) -> None:
-    indexer = PaperIndexer()
+def section_cmd(
+    pdf_path: Path,
+    parser_name: str | None,
+    section_name: str,
+    json_output: bool,
+) -> None:
+    indexer = PaperIndexer(parser=parser_name)
     structure = indexer.extract_structure(pdf_path)
     result = indexer.extract_section(structure, section_name)
     payload = result.to_dict()
@@ -49,9 +85,10 @@ def section_cmd(pdf_path: Path, section_name: str, json_output: bool) -> None:
 
 @main.command("card")
 @click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@_parser_option
 @click.option("--json-output", "json_output", is_flag=True, default=False)
-def card_cmd(pdf_path: Path, json_output: bool) -> None:
-    indexer = PaperIndexer()
+def card_cmd(pdf_path: Path, parser_name: str | None, json_output: bool) -> None:
+    indexer = PaperIndexer(parser=parser_name)
     structure = indexer.extract_structure(pdf_path)
     sections = [
         indexer.extract_section(structure, name) for name in CARD_EXTRACTION_SECTIONS
@@ -66,12 +103,18 @@ def card_cmd(pdf_path: Path, json_output: bool) -> None:
 
 @main.command("ingest")
 @click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@_parser_option
 @click.option(
     "--library-root", type=click.Path(path_type=Path), default=_default_library_root
 )
 @click.option("--json-output", "json_output", is_flag=True, default=False)
-def ingest_cmd(pdf_path: Path, library_root: Path, json_output: bool) -> None:
-    record = PaperIndexer().ingest(pdf_path, library_root)
+def ingest_cmd(
+    pdf_path: Path,
+    parser_name: str | None,
+    library_root: Path,
+    json_output: bool,
+) -> None:
+    record = PaperIndexer(parser=parser_name).ingest(pdf_path, library_root)
     payload = record.to_dict()
     if json_output:
         click.echo(json.dumps(payload, ensure_ascii=False, default=str))

@@ -42,6 +42,25 @@ def attach_section_text(
     return tree
 
 
+def attach_markdown_section_text(
+    tree: list[SectionNode], markdown: str
+) -> list[SectionNode]:
+    """Attach bounded section chunks from a Markdown heading outline."""
+
+    lines = markdown.splitlines()
+    spans = _markdown_heading_line_indices(lines)
+    for node, (start_idx, _, _) in zip(flatten_nodes(tree), spans):
+        next_start = len(lines)
+        for candidate_idx, _, _ in spans:
+            if candidate_idx > start_idx:
+                next_start = candidate_idx
+                break
+        chunk = "\n".join(lines[start_idx:next_start]).strip()
+        node.section_text = chunk
+        node.summary = _build_node_summary(node.title, chunk)
+    return tree
+
+
 def _trim_page_span_text(text: str, title: str) -> str:
     normalized_title = normalize_section_title(title)
     if not normalized_title:
@@ -64,3 +83,16 @@ def _build_node_summary(title: str, text: str) -> str:
             continue
         filtered.append(line)
     return summarize_text(" ".join(filtered) or text)
+
+
+def _markdown_heading_line_indices(lines: list[str]) -> list[tuple[int, int, str]]:
+    spans: list[tuple[int, int, str]] = []
+    for idx, line in enumerate(lines):
+        match = re.match(r"^(#{1,6})\s+(.+?)\s*$", line.strip())
+        if not match:
+            continue
+        title = re.sub(r"\s+", " ", match.group(2)).strip()
+        title = re.sub(r"<!--.*?-->", "", title).strip()
+        if title:
+            spans.append((idx, len(match.group(1)), title))
+    return spans
