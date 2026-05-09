@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-lb-003", "title": "Stale Evidence Detection in Literature Pipelines", "abstract": "Defines a freshness signal: paper.recency_score = exp(-(now - paper.year)/decay). Flags evidence whose score < 0.3 as stale.", "authors": ["L. Liu"], "venue": "EMNLP 2024", "year": 2024, "doi": "10.0000/fixture.lb.003", "topic_match": "fixture-loopback"}

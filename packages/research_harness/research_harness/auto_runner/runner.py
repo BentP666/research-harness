@@ -12,6 +12,7 @@ The runner is a deterministic controller that:
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,10 +20,11 @@ from ..config import find_workspace_root, load_runtime_config
 from ..orchestrator.service import OrchestratorService
 from ..orchestrator.stages import STAGE_ORDER, next_stage
 from ..storage.db import Database
+from ..token_accounting import check_stage_budget
 from . import checkpoint as ckpt
 from .budget import BudgetLimits, BudgetMonitor
 from .stage_executor import execute_stage
-from .stage_policy import max_retries, should_pause_human
+from .stage_policy import max_retries, should_execute, should_pause_human
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,108 @@ def run_topic(
         logger.info("━━━ Stage: %s ━━━", current_stage)
         ckpt.update_stage(checkpoint_data, stage=current_stage, state="running")
         ckpt.save_checkpoint(ckpt_path, checkpoint_data)
+
+        # Pre-execution planner: should this stage even run?
+        # (v2 Step 3.1 / ADR-001 Decision 2)
+        exec_decision = should_execute(
+            db=db,
+            topic_id=topic_id,
+            stage=current_stage,
+            current_checkpoint_stage=checkpoint_data.get("current_stage"),
+        )
+        if not exec_decision.should_run:
+            reason = exec_decision.reason
+            notes = "; ".join(exec_decision.advisory_notes) or reason
+            logger.info("Skipping stage %s: %s (%s)", current_stage, reason, notes)
+            ckpt.record_event(
+                checkpoint_data,
+                stage=current_stage,
+                event="pre_execute_skip",
+                detail=f"{reason}: {notes[:180]}",
+            )
+            try:
+                svc.record_decision(
+                    topic_id=topic_id,
+                    stage=current_stage,
+                    checkpoint="pre_execute",
+                    choice=f"skip_{reason}",
+                    reasoning=notes[:500],
+                    actor="auto_runner",
+                    origin="auto",
+                )
+            except Exception as exc:
+                logger.warning(
+                    "decision_log record failed for skip: %s", exc, exc_info=True
+                )
+            stages_completed.append(current_stage)
+            nxt = next_stage(current_stage)
+            if nxt is None:
+                ckpt.save_checkpoint(ckpt_path, checkpoint_data)
+                return {
+                    "status": "completed",
+                    "current_stage": current_stage,
+                    "stages_completed": stages_completed,
+                    "summary": (
+                        f"Workflow completed (final stage {current_stage} "
+                        f"skipped: {reason}). "
+                        f"{len(stages_completed)} stages passed."
+                    ),
+                    "checkpoint_path": str(ckpt_path),
+                }
+            current_stage = nxt
+            checkpoint_data["current_stage"] = current_stage
+            ckpt.save_checkpoint(ckpt_path, checkpoint_data)
+            continue
+
+        # Per-stage token budget pre-check (v2 Step 3.1)
+        budget_enforce = os.environ.get(
+            "RESEARCH_HARNESS_STAGE_BUDGET_ENFORCE", "soft"
+        ).lower()
+        try:
+            stage_budget = check_stage_budget(topic_id, current_stage)
+            if stage_budget.warning:
+                ckpt.record_event(
+                    checkpoint_data,
+                    stage=current_stage,
+                    event="stage_budget_warning"
+                    if stage_budget.ok
+                    else "stage_budget_hard_cap",
+                    detail=stage_budget.warning[:200],
+                )
+                try:
+                    svc.record_decision(
+                        topic_id=topic_id,
+                        stage=current_stage,
+                        checkpoint="pre_execute",
+                        choice="budget_warn" if stage_budget.ok else "budget_exceeded",
+                        reasoning=stage_budget.warning[:500],
+                        actor="auto_runner",
+                        origin="auto",
+                    )
+                except Exception as exc:
+                    logger.debug("decision_log for budget failed: %s", exc)
+            if not stage_budget.ok and budget_enforce == "hard":
+                ckpt.update_stage(
+                    checkpoint_data,
+                    stage=current_stage,
+                    state="needs_human",
+                    summary_md=f"Stage budget exceeded: {stage_budget.warning}",
+                )
+                ckpt.save_checkpoint(ckpt_path, checkpoint_data)
+                return {
+                    "status": "paused",
+                    "current_stage": current_stage,
+                    "stages_completed": stages_completed,
+                    "summary": stage_budget.warning or "Stage budget exceeded",
+                    "checkpoint_path": str(ckpt_path),
+                }
+        except Exception as exc:
+            logger.warning(
+                "check_stage_budget failed for topic=%d stage=%s: %s",
+                topic_id,
+                current_stage,
+                exc,
+            )
 
         # Execute stage
         result = execute_stage(

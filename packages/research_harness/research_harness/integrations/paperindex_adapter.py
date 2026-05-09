@@ -4,9 +4,13 @@ import json
 import logging
 from pathlib import Path
 
-from paperindex import PaperIndexer
-from paperindex.types import SectionNode, SectionResult, StructureResult
-from paperindex.utils import sha256_file
+from research_harness.paperindex import PaperIndexer
+from research_harness.paperindex.types import (
+    SectionNode,
+    SectionResult,
+    StructureResult,
+)
+from research_harness.paperindex.utils import sha256_file
 
 from ..core.paper_pool import PaperPool
 from ..storage.models import PaperAnnotation

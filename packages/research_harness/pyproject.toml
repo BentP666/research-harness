@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "research-harness"
-version = "0.2.0"
+version = "0.3.1"
 description = "Agent-first research workflow platform"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
   "click>=8.1",
@@ -18,11 +18,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# PDF understanding feature (historically named "paperindex" when it was a
+# separate package). After the inline merge, research_harness.paperindex
+# ships as an internal module; the optional extra installs the PDF-runtime
+# dependencies it needs.
 paperindex = [
-  "paperindex>=0.2.0",
+  "pymupdf>=1.24.0",
+  "PyPDF2>=3.0.0",
+  "pyyaml>=6.0",
+  "tiktoken>=0.7.0",
 ]
 fal = [
   "fal-client>=0.5.0",
+]
+cs = [
+  "cso-classifier>=4.0.1",
 ]
 dev = [
   "pytest>=8.0",
@@ -35,3 +45,35 @@ rh = "research_harness.cli:main"
 rhub = "research_harness.cli:main"
 research-harness = "research_harness.cli:main"
 claude-admin = "research_harness.claude_admin:main"
+
+[tool.pytest.ini_options]
+# Shadow any globally-installed `research_harness` / `llm_router` with this
+# worktree's source tree. Without this pytest would silently import the
+# editable-installed package from the primary checkout, so edits made in
+# the worktree would not be tested.
+pythonpath = [
+  ".",
+  "../llm_router",
+]
+# Backend-stability test tiers. Select with -m "<tier>"; the harness
+# CLI wraps this with a friendlier --tier flag via conftest.
+#   smoke      — <3 min each, replay-only, no network  (pre-commit)
+#   pre_merge  — <15 min each, record-or-replay        (CI gate)
+#   nightly    — minutes to hours, live LLM + full E2E  (nightly run)
+#   regression — historical P0/P1 reproductions (runs in every tier)
+#   supervised — requires a human-checkpoint stub        (opt-in)
+#   autonomous — must finish without intervention        (default target)
+markers = [
+  "smoke: fast structural checks, replay-only, <3min",
+  "pre_merge: CI gate tier, <15min, record-or-replay",
+  "nightly: long-running full pipeline, live LLM allowed",
+  "regression: historical P0/P1 bug reproductions",
+  "supervised: exercises the supervised-mode gate pause path",
+  "autonomous: exercises the autonomous-mode auto-resolve path",
+  "needs_llm: requires real LLM API access (skipped in replay-only)",
+  "needs_network: requires network access to arxiv/s2",
+]
+filterwarnings = [
+  "error::DeprecationWarning:research_harness.*",
+]
+

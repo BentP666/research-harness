@@ -4,23 +4,23 @@
 
 ### 系统位置
 
-- Research Harness: `~/code/research-harness`
-- Agent 使用手册: `~/code/research-harness/docs/agent-guide.md`
-- 数据库: `~/code/research-harness/.research-harness/pool.db`
+- Research Harness: project root
+- Agent 使用手册: `docs/agent-guide.md`
+- 数据库: `.research-harness/pool.db`
 
 ### 必读
 
 开始任何科研工作前，先读取使用手册：
 
 ```bash
-cat ~/code/research-harness/docs/agent-guide.md
+cat docs/agent-guide.md
 ```
 
 ### 三条铁律
 
 1. 论文必须入库：通过 research-harness MCP 的 `paper_ingest` 或 `rh paper ingest` CLI 入库，不要把论文散放在项目目录
 2. 产出必须记录：关键产出通过 `orchestrator_record_artifact` 记录到数据库
-3. 经验必须反馈：工具不足、流程改进、bug 写入 `~/code/research-harness/docs/feedback/`
+3. 经验必须反馈：工具不足、流程改进、bug 写入 `docs/feedback/`
 
 ### ⚠️ MCP 优先，CLI 只做数据管理
 

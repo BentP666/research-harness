@@ -84,6 +84,31 @@ rh --json doctor
 # or equivalently: rhub --json doctor
 ```
 
+## Skills
+
+`setup.sh` builds `skills/manifest.json` automatically. To make the shipped
+skills available to your agent (Claude Code, Codex, OpenClaw, ...), run one
+of:
+
+```bash
+# Use a built-in agent profile
+rh skill install --agent claude-code
+rh skill install --agent codex
+
+# Or drop a .rh-agent.toml in the repo root and run install with no flags
+cp skills/agent-profiles/claude-code.toml .rh-agent.toml
+rh skill install
+
+# Or install ad-hoc to any directory
+rh skill install --target ~/.claude/skills
+
+# List shipped skills
+rh skill list
+```
+
+Full design and how to add support for a new agent: see
+[`docs/skills/`](skills/README.md).
+
 ## Using with Claude Code
 
 Add to `.claude/settings.json` (project-level) or `~/.claude/settings.json`

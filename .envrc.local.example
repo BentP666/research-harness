@@ -1,5 +1,13 @@
 # Copy to .envrc.local for machine- or user-specific overrides.
-# Example:
+# Examples:
 # export OPENAI_API_KEY=...
 # export ANTHROPIC_API_KEY=...
 # export KIMI_API_KEY=...
+#
+# Preferred for personal Research Harness paper-search / media keys on macOS:
+# store them in Keychain and load them through the committed helper, so the
+# local override file contains no secrets.
+#
+# ./scripts/rh-keychain-set.sh
+#
+# source scripts/rh-env-keychain.sh

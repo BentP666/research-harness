@@ -50,6 +50,8 @@ class SearchQuery:
     year_from: int | None = None
     year_to: int | None = None
     limit: int = 50
+    subject_categories: tuple[str, ...] | None = None
+    per_provider_limit: int = 50
 
 
 @dataclass(frozen=True)

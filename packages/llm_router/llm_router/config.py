@@ -88,14 +88,29 @@ def detect_available_providers() -> list[str]:
     available: list[str] = []
     if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
         available.append("anthropic")
-    if os.environ.get("OPENAI_API_KEY") or os.environ.get("CHATGPT_API_KEY"):
+    if (
+        os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("CHATGPT_API_KEY")
+        or os.environ.get("JD_OPENAI_API_KEY")
+    ):
         available.append("openai")
-    if os.environ.get("KIMI_API_KEY"):
+    if os.environ.get("KIMI_API_KEY") or os.environ.get("ANTHROPIC_KIMI_KEY"):
         available.append("kimi")
     if _env_flag("CURSOR_AGENT_ENABLED") or _is_cli_on_path("agent"):
         available.append("cursor_agent")
     if _env_flag("CODEX_ENABLED") or _is_cli_on_path("codex"):
         available.append("codex")
+
+    # LiteLLM-backed providers (optional).
+    try:
+        from .litellm_backend import detect_litellm_providers
+
+        for name in detect_litellm_providers():
+            if name not in available:
+                available.append(name)
+    except ImportError:
+        pass
+
     return available
 
 

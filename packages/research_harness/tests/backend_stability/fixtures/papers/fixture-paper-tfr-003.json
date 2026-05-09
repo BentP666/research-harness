@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-tfr-003", "title": "TimeGPT: Foundation Models for Forecasting", "abstract": "A frozen LLM backbone fine-tuned on 100B time-series tokens. Zero-shot performance matches supervised baselines on 60% of M5 series.", "authors": ["E. Edwards"], "venue": "arXiv preprint", "year": 2025, "doi": "10.0000/fixture.tfr.003", "topic_match": "fixture-tfr-small"}

@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-tfr-005", "title": "Hybrid State-Space and Attention for Forecasting", "abstract": "We combine S4 with sparse attention; show 11% MASE win on long-range datasets with 3.2x lower training cost than full Transformer.", "authors": ["H. Hassan", "I. Ito"], "venue": "ICML 2025", "year": 2025, "doi": "10.0000/fixture.tfr.005", "topic_match": "fixture-tfr-small"}

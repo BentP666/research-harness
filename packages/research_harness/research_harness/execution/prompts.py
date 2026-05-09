@@ -29,16 +29,24 @@ def claim_extract_prompt(papers_text: str, focus: str = "") -> str:
     return f"""You are a research claim extractor.{focus_line}
 
 Extract distinct research claims from the following papers.
+Each [Paper <ID>] block marks a paper. Attribute every claim to the SINGLE
+paper it comes from (the closest preceding [Paper <ID>] tag).
 For each claim, provide:
-- content
+- content: the claim text (one sentence)
+- paper_id: integer — the ID of the paper the claim is from
 - evidence_type: empirical, theoretical, methodological, or survey-based
 - confidence: 0.0-1.0
+- modality: text | figure | table | equation | mixed — where the supporting
+  evidence lives in the paper. Default to "text" if unclear.
+- evidence_spans: OPTIONAL list of {{"paper_id": int, "section": "<name>",
+  "snippet": "<short quote or description>"}} pinpointing where the
+  evidence appears. Provide 0-3 entries.
 
 Papers:
 {_truncate(papers_text, 12000)}
 
 Return JSON only:
-{{"claims": [{{"content": "<claim text>", "evidence_type": "<type>", "confidence": <float>}}]}}"""
+{{"claims": [{{"content": "<claim text>", "paper_id": <int>, "evidence_type": "<type>", "confidence": <float>, "modality": "<modality>", "evidence_spans": [{{"paper_id": <int>, "section": "<section>", "snippet": "<snippet>"}}]}}]}}"""
 
 
 def gap_detect_prompt(literature_summary: str, focus: str = "") -> str:
@@ -48,12 +56,14 @@ def gap_detect_prompt(literature_summary: str, focus: str = "") -> str:
 Based on the following literature summary, identify research gaps.
 Classify each gap as methodological, empirical, theoretical, or application.
 Rate severity as low, medium, or high.
+Also rate your own confidence in the gap 0.0-1.0: how certain are you the
+gap is real and not an artifact of incomplete coverage in the summary?
 
 Literature:
 {_truncate(literature_summary, 10000)}
 
 Return JSON only:
-{{"gaps": [{{"description": "<gap>", "gap_type": "<type>", "severity": "<level>"}}]}}"""
+{{"gaps": [{{"description": "<gap>", "gap_type": "<type>", "severity": "<level>", "confidence": <0.0-1.0>}}]}}"""
 
 
 def baseline_identify_prompt(literature_summary: str, focus: str = "") -> str:
@@ -68,6 +78,45 @@ Literature:
 
 Return JSON only:
 {{"baselines": [{{"name": "<method name>", "metrics": {{"<metric>": "<value or range>"}}, "notes": "<why this is common>"}}]}}"""
+
+
+def adversarial_section_review_prompt(
+    section: str, content: str, target_words: int = 0
+) -> str:
+    """v2 Step 5.2: skeptical-reviewer persona.
+
+    The standard section_review prompts a cooperative reviewer, which leaves
+    weaknesses under-reported (see LLM Review study #1859 — GPT-4o produces
+    59% fewer weakness entities than human reviewers). This prompt forces
+    adversarial framing: no praise, structured categories, every weakness
+    must cite concrete evidence or a concrete absence.
+    """
+    wc = f" (target: {target_words} words)" if target_words > 0 else ""
+    return f"""You are an adversarial, skeptical reviewer for the {section} section of an academic paper{wc}.
+
+You are NOT here to find strengths. You are here to find weaknesses that the
+authors would need to address before publication. Be rigorous. Be specific.
+A weakness without concrete evidence from the text is not a weakness.
+
+Categories (report at least one weakness from each applicable category, or explicitly state the category is N/A):
+  - experimental_design: flawed setup, missing ablations, insufficient baselines
+  - baseline_fairness: unfair comparisons, cherry-picked baselines
+  - statistical_significance: missing variance, single runs, no error bars
+  - limitation_discussion: unreported caveats, scope overclaim
+  - novelty_claim: overclaimed novelty, unreferenced prior work
+  - reproducibility: missing code/data/hyperparameters
+
+Severity: critical (blocker), major (must fix), minor (nice to fix).
+
+Every weakness MUST cite either:
+  - A concrete quote or paraphrase from the text that shows the problem, OR
+  - An absence (what is missing that should be there, and where it would belong)
+
+Return strict JSON only:
+{{"weaknesses": [{{"category": "<cat>", "description": "<short>", "evidence": "<quote or absence>", "severity": "critical|major|minor"}}]}}
+
+Section text:
+{_truncate(content, 10000)}"""
 
 
 def query_refine_prompt(
@@ -1247,7 +1296,41 @@ def direction_ranking_prompt(
     gaps_text: str,
     claims_text: str,
     topic_context: str,
+    *,
+    area_red_ocean: float | None = None,
+    task_red_ocean: float | None = None,
+    method_red_ocean: float | None = None,
+    opportunity_angle: str | None = None,
 ) -> str:
+    """Rank candidate research directions.
+
+    Optional kwargs (all four or none, typically passed by
+    recommendations_generate) let the scorer weight directions against
+    CS-workflow v2 market-saturation signals instead of novelty/feasibility/
+    impact in isolation.
+    """
+    red_ocean_block = ""
+    if (
+        area_red_ocean is not None
+        and task_red_ocean is not None
+        and method_red_ocean is not None
+        and opportunity_angle
+    ):
+        red_ocean_block = f"""
+Market saturation (0=green field, 1=saturated):
+  area={area_red_ocean:.2f}, task={task_red_ocean:.2f}, method={method_red_ocean:.2f}
+Opportunity angle: {opportunity_angle}
+
+Scoring adjustments:
+- opportunity_angle=red_ocean → penalize novelty by 1-2 points unless the
+  direction clearly breaks from the incumbent paradigm.
+- opportunity_angle=frontier → reward novelty and impact (+1 each) if the
+  direction targets the green-field area directly.
+- opportunity_angle=new_task_mature_method or novel_method_known_task →
+  reward feasibility (+1) because one side of the pair is already derisked.
+Include an extra field "angle_fit" (0-10) measuring how well the direction
+exploits the declared opportunity_angle.
+"""
     return f"""You are a research strategist ranking candidate research directions.
 
 Topic context:
@@ -1258,7 +1341,7 @@ Known gaps in the literature:
 
 Key claims from existing papers:
 {_truncate(claims_text, 4000)}
-
+{red_ocean_block}
 For each gap, propose a concrete research direction. Score each on three
 dimensions (1-10): Novelty, Feasibility (3-6 months), Impact.
 Composite = novelty*0.4 + feasibility*0.3 + impact*0.3. Rank descending. 3-6 directions.

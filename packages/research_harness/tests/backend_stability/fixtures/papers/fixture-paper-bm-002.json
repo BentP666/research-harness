@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-bm-002", "title": "Monash Forecasting Repository v3", "abstract": "Curates 31 datasets across 7 domains with consistent train/test splits. Establishes 11 baselines including ETS, ARIMA, N-BEATS, DeepAR.", "authors": ["P. Park"], "venue": "NeurIPS Datasets 2023", "year": 2023, "doi": "10.0000/fixture.bm.002", "topic_match": "fixture-benchmark"}

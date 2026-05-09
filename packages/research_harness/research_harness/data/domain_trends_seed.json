@@ -1,0 +1,122 @@
+[
+  {
+    "name": "LLM Agents for Scientific Discovery",
+    "description": "Autonomous LLM-based agents performing literature review, hypothesis generation, and experiment design in scientific workflows.",
+    "velocity_yoy": 340.0,
+    "citation_median": 12.0,
+    "top_venues": ["NeurIPS", "ICML", "ICLR"],
+    "publishability_score": 8.9,
+    "why": "Explosive growth driven by GPT-4/Claude capabilities, massive industry investment, and early success in chemistry and biology.",
+    "seed_papers": [{"id": 1, "title": "Autonomous Scientific Discovery with LLMs", "year": 2024}]
+  },
+  {
+    "name": "Retrieval-Augmented Generation (RAG) at Scale",
+    "description": "Scaling RAG systems beyond simple vector lookup to include hierarchical retrieval, multi-hop reasoning, and citation grounding.",
+    "velocity_yoy": 180.0,
+    "citation_median": 28.0,
+    "top_venues": ["ACL", "EMNLP", "NAACL"],
+    "publishability_score": 8.5,
+    "why": "RAG has become the default production pattern; research focus shifting to quality, hallucination reduction, and domain-specific optimization.",
+    "seed_papers": [{"id": 2, "title": "Self-RAG: Learning to Retrieve, Generate, and Critique", "year": 2024}]
+  },
+  {
+    "name": "Efficient Fine-Tuning and Adaptation",
+    "description": "Parameter-efficient methods (LoRA, QLoRA, adapters) for specializing foundation models with minimal compute and data.",
+    "velocity_yoy": 95.0,
+    "citation_median": 45.0,
+    "top_venues": ["ICLR", "NeurIPS", "AAAI"],
+    "publishability_score": 7.8,
+    "why": "Democratization of model customization drives practical interest; competition is fierce but open problems remain in multi-task and continual learning.",
+    "seed_papers": [{"id": 3, "title": "QLoRA: Efficient Finetuning of Quantized LLMs", "year": 2023}]
+  },
+  {
+    "name": "Multimodal Foundation Models",
+    "description": "Unified architectures processing text, images, video, and structured data within single models.",
+    "velocity_yoy": 120.0,
+    "citation_median": 35.0,
+    "top_venues": ["CVPR", "NeurIPS", "ICML"],
+    "publishability_score": 8.2,
+    "why": "GPT-4V, Gemini, and open alternatives have opened a new capability frontier; evaluation methodology is still immature.",
+    "seed_papers": [{"id": 4, "title": "Visual Instruction Tuning", "year": 2024}]
+  },
+  {
+    "name": "Code Generation and Program Synthesis",
+    "description": "LLM-driven code generation with verification, test synthesis, and repository-level understanding.",
+    "velocity_yoy": 85.0,
+    "citation_median": 30.0,
+    "top_venues": ["ICSE", "FSE", "NeurIPS"],
+    "publishability_score": 7.6,
+    "why": "Industry adoption accelerating (Copilot, Cursor); academic focus on correctness guarantees and benchmark saturation.",
+    "seed_papers": [{"id": 5, "title": "SWE-bench: Evaluating LLMs on Real-World Software Engineering", "year": 2024}]
+  },
+  {
+    "name": "Alignment and Safety",
+    "description": "Constitutional AI, RLHF alternatives, red-teaming frameworks, and scalable oversight for frontier models.",
+    "velocity_yoy": 150.0,
+    "citation_median": 22.0,
+    "top_venues": ["NeurIPS", "ICML", "AAAI"],
+    "publishability_score": 8.1,
+    "why": "Regulatory pressure and scaling concerns make this a high-priority area with strong funding but immature evaluation.",
+    "seed_papers": [{"id": 6, "title": "Constitutional AI: Harmlessness from AI Feedback", "year": 2023}]
+  },
+  {
+    "name": "Graph Neural Networks for Molecular Design",
+    "description": "GNN-based approaches for drug discovery, material science, and protein structure prediction.",
+    "velocity_yoy": 65.0,
+    "citation_median": 40.0,
+    "top_venues": ["NeurIPS", "ICML", "Nature Methods"],
+    "publishability_score": 7.4,
+    "why": "AlphaFold's success created sustained interest; competition with diffusion-based methods is the current frontier.",
+    "seed_papers": [{"id": 7, "title": "Equivariant Diffusion for Molecule Generation", "year": 2024}]
+  },
+  {
+    "name": "Federated and Privacy-Preserving ML",
+    "description": "Training and inference under privacy constraints using federated learning, differential privacy, and secure computation.",
+    "velocity_yoy": 45.0,
+    "citation_median": 20.0,
+    "top_venues": ["ICML", "NeurIPS", "CCS"],
+    "publishability_score": 6.8,
+    "why": "Regulatory drivers (GDPR, HIPAA) sustain interest; practical deployment challenges provide ample research directions.",
+    "seed_papers": [{"id": 8, "title": "Advances in Federated Learning: A Comprehensive Survey", "year": 2024}]
+  },
+  {
+    "name": "Diffusion Models Beyond Images",
+    "description": "Applying diffusion model principles to 3D generation, video synthesis, audio, and structured data.",
+    "velocity_yoy": 110.0,
+    "citation_median": 25.0,
+    "top_venues": ["CVPR", "ICLR", "SIGGRAPH"],
+    "publishability_score": 7.9,
+    "why": "Image generation is mature; extension to other modalities offers novel contributions with established theoretical foundations.",
+    "seed_papers": [{"id": 9, "title": "Video Diffusion Models", "year": 2024}]
+  },
+  {
+    "name": "Causal Inference with Machine Learning",
+    "description": "Combining causal reasoning with deep learning for treatment effect estimation, counterfactual prediction, and causal discovery.",
+    "velocity_yoy": 55.0,
+    "citation_median": 32.0,
+    "top_venues": ["NeurIPS", "ICML", "UAI"],
+    "publishability_score": 7.2,
+    "why": "Growing recognition that correlation-based ML is insufficient for decision-making; methodological gaps remain in high-dimensional settings.",
+    "seed_papers": [{"id": 10, "title": "Causal Representation Learning", "year": 2024}]
+  },
+  {
+    "name": "Reinforcement Learning from Human Feedback",
+    "description": "RLHF variants, DPO, and reward model training for aligning language models with human preferences.",
+    "velocity_yoy": 200.0,
+    "citation_median": 38.0,
+    "top_venues": ["NeurIPS", "ICML", "ICLR"],
+    "publishability_score": 8.4,
+    "why": "Core training paradigm for frontier models; theoretical understanding lags behind practice, creating research opportunities.",
+    "seed_papers": [{"id": 11, "title": "Direct Preference Optimization", "year": 2024}]
+  },
+  {
+    "name": "Autonomous Driving Perception",
+    "description": "End-to-end perception, BEV representation, occupancy prediction, and world models for self-driving vehicles.",
+    "velocity_yoy": 70.0,
+    "citation_median": 18.0,
+    "top_venues": ["CVPR", "ECCV", "ICCV"],
+    "publishability_score": 7.0,
+    "why": "Industry investment remains strong; transition from modular to end-to-end creates benchmark and evaluation opportunities.",
+    "seed_papers": [{"id": 12, "title": "UniAD: Planning-oriented Autonomous Driving", "year": 2023}]
+  }
+]

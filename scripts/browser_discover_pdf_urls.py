@@ -9,7 +9,7 @@ from typing import Any
 from playwright.sync_api import BrowserContext, Error, Page, Response, TimeoutError, sync_playwright
 
 
-DEFAULT_PROFILE_DIR = Path("~/.codex/browser_profiles/pku_library_chrome").expanduser()
+DEFAULT_PROFILE_DIR = Path("~/.codex/browser_profiles/library_chrome").expanduser()
 DEFAULT_MANIFEST_PATH = Path("scripts/manual_pdf_url_manifest.seed.json")
 DEFAULT_REPORT_PATH = Path("docs/experiments/browser_discovered_pdf_urls.json")
 DEFAULT_BROWSER_PATH = Path("/usr/bin/chromium")
@@ -251,7 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--profile-dir", default=str(DEFAULT_PROFILE_DIR))
     parser.add_argument("--browser-path", default=str(DEFAULT_BROWSER_PATH))
-    parser.add_argument("--login-url", default="https://www.lib.pku.edu.cn/portal/cn/")
+    parser.add_argument("--login-url", default=None, help="Institutional library login URL")
     parser.add_argument("--timeout", type=float, default=20.0)
     parser.add_argument("--skip-login-pause", action="store_true")
     parser.add_argument("--headless", action="store_true")
@@ -303,7 +303,7 @@ def main() -> None:
             except Error as exc:
                 print(json.dumps({"login_url": args.login_url, "warning": f"login_navigation_failed:{exc}"}, ensure_ascii=False))
         if not args.skip_login_pause:
-            input("Complete PKU library login in the browser, then press Enter here to continue...")
+            input("Complete library login in the browser, then press Enter here to continue...")
 
         for paper in papers:
             all_urls, attempts = discover_urls(context, page, paper, timeout_ms=int(args.timeout * 1000), network_events=network_events)

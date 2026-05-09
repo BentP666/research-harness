@@ -31,6 +31,13 @@ class ProvenanceRecord:
     created_at: str = ""
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    actor: str | None = None
+    origin: str | None = None
+    retry_ordinal: int = 0
+    cache_hit: bool = False
+    parallel_group: str | None = None
+    skipped: bool = False
+    skip_reason: str | None = None
 
 
 @dataclass(frozen=True)

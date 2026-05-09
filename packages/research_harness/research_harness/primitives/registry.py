@@ -496,6 +496,12 @@ CODE_VALIDATE_SPEC = PrimitiveSpec(
         "properties": {
             "code": {"type": "string", "description": "Python code to validate."},
             "auto_fix": {"type": "boolean", "default": True},
+            "mode": {
+                "type": "string",
+                "enum": ["strict", "agent"],
+                "default": "strict",
+                "description": "'agent' permits http/httpx/openai/anthropic for LLM-API experiments.",
+            },
         },
         "required": ["code"],
     },
@@ -510,14 +516,72 @@ EXPERIMENT_RUN_SPEC = PrimitiveSpec(
     input_schema={
         "type": "object",
         "properties": {
-            "code": {"type": "string", "description": "Python experiment code."},
+            "code": {
+                "type": "string",
+                "description": "Single-file experiment code (legacy path).",
+                "default": "",
+            },
+            "files": {
+                "type": "object",
+                "description": "Multi-file {relpath: content}. Overrides `code` when both are supplied.",
+                "additionalProperties": {"type": "string"},
+            },
+            "entry_point": {"type": "string", "default": "main.py"},
+            "env_vars": {
+                "type": "object",
+                "description": "Extra env vars overlaid on the default LLM-key allowlist.",
+                "additionalProperties": {"type": "string"},
+            },
             "timeout_sec": {"type": "number", "default": 300.0},
             "primary_metric": {"type": "string", "default": ""},
         },
-        "required": ["code"],
     },
     output_type="ExperimentRunOutput",
     requires_llm=False,
+)
+
+EXPERIMENT_LOOP_SPEC = PrimitiveSpec(
+    name="experiment_loop",
+    category=PrimitiveCategory.VERIFICATION,
+    description=(
+        "Autonomous experiment iteration loop. Repeatedly calls code_generate → "
+        "code_validate → experiment_run, records each iteration, and stops on "
+        "budget/patience. CPU-agent-friendly (LLM API experiments)."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "topic_id": {"type": "integer"},
+            "name": {"type": "string", "default": ""},
+            "task_description": {"type": "string"},
+            "fixture_files": {
+                "type": "object",
+                "description": "Fixed scaffold files written every iteration (eval set, scorer).",
+                "additionalProperties": {"type": "string"},
+            },
+            "mutable_entry": {"type": "string", "default": "main.py"},
+            "primary_metric": {"type": "string"},
+            "direction": {"type": "string", "enum": ["max", "min"], "default": "max"},
+            "mode": {"type": "string", "enum": ["strict", "agent"], "default": "agent"},
+            "timeout_sec": {"type": "number", "default": 300.0},
+            "env_vars": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+            },
+            "budget": {
+                "type": "object",
+                "properties": {
+                    "max_iterations": {"type": "integer", "default": 10},
+                    "max_cost_usd": {"type": "number", "default": 0.0},
+                    "max_tokens": {"type": "integer", "default": 0},
+                    "patience": {"type": "integer", "default": 3},
+                },
+            },
+        },
+        "required": ["topic_id", "task_description", "primary_metric"],
+    },
+    output_type="ExperimentLoopOutput",
+    requires_llm=True,
 )
 
 VERIFIED_REGISTRY_BUILD_SPEC = PrimitiveSpec(
@@ -1684,6 +1748,7 @@ for spec in (
     CODE_GENERATE_SPEC,
     CODE_VALIDATE_SPEC,
     EXPERIMENT_RUN_SPEC,
+    EXPERIMENT_LOOP_SPEC,
     VERIFIED_REGISTRY_BUILD_SPEC,
     VERIFIED_REGISTRY_CHECK_SPEC,
     PAPER_VERIFY_NUMBERS_SPEC,

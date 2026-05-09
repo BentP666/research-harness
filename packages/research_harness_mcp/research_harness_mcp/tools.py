@@ -1492,6 +1492,135 @@ _ORCHESTRATOR_TOOLS: dict[str, Tool] = {
             "required": ["topic_id", "artifact_id"],
         },
     ),
+    "experiment_handoff_prepare": Tool(
+        name="experiment_handoff_prepare",
+        description=(
+            "Package a research_candidate into an experiment_brief artifact on "
+            "the experiment stage. Pulls the candidate's pitch, red-ocean "
+            "scores, opportunity_angle, evidence gap_ids/contradiction_ids, and "
+            "related papers (baselines, datasets) from the DB and records a "
+            "self-contained brief ready for experiment kickoff."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "topic_id": {"type": "integer", "description": "Topic ID"},
+                "candidate_id": {
+                    "type": "integer",
+                    "description": "research_candidates.id to package",
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Optional freeform operator notes",
+                },
+            },
+            "required": ["topic_id", "candidate_id"],
+        },
+    ),
+    "experiment_handoff_submit": Tool(
+        name="experiment_handoff_submit",
+        description=(
+            "Submit an experiment_brief to an external handoff target. Records "
+            "an experiment_handoff artifact linked to the brief via "
+            "consumed_by dependency, and marks the candidate as 'promoted'."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "topic_id": {"type": "integer", "description": "Topic ID"},
+                "brief_artifact_id": {
+                    "type": "integer",
+                    "description": "experiment_brief artifact ID from _prepare",
+                },
+                "handoff_target": {
+                    "type": "string",
+                    "description": "Target system name (e.g. 'codex', 'manual', 'notion')",
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Submission summary (what was handed off and how)",
+                },
+            },
+            "required": ["topic_id", "brief_artifact_id", "handoff_target"],
+        },
+    ),
+    "workflow_entry": Tool(
+        name="workflow_entry",
+        description=(
+            "Single-call workflow status + next-action suggestion for a topic. "
+            "Returns current orchestrator stage, gate decision, count of "
+            "verified gaps/red-ocean candidates, and a ranked next_actions "
+            "list so agents can resume a topic without reading multiple tools."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "topic_id": {"type": "integer", "description": "Topic ID"},
+            },
+            "required": ["topic_id"],
+        },
+    ),
+    "claim_verify": Tool(
+        name="claim_verify",
+        description=(
+            "Bounded pair-wise contradiction detection over normalized_claims "
+            "for a topic. Deterministic prefilter by (task, dataset, metric); "
+            "hard cap on pair checks (default 200). Flags figure/table/equation "
+            "claims for human review. Persists contradictions to DB when "
+            "persist=true."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "topic_id": {"type": "integer", "description": "Topic ID"},
+                "pair_budget": {
+                    "type": "integer",
+                    "description": "Max pair checks (hard cap 200)",
+                    "default": 200,
+                },
+                "persist": {
+                    "type": "boolean",
+                    "description": "Persist contradictions to DB",
+                    "default": True,
+                },
+            },
+            "required": ["topic_id"],
+        },
+    ),
+    "adversarial_section_review": Tool(
+        name="adversarial_section_review",
+        description=(
+            "Skeptical-reviewer persona produces structured weakness report for "
+            "a drafted section. Every weakness must cite evidence; items "
+            "without evidence are dropped. Auto-opens review_issues for "
+            "severity=critical items."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "topic_id": {"type": "integer", "description": "Topic ID"},
+                "section": {
+                    "type": "string",
+                    "description": "Section name (e.g. 'introduction', 'results')",
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Full section draft text to review",
+                },
+                "target_words": {
+                    "type": "integer",
+                    "description": "Word budget used during drafting",
+                    "default": 0,
+                },
+                "auto_open_issues": {
+                    "type": "boolean",
+                    "description": "Auto-open review_issues for critical items",
+                    "default": True,
+                },
+            },
+            "required": ["topic_id", "section", "content"],
+        },
+    ),
 }
 
 
@@ -1791,7 +1920,361 @@ def _execute_orchestrator(name: str, arguments: dict[str, Any]) -> dict[str, Any
     elif name == "adversarial_review":
         return _execute_adversarial_review(svc, db, arguments)
 
+    elif name == "experiment_handoff_prepare":
+        return _execute_experiment_handoff_prepare(svc, db, arguments)
+
+    elif name == "experiment_handoff_submit":
+        return _execute_experiment_handoff_submit(svc, db, arguments)
+
+    elif name == "workflow_entry":
+        return _execute_workflow_entry(svc, db, arguments)
+
+    elif name == "claim_verify":
+        return _execute_claim_verify(db, arguments)
+
+    elif name == "adversarial_section_review":
+        return _execute_adversarial_section_review(svc, db, arguments)
+
     return {"error": f"Unknown orchestrator tool: {name}"}
+
+
+# ---------------------------------------------------------------------------
+# v2 Step 5 handlers — bounded verification + adversarial section review
+# ---------------------------------------------------------------------------
+
+
+def _execute_claim_verify(db: Any, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Run bounded pair-wise claim verification for a topic."""
+    from research_harness.execution.claim_verification import verify_claims
+
+    pair_budget = int(arguments.get("pair_budget", 200))
+    persist = bool(arguments.get("persist", True))
+    result = verify_claims(
+        db,
+        arguments["topic_id"],
+        pair_budget=pair_budget,
+        persist=persist,
+    )
+    return {
+        "success": True,
+        "topic_id": arguments["topic_id"],
+        "total_claims": result.total_claims,
+        "pairs_considered": result.pairs_considered,
+        "pairs_checked": result.pairs_checked,
+        "contradictions_found": result.contradictions_found,
+        "flagged_for_human_review": [
+            {"claim_id": c.id, "modality": c.modality}
+            for c in result.flagged_for_human_review
+        ],
+    }
+
+
+def _execute_adversarial_section_review(
+    svc: Any, db: Any, arguments: dict[str, Any]
+) -> dict[str, Any]:
+    """Run adversarial review on a section draft.
+
+    Optionally opens review_issues for severity=critical weaknesses when
+    auto_open_issues=True.
+    """
+    from research_harness.execution.llm_primitives import adversarial_section_review
+
+    topic_id = int(arguments["topic_id"])
+    section = arguments["section"]
+    content = arguments["content"]
+    target_words = int(arguments.get("target_words", 0))
+    auto_open_issues = bool(arguments.get("auto_open_issues", True))
+
+    result = adversarial_section_review(
+        db=db,
+        section=section,
+        content=content,
+        target_words=target_words,
+    )
+
+    opened_issues: list[int] = []
+    if auto_open_issues:
+        for w in result.get("weaknesses", []):
+            if w.get("severity") == "critical":
+                try:
+                    issue = svc.add_review_issue(
+                        topic_id=topic_id,
+                        review_type="adversarial_section_review",
+                        severity="critical",
+                        category=w.get("category", "adversarial"),
+                        summary=w.get("description", "")[:200],
+                        details=f"Evidence: {w.get('evidence', '')}",
+                        blocking=True,
+                        recommended_action=(
+                            "Address critical weakness and re-run adversarial_section_review"
+                        ),
+                    )
+                    if isinstance(issue, dict) and "issue_id" in issue:
+                        opened_issues.append(int(issue["issue_id"]))
+                except Exception as exc:
+                    logger.warning("Failed to auto-open review issue: %s", exc)
+    result["auto_opened_issue_ids"] = opened_issues
+    result["topic_id"] = topic_id
+    result["success"] = True
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 handlers — experiment handoff + workflow entry
+# ---------------------------------------------------------------------------
+
+
+def _load_candidate(db: Any, candidate_id: int) -> dict[str, Any] | None:
+    conn = db.connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM research_candidates WHERE id = ?", (candidate_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def _candidate_evidence(db: Any, candidate: dict[str, Any]) -> dict[str, Any]:
+    """Dereference evidence IDs stored on the candidate into full rows."""
+    out: dict[str, Any] = {"gaps": [], "contradictions": []}
+    gap_ids = json.loads(candidate.get("evidence_gap_ids") or "[]")
+    contra_ids = json.loads(candidate.get("evidence_contradiction_ids") or "[]")
+    conn = db.connect()
+    try:
+        if gap_ids:
+            ph = ",".join("?" * len(gap_ids))
+            rows = conn.execute(
+                f"SELECT id, description, severity, confidence, cross_verified "
+                f"FROM gaps WHERE id IN ({ph})",
+                gap_ids,
+            ).fetchall()
+            out["gaps"] = [dict(r) for r in rows]
+        if contra_ids:
+            ph = ",".join("?" * len(contra_ids))
+            rows = conn.execute(
+                f"SELECT id, conflict_reason, status FROM contradictions "
+                f"WHERE id IN ({ph})",
+                contra_ids,
+            ).fetchall()
+            out["contradictions"] = [dict(r) for r in rows]
+    finally:
+        conn.close()
+    return out
+
+
+def _execute_experiment_handoff_prepare(
+    svc: Any, db: Any, arguments: dict[str, Any]
+) -> dict[str, Any]:
+    topic_id = arguments["topic_id"]
+    candidate_id = arguments["candidate_id"]
+    notes = arguments.get("notes", "")
+
+    candidate = _load_candidate(db, candidate_id)
+    if candidate is None:
+        return {
+            "success": False,
+            "error": f"research_candidates row not found: id={candidate_id}",
+        }
+
+    # Integrity: candidate scope should reference this topic (topic:N).
+    expected_scope = f"topic:{topic_id}"
+    if candidate.get("scope") != expected_scope:
+        return {
+            "success": False,
+            "error": (
+                f"Candidate {candidate_id} has scope={candidate.get('scope')!r}, "
+                f"expected {expected_scope!r}"
+            ),
+        }
+
+    evidence = _candidate_evidence(db, candidate)
+
+    payload: dict[str, Any] = {
+        "candidate_id": candidate_id,
+        "lineage_key": candidate.get("lineage_key", ""),
+        "title": candidate.get("title", ""),
+        "pitch": candidate.get("pitch", ""),
+        "opportunity_angle": candidate.get("opportunity_angle", ""),
+        "red_ocean": {
+            "area": candidate.get("area_red_ocean", 0.0),
+            "task": candidate.get("task_red_ocean", 0.0),
+            "method": candidate.get("method_red_ocean", 0.0),
+        },
+        "llm_score": candidate.get("llm_score", 0.0),
+        "evidence": evidence,
+        "notes": notes,
+    }
+
+    try:
+        artifact = svc.record_artifact(
+            topic_id=topic_id,
+            stage="experiment",
+            artifact_type="experiment_brief",
+            title=payload["title"] or f"candidate:{candidate_id}",
+            payload=payload,
+        )
+    except Exception as exc:
+        return {"success": False, "error": f"record_artifact failed: {exc}"}
+
+    return {
+        "success": True,
+        "artifact_id": artifact.id,
+        "version": artifact.version,
+        "candidate_id": candidate_id,
+        "stage": artifact.stage,
+        "artifact_type": artifact.artifact_type,
+    }
+
+
+def _execute_experiment_handoff_submit(
+    svc: Any, db: Any, arguments: dict[str, Any]
+) -> dict[str, Any]:
+    topic_id = arguments["topic_id"]
+    brief_artifact_id = arguments["brief_artifact_id"]
+    handoff_target = arguments["handoff_target"]
+    summary = arguments.get("summary", "")
+
+    brief = svc._artifact_manager.get(brief_artifact_id)
+    if brief is None:
+        return {
+            "success": False,
+            "error": f"experiment_brief not found: id={brief_artifact_id}",
+        }
+    if brief.artifact_type != "experiment_brief":
+        return {
+            "success": False,
+            "error": (
+                f"Artifact {brief_artifact_id} is not an experiment_brief "
+                f"(type={brief.artifact_type})"
+            ),
+        }
+
+    candidate_id = (brief.payload or {}).get("candidate_id")
+
+    payload = {
+        "brief_artifact_id": brief_artifact_id,
+        "candidate_id": candidate_id,
+        "handoff_target": handoff_target,
+        "summary": summary,
+    }
+
+    try:
+        handoff = svc.record_artifact(
+            topic_id=topic_id,
+            stage="experiment",
+            artifact_type="experiment_handoff",
+            title=f"handoff → {handoff_target}",
+            payload=payload,
+            dependency_artifact_ids=[brief_artifact_id],
+            dependency_type="consumed_by",
+        )
+    except Exception as exc:
+        return {"success": False, "error": f"record_artifact failed: {exc}"}
+
+    # Flip candidate.status to 'promoted' so it no longer surfaces as a
+    # live recommendation. Silently skip if the row is missing (handoff
+    # artifact is the source of truth either way).
+    if candidate_id:
+        conn = db.connect()
+        try:
+            conn.execute(
+                "UPDATE research_candidates SET status = 'promoted' "
+                "WHERE id = ? AND status != 'promoted'",
+                (candidate_id,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    return {
+        "success": True,
+        "artifact_id": handoff.id,
+        "version": handoff.version,
+        "brief_artifact_id": brief_artifact_id,
+        "candidate_id": candidate_id,
+        "handoff_target": handoff_target,
+    }
+
+
+def _execute_workflow_entry(
+    svc: Any, db: Any, arguments: dict[str, Any]
+) -> dict[str, Any]:
+    """Compact status + ranked next_actions for a topic.
+
+    Reads orchestrator status (stage, gate), verified-gap counts, and
+    live (non-red-ocean, non-promoted) candidate counts so agents have a
+    single call to decide what to do next.
+    """
+    topic_id = arguments["topic_id"]
+
+    try:
+        status = svc.get_status(topic_id)
+    except Exception as exc:
+        return {"success": False, "error": f"orchestrator_status failed: {exc}"}
+
+    conn = db.connect()
+    try:
+        gaps_row = conn.execute(
+            "SELECT "
+            "  COUNT(*) AS total, "
+            "  SUM(CASE WHEN cross_verified = 1 THEN 1 ELSE 0 END) AS verified "
+            "FROM gaps WHERE topic_id = ?",
+            (topic_id,),
+        ).fetchone()
+        live_candidates = conn.execute(
+            "SELECT COUNT(*) AS n FROM research_candidates "
+            "WHERE scope = ? AND status IN ('candidate', 'active')",
+            (f"topic:{topic_id}",),
+        ).fetchone()
+        promoted = conn.execute(
+            "SELECT COUNT(*) AS n FROM research_candidates "
+            "WHERE scope = ? AND status = 'promoted'",
+            (f"topic:{topic_id}",),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    gaps_total = int(gaps_row["total"] or 0) if gaps_row else 0
+    gaps_verified = int(gaps_row["verified"] or 0) if gaps_row else 0
+    live_n = int(live_candidates["n"] or 0) if live_candidates else 0
+    promoted_n = int(promoted["n"] or 0) if promoted else 0
+
+    run = status.get("run", {})
+    gate = status.get("gate", {})
+    stage = run.get("current_stage", "?")
+
+    next_actions: list[str] = []
+    if gaps_total == 0:
+        next_actions.append("gap_detect — topic has no gaps yet")
+    elif gaps_verified == 0 and gaps_total > 0:
+        next_actions.append(
+            f"gap_cross_verify — {gaps_total} unverified gaps on this topic"
+        )
+    if live_n == 0 and gaps_verified > 0:
+        next_actions.append(
+            "recommendations_generate — verified gaps ready, no live candidates"
+        )
+    if live_n > 0:
+        next_actions.append(
+            f"experiment_handoff_prepare — {live_n} live candidates "
+            "ready for experiment brief"
+        )
+    if gate.get("can_advance"):
+        next_actions.append(f"orchestrator_advance — gate passed for stage {stage}")
+
+    return {
+        "success": True,
+        "topic_id": topic_id,
+        "stage": stage,
+        "gate_decision": gate.get("decision", ""),
+        "can_advance": bool(gate.get("can_advance")),
+        "gaps": {"total": gaps_total, "cross_verified": gaps_verified},
+        "candidates": {"live": live_n, "promoted": promoted_n},
+        "next_actions": next_actions,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1838,7 +2321,7 @@ _PAPERINDEX_TOOLS: dict[str, Tool] = {
 
 def _execute_paperindex(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """Execute a paperindex tool."""
-    from paperindex import PaperIndexer
+    from research_harness.paperindex import PaperIndexer
 
     indexer = PaperIndexer()
 
@@ -1934,12 +2417,15 @@ def list_tool_definitions() -> list[Tool]:
     global _PRIMITIVE_NAMES
     primitive_tools = _primitive_tool_definitions()
     _PRIMITIVE_NAMES = {t.name for t in primitive_tools}
+    from .tools_skill import SKILL_TOOLS
+
     return (
         primitive_tools
         + list(_CONVENIENCE_TOOLS.values())
         + list(_ORCHESTRATOR_TOOLS.values())
         + list(_PAPERINDEX_TOOLS.values())
         + list(_ACQUISITION_TOOLS.values())
+        + list(SKILL_TOOLS.values())
     )
 
 
@@ -1952,6 +2438,8 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     # Ensure names are populated
     if not _PRIMITIVE_NAMES:
         list_tool_definitions()
+
+    from .tools_skill import SKILL_TOOLS, execute_skill_tool
 
     if name in _PRIMITIVE_NAMES:
         return _execute_primitive(name, arguments)
@@ -1970,6 +2458,8 @@ def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     elif name in _ACQUISITION_TOOLS:
         raw = _execute_acquisition(name, arguments)
         return _wrap_convenience(name, raw)
+    elif name in SKILL_TOOLS:
+        return execute_skill_tool(name, arguments)
     else:
         return _wrap_convenience(name, {"error": f"Unknown tool: {name}"})
 

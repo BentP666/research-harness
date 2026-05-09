@@ -16,7 +16,7 @@ from ..paper_sources import PaperRecord, SearchAggregator
 from ..paper_sources import SearchQuery as AggSearchQuery
 from ..paper_sources import normalize_title
 from ..storage.db import Database
-from ..storage.models import Paper
+from ..storage.models import Paper, PaperAnnotation
 from .registry import (
     COLD_START_RUN_SPEC,
     EXPAND_CITATIONS_SPEC,
@@ -66,6 +66,8 @@ def paper_search(
     venue_filter: str = "",
     tier_filter: str = "",
     auto_ingest: bool = False,
+    subject_categories: list[str] | tuple[str, ...] | None = None,
+    per_provider_limit: int = 50,
     **_: Any,
 ) -> PaperSearchOutput:
     """Search papers across local pool + external providers with venue tier ranking."""
@@ -88,7 +90,14 @@ def paper_search(
     provider_errors: list[str] = []
     external_refs: list[PaperRef] = []
 
-    cache_params = {"year_from": year_from, "year_to": year_to, "limit": 50}
+    # Normalize subject_categories → stable tuple for cache key stability
+    cats_key = tuple(sorted(subject_categories)) if subject_categories else ()
+    cache_params = {
+        "year_from": year_from,
+        "year_to": year_to,
+        "limit": per_provider_limit,
+        "categories": cats_key,
+    }
     cached = cache_get(db, query, "aggregated", cache_params)
     if cached is not None:
         providers_queried.append("cache")
@@ -103,7 +112,9 @@ def paper_search(
                     query=query,
                     year_from=ext_year_from,
                     year_to=year_to,
-                    limit=50,  # per-provider cap: each source returns top 50
+                    limit=per_provider_limit,
+                    per_provider_limit=per_provider_limit,
+                    subject_categories=cats_key or None,
                 )
                 aggregator = SearchAggregator(providers)
                 outcome = aggregator.search(agg_query, output_limit=max_results)
@@ -856,6 +867,77 @@ def paper_ingest(
         title = stored.title if stored is not None else paper.title
         metadata_complete = bool(title and title != source)
 
+        # URL-only ingest: if caller supplied a web URL and we have no
+        # PDF, try to fetch the HTML body so downstream claim_extract /
+        # paper_summarize have something to read. Historical bug: this
+        # path silently landed papers as meta_only with no text, so
+        # agents fell back to their parametric memory. See
+        # tool-gaps.md [2026-04-27].
+        html_ingest_result: dict[str, Any] = {}
+        needs_html_fetch = (
+            bool(url)
+            and (url.startswith("http://") or url.startswith("https://"))
+            and not (stored and stored.pdf_path)
+        )
+        if needs_html_fetch:
+            try:
+                from ..acquisition.html_ingest import fetch_html_as_markdown
+
+                page = fetch_html_as_markdown(url)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "URL-only ingest fetch failed for paper %d (%s): %s",
+                    paper_id,
+                    url,
+                    exc,
+                )
+                page = None
+            if page is not None and page.ok:
+                pool.upsert_annotation(
+                    PaperAnnotation(
+                        paper_id=paper_id,
+                        section="summary",
+                        content=page.markdown,
+                        source=f"html_ingest:{url}",
+                        confidence=0.9,
+                        extractor_version="html_ingest.v1",
+                    )
+                )
+                conn.execute(
+                    "UPDATE papers SET status = ?, abstract = COALESCE(NULLIF(abstract, ''), ?) WHERE id = ?",
+                    ("text_only", page.markdown[:2000], paper_id),
+                )
+                # Fill title if we didn't have one (pure URL ingest case)
+                stored_title = (stored.title or "").strip() if stored else ""
+                have_better_title = bool(page.title) and (
+                    not stored_title or stored_title == source
+                )
+                if have_better_title:
+                    conn.execute(
+                        "UPDATE papers SET title = ? WHERE id = ?",
+                        (page.title, paper_id),
+                    )
+                    title = page.title
+                conn.commit()
+                html_ingest_result = {
+                    "fetched": True,
+                    "chars": len(page.markdown),
+                    "http_status": page.http_status,
+                }
+                metadata_complete = bool(title and title != source)
+            else:
+                reason = page.error if page is not None else "internal exception"
+                html_ingest_result = {
+                    "fetched": False,
+                    "reason": reason,
+                }
+                logger.info(
+                    "URL-only ingest: %s did not yield HTML body (%s); paper %d left as meta_only",
+                    url,
+                    reason,
+                    paper_id,
+                )
+
         # Duplicate detection (by title similarity)
         dup_candidates: list[dict[str, object]] = []
         if title and existing is None:
@@ -887,6 +969,7 @@ def paper_ingest(
             merged_fields=["metadata_incomplete"] if not metadata_complete else [],
             enriched_fields=enriched_fields,
             duplicate_candidates=dup_candidates,
+            html_ingest=html_ingest_result,
         )
     finally:
         conn.close()
@@ -1047,19 +1130,36 @@ def paper_acquire(
 
     from ..acquisition.pipeline import acquire_papers
 
-    # Step 1: Batch-enrich metadata for meta_only papers
+    # Step 1: Batch-enrich metadata for papers missing key fields
     conn = db.connect()
     enriched = 0
     try:
         pool = PaperPool(conn)
-        meta_papers = pool.list_papers(topic_id=topic_id, status="meta_only")
-        for paper in meta_papers:
+        all_papers = pool.list_papers(topic_id=topic_id)
+        for paper in all_papers:
             if paper.id is None:
                 continue
+            row = conn.execute(
+                "SELECT title, abstract, venue, citation_count FROM papers WHERE id = ?",
+                (paper.id,),
+            ).fetchone()
+            if row is None:
+                continue
+            title_raw = (row["title"] or "").strip()
+            venue_raw = (row["venue"] or "").strip().lower()
+            venue_placeholder = venue_raw in (
+                "",
+                "arxiv",
+                "arxiv.org",
+                "arxiv preprint",
+            )
             needs_enrichment = (
-                not paper.title
-                or not paper.abstract
-                or paper.title.startswith(("doi:", "s2:", "pdf:"))
+                not title_raw
+                or not row["abstract"]
+                or title_raw.startswith(("doi:", "s2:", "pdf:"))
+                or venue_placeholder
+                or row["citation_count"] is None
+                or row["citation_count"] == 0
             )
             if not needs_enrichment:
                 continue
@@ -1072,7 +1172,7 @@ def paper_acquire(
                     enriched += 1
                 time.sleep(1.05)
             except Exception as exc:
-                logger.debug("Venue refresh failed for paper %d: %s", paper.id, exc)
+                logger.debug("Enrichment failed for paper %d: %s", paper.id, exc)
     finally:
         conn.close()
 

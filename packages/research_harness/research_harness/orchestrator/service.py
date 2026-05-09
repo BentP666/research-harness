@@ -494,7 +494,15 @@ class OrchestratorService:
         """Attempt to advance the topic to the next stage."""
         run = self.get_run(topic_id)
         if run is None:
-            return {"success": False, "error": "No orchestrator run found"}
+            bootstrap = self.resume_run(topic_id)
+            if not bootstrap.get("success"):
+                return {
+                    "success": False,
+                    "error": "No orchestrator run found and auto-bootstrap failed",
+                }
+            run = self.get_run(topic_id)
+            if run is None:
+                return {"success": False, "error": "No orchestrator run found"}
 
         current = run.current_stage
 
@@ -1280,8 +1288,15 @@ class OrchestratorService:
         choice: str,
         reasoning: str = "",
         params: dict[str, Any] | None = None,
+        actor: str | None = None,
+        origin: str | None = None,
     ) -> dict[str, Any]:
-        """Record a human (or auto) decision at a checkpoint."""
+        """Record a human (or auto) decision at a checkpoint.
+
+        ``actor`` (who triggered this: user/orchestrator/auto_runner/...) and
+        ``origin`` (user/auto/loopback/rollback/retry) back the drilldown UI
+        added in migration 055. Both default to NULL for legacy callers.
+        """
         import json as _json
 
         conn = self._db.connect()
@@ -1289,8 +1304,9 @@ class OrchestratorService:
             cur = conn.execute(
                 """
                 INSERT INTO decision_log
-                (project_id, topic_id, stage, checkpoint, choice, reasoning, params_snapshot)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (project_id, topic_id, stage, checkpoint, choice, reasoning,
+                 params_snapshot, actor, origin)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     topic_id,
@@ -1300,6 +1316,8 @@ class OrchestratorService:
                     choice,
                     reasoning,
                     _json.dumps(params or {}, ensure_ascii=False),
+                    actor,
+                    origin,
                 ),
             )
             conn.commit()

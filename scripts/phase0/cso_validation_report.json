@@ -1,0 +1,479 @@
+{
+  "hits": 2,
+  "misses": 28,
+  "generic": 0,
+  "total": 30,
+  "hit_rate": 0.06666666666666667,
+  "details": [
+    {
+      "id": "llm_alignment_1",
+      "category": "llm_alignment",
+      "expected": [
+        "reward model",
+        "reinforcement learning"
+      ],
+      "got": [
+        "natural language processing",
+        "generative ai",
+        "deep learning",
+        "speech recognition"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_2",
+      "category": "llm_alignment",
+      "expected": [
+        "reward model",
+        "reinforcement learning"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "machine learning",
+        "markov processes",
+        "deep learning"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_3",
+      "category": "llm_alignment",
+      "expected": [
+        "reward model",
+        "reinforcement learning"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "machine learning",
+        "software architecture",
+        "deep learning"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_4",
+      "category": "llm_alignment",
+      "expected": [
+        "instruction tuning",
+        "language model"
+      ],
+      "got": [
+        "natural language processing",
+        "generative ai",
+        "deep learning",
+        "machine learning"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_5",
+      "category": "llm_alignment",
+      "expected": [
+        "instruction tuning",
+        "language model"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "speech transmission",
+        "information theory",
+        "translation (languages)",
+        "deep learning"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_6",
+      "category": "llm_alignment",
+      "expected": [
+        "instruction tuning",
+        "language model"
+      ],
+      "got": [
+        "natural language processing",
+        "generative ai",
+        "deep learning",
+        "machine learning"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_7",
+      "category": "llm_alignment",
+      "expected": [
+        "alignment",
+        "language model"
+      ],
+      "got": [
+        "analytic hierarchy process",
+        "mobile devices",
+        "ubiquitous computing",
+        "computer science",
+        "analytic hierarchy process (ahp)"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_8",
+      "category": "llm_alignment",
+      "expected": [
+        "alignment",
+        "language model"
+      ],
+      "got": [
+        "program processors",
+        "generative ai",
+        "deep learning",
+        "natural language processing"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_9",
+      "category": "llm_alignment",
+      "expected": [
+        "alignment",
+        "language model"
+      ],
+      "got": [
+        "natural language processing",
+        "generative ai",
+        "deep learning"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "llm_alignment_10",
+      "category": "llm_alignment",
+      "expected": [
+        "alignment",
+        "language model"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "machine learning",
+        "deep learning",
+        "program compilers"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_11",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "diffusion model"
+      ],
+      "got": [
+        "generative ai",
+        "inference engines",
+        "latent variable generative models",
+        "machine learning",
+        "pareto principle"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_12",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "diffusion model"
+      ],
+      "got": [
+        "deep learning",
+        "latent variable generative models",
+        "image reconstruction"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_13",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "diffusion model"
+      ],
+      "got": [
+        "latent variable generative models",
+        "structural frames",
+        "synthetic aperture radar",
+        "image registration",
+        "image reconstruction",
+        "motion estimation",
+        "correlation methods",
+        "mathematics"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_14",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "diffusion model"
+      ],
+      "got": [
+        "latent variable generative models"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_15",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "multimodal learning",
+        "vision-language model"
+      ],
+      "got": [
+        "formal languages",
+        "ontology"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_16",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "multimodal learning",
+        "vision-language model"
+      ],
+      "got": [
+        "visual communication",
+        "formal languages",
+        "ontology"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_17",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "multimodal learning",
+        "vision-language model"
+      ],
+      "got": [
+        "data mining",
+        "formal languages",
+        "knowledge acquisition",
+        "ontology",
+        "visualization",
+        "database systems"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_18",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "text-to-image"
+      ],
+      "got": [
+        "latent variable generative models"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_19",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "text-to-image"
+      ],
+      "got": [
+        "imaging systems",
+        "inference engines",
+        "image reconstruction",
+        "mathematics"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "diffusion_multimodal_20",
+      "category": "diffusion_multimodal",
+      "expected": [
+        "image generation",
+        "text-to-image"
+      ],
+      "got": [
+        "diffusion probabilistic models",
+        "semantics",
+        "software architecture",
+        "image processing",
+        "object detection",
+        "linguistics",
+        "image analysis",
+        "computer imaging and vision"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "agents_21",
+      "category": "agents",
+      "expected": [
+        "planning",
+        "autonomous agent"
+      ],
+      "got": [
+        "multiagent system"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "agents_22",
+      "category": "agents",
+      "expected": [
+        "planning",
+        "autonomous agent"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "world wide web",
+        "social networks",
+        "deep learning",
+        "computer security",
+        "multiagent system"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "agents_23",
+      "category": "agents",
+      "expected": [
+        "planning",
+        "autonomous agent"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "virtual reality",
+        "information retrieval",
+        "intelligent agents",
+        "deep learning",
+        "computational linguistics",
+        "multiagent system"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "agents_24",
+      "category": "agents",
+      "expected": [
+        "language model",
+        "tool use"
+      ],
+      "got": [
+        "speech recognition"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "agents_25",
+      "category": "agents",
+      "expected": [
+        "language model",
+        "tool use"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "formal languages",
+        "ontology",
+        "genetic analysis",
+        "deep learning",
+        "financial data processing"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "classical_26",
+      "category": "classical",
+      "expected": [
+        "algorithm",
+        "graph theory"
+      ],
+      "got": [
+        "theoretical computer science",
+        "approximation algorithms",
+        "curricula",
+        "observability",
+        "computer programming",
+        "polynomial approximation",
+        "shortest path"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "classical_27",
+      "category": "classical",
+      "expected": [
+        "algorithm",
+        "graph theory"
+      ],
+      "got": [
+        "graph theory",
+        "polynomial approximation",
+        "approximation algorithms",
+        "random processes"
+      ],
+      "status": "hit"
+    },
+    {
+      "id": "classical_28",
+      "category": "classical",
+      "expected": [
+        "algorithm",
+        "graph theory"
+      ],
+      "got": [
+        "graph theory",
+        "graph g"
+      ],
+      "status": "hit"
+    },
+    {
+      "id": "classical_29",
+      "category": "classical",
+      "expected": [
+        "type system",
+        "programming language"
+      ],
+      "got": [
+        "generative ai",
+        "natural language processing",
+        "object oriented programming",
+        "linguistics",
+        "computational linguistics",
+        "deep learning",
+        "program compilers"
+      ],
+      "status": "miss"
+    },
+    {
+      "id": "classical_30",
+      "category": "classical",
+      "expected": [
+        "type system",
+        "programming language"
+      ],
+      "got": [
+        "speech recognition",
+        "distributed computer systems",
+        "software architecture patterns",
+        "verification",
+        "object oriented programming",
+        "computer programming languages",
+        "architecture types",
+        "formal logic",
+        "computer science",
+        "linguistics"
+      ],
+      "status": "miss"
+    }
+  ]
+}

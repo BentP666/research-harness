@@ -7,7 +7,9 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+.venv-cs/
 .env
+.envrc
 .envrc.local
 .mcp.json
 *.egg-info/
@@ -31,3 +33,11 @@ web/next-env.d.ts
 web/.env*
 web/.vercel/
 web/build/
+
+# Local dev artifacts — never commit
+.playwright-mcp/
+logs/
+experiments/*/data/
+experiments/*/runs/
+/*.png
+/e2e-*.png

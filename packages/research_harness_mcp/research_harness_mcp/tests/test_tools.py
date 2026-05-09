@@ -19,7 +19,9 @@ def db(tmp_path: Path) -> Database:
 
 @pytest.fixture()
 def _env_db(db: Database, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RESEARCH_HARNESS_DB_PATH", str(db.db_path))
     monkeypatch.setenv("RESEARCH_HUB_DB_PATH", str(db.db_path))
+    monkeypatch.setenv("RESEARCH_HARNESS_BACKEND", "local")
     monkeypatch.setenv("RESEARCH_HUB_BACKEND", "local")
 
 
@@ -388,3 +390,181 @@ def test_error_has_recovery_hint() -> None:
     result = execute_tool("nonexistent_tool", {})
     assert result["status"] == "error"
     assert result["recovery_hint"]  # non-empty recovery hint
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: experiment handoff + workflow_entry
+# ---------------------------------------------------------------------------
+
+
+def _seed_candidate(db: Database) -> tuple[int, int]:
+    """Create a topic + one research_candidate with a live gap. Returns (topic_id, candidate_id)."""
+    conn = db.connect()
+    try:
+        conn.execute(
+            "INSERT INTO topics (id, name, description, status) VALUES (1, ?, ?, ?)",
+            ("h-topic", "topic for handoff", "active"),
+        )
+        conn.execute(
+            "INSERT INTO projects (id, topic_id, name, description) VALUES (1, 1, ?, ?)",
+            ("h-project", "project for handoff"),
+        )
+        conn.execute(
+            "INSERT INTO gaps (topic_id, description, severity, confidence, "
+            "cross_verified) VALUES (1, 'Missing benchmark X', 'high', 0.8, 1)"
+        )
+        gap_id = conn.execute(
+            "SELECT id FROM gaps ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0]
+        conn.execute(
+            "INSERT INTO research_candidates "
+            "(scope, title, pitch, llm_score, area_red_ocean, task_red_ocean, "
+            " method_red_ocean, opportunity_angle, evidence_gap_ids, "
+            " lineage_key, evidence_signature, status) "
+            "VALUES ('topic:1', ?, ?, 7.5, 0.3, 0.2, 0.4, 'frontier', ?, "
+            " 'lk-1', 'ev-1', 'candidate')",
+            (
+                "Benchmark-X candidate",
+                "Close the missing benchmark gap",
+                f"[{gap_id}]",
+            ),
+        )
+        cid = conn.execute(
+            "SELECT id FROM research_candidates ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+    return 1, int(cid)
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_experiment_handoff_prepare_creates_brief(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    topic_id, candidate_id = _seed_candidate(db)
+    result = execute_tool(
+        "experiment_handoff_prepare",
+        {"topic_id": topic_id, "candidate_id": candidate_id, "notes": "go"},
+    )
+    _assert_envelope(result)
+    assert result["status"] == "success"
+    out = result["output"]
+    assert out["success"] is True
+    assert out["stage"] == "experiment"
+    assert out["artifact_type"] == "experiment_brief"
+
+    # Payload has candidate fields + dereferenced evidence
+    conn = db.connect()
+    try:
+        row = conn.execute(
+            "SELECT payload_json FROM project_artifacts WHERE id = ?",
+            (out["artifact_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+    import json as _json
+
+    payload = _json.loads(row["payload_json"])
+    assert payload["candidate_id"] == candidate_id
+    assert payload["opportunity_angle"] == "frontier"
+    assert payload["evidence"]["gaps"]
+    assert payload["evidence"]["gaps"][0]["cross_verified"] == 1
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_experiment_handoff_prepare_rejects_wrong_topic(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    _, candidate_id = _seed_candidate(db)
+    # Pass a topic_id that doesn't match candidate.scope
+    result = execute_tool(
+        "experiment_handoff_prepare",
+        {"topic_id": 999, "candidate_id": candidate_id},
+    )
+    assert result["status"] == "error"
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_experiment_handoff_submit_promotes_candidate(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    topic_id, candidate_id = _seed_candidate(db)
+    prep = execute_tool(
+        "experiment_handoff_prepare",
+        {"topic_id": topic_id, "candidate_id": candidate_id},
+    )
+    brief_id = prep["output"]["artifact_id"]
+
+    submit = execute_tool(
+        "experiment_handoff_submit",
+        {
+            "topic_id": topic_id,
+            "brief_artifact_id": brief_id,
+            "handoff_target": "codex",
+            "summary": "queued in Codex for experiment kickoff",
+        },
+    )
+    _assert_envelope(submit)
+    assert submit["status"] == "success"
+    out = submit["output"]
+    assert out["success"] is True
+    assert out["handoff_target"] == "codex"
+    assert out["brief_artifact_id"] == brief_id
+
+    # Candidate flipped to 'promoted'
+    conn = db.connect()
+    try:
+        status = conn.execute(
+            "SELECT status FROM research_candidates WHERE id = ?", (candidate_id,)
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert status == "promoted"
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_experiment_handoff_submit_rejects_non_brief(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    topic_id, _ = _seed_candidate(db)
+    # Record a non-brief artifact
+    recorded = execute_tool(
+        "orchestrator_record_artifact",
+        {
+            "topic_id": topic_id,
+            "stage": "build",
+            "artifact_type": "literature_map",
+            "payload": {"x": 1},
+        },
+    )
+    other_id = recorded["output"]["artifact_id"]
+
+    result = execute_tool(
+        "experiment_handoff_submit",
+        {
+            "topic_id": topic_id,
+            "brief_artifact_id": other_id,
+            "handoff_target": "codex",
+        },
+    )
+    assert result["status"] == "error"
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_workflow_entry_reports_status_and_next_actions(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    topic_id, _ = _seed_candidate(db)
+
+    result = execute_tool("workflow_entry", {"topic_id": topic_id})
+    _assert_envelope(result)
+    assert result["status"] == "success"
+    out = result["output"]
+    assert out["success"] is True
+    assert out["topic_id"] == topic_id
+    assert out["gaps"]["total"] >= 1
+    assert out["gaps"]["cross_verified"] >= 1
+    assert out["candidates"]["live"] >= 1
+    # At least one suggestion (experiment_handoff_prepare) should appear
+    assert any("experiment_handoff_prepare" in a for a in out["next_actions"])

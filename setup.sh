@@ -138,7 +138,29 @@ echo "Verifying installation..."
 "$PYTHON" -c "import research_harness; import paperindex; import research_harness_mcp; print('All packages importable.')"
 
 # ---------------------------------------------------------------------------
-# 7. Summary
+# 7. Build skill manifest (always) and offer skill install
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "Indexing skills..."
+"$PYTHON" -m research_harness.cli skill index --skills-root "$REPO_ROOT" >/dev/null
+SKILL_COUNT=$(ls -d "$REPO_ROOT/skills/"*/ 2>/dev/null | grep -v agent-profiles | wc -l | tr -d ' ')
+echo "  $SKILL_COUNT skills indexed at $REPO_ROOT/skills/manifest.json"
+
+if [ -f "$REPO_ROOT/.rh-agent.toml" ] || [ -n "${RH_AGENT_CONFIG:-}" ]; then
+  echo "Found .rh-agent.toml; installing skills into the agent's expected location..."
+  "$PYTHON" -m research_harness.cli skill install --skills-root "$REPO_ROOT" || true
+else
+  echo ""
+  echo "Skills not auto-installed: no .rh-agent.toml found in this repo."
+  echo "To install for an agent, either:"
+  echo "  * drop a .rh-agent.toml in this directory (templates: skills/agent-profiles/)"
+  echo "  * or run:  rh skill install --agent claude-code"
+  echo "  * or run:  rh skill install --target ~/.claude/skills"
+fi
+
+# ---------------------------------------------------------------------------
+# 8. Summary
 # ---------------------------------------------------------------------------
 
 echo ""
@@ -146,10 +168,11 @@ echo "=== Setup complete! ==="
 echo ""
 echo "Next steps:"
 echo "  1. Edit .env with your API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)"
-echo "  2. Run tests:         python -m pytest packages/ -q"
-echo "  3. Health check:      rh --json doctor    (alias: rhub)"
-echo "  4. Initialize topic:  rh topic init \"my-research-topic\""
-echo "  5. Start dashboard:   python web_dashboard/app.py"
+echo "  2. Install skills:    rh skill install --agent claude-code   (or --target PATH)"
+echo "  3. Run tests:         python -m pytest packages/ -q"
+echo "  4. Health check:      rh --json doctor    (alias: rhub)"
+echo "  5. Initialize topic:  rh topic init \"my-research-topic\""
+echo "  6. Start dashboard:   python web_dashboard/app.py"
 echo "     Open:              http://127.0.0.1:18080"
 echo ""
 echo "Using Claude Code? CLAUDE.md has all the context."

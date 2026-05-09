@@ -33,6 +33,27 @@ _MAX_RETRIES = 3
 _BASE_BACKOFF_SECS = 1.0
 
 
+# arxiv CS category → OpenAlex concept id (Wikidata-style)
+# These drive subject_categories filtering for the OpenAlex provider.
+# Lookup: https://api.openalex.org/concepts?search=<term>
+ARXIV_TO_OPENALEX_CONCEPT: dict[str, str] = {
+    "cs.AI": "C154945302",  # Artificial Intelligence
+    "cs.LG": "C119857082",  # Machine Learning
+    "cs.CV": "C31972630",  # Computer Vision
+    "cs.CL": "C204321447",  # Natural Language Processing
+    "cs.IR": "C23123220",  # Information Retrieval
+    "cs.RO": "C90509273",  # Robotics
+    "cs.CR": "C38652104",  # Computer Security
+    "cs.DB": "C77088390",  # Database
+    "cs.DC": "C79974875",  # Distributed Computing
+    "cs.DS": "C11413529",  # Data Structures / Algorithms
+    "cs.HC": "C107457646",  # Human-Computer Interaction
+    "cs.PL": "C2524010",  # Programming Languages
+    "cs.SE": "C115903868",  # Software Engineering
+    "cs.SY": "C127413603",  # Control Systems
+}
+
+
 class ProviderConfigError(RuntimeError):
     pass
 
@@ -220,12 +241,22 @@ class OpenAlexProvider(HTTPProvider):
         self.email = email or ""
 
     def search(self, query: SearchQuery) -> list[PaperRecord]:
-        params = {"search": query.query, "per-page": str(query.limit)}
+        params = {
+            "search": query.query,
+            "per-page": str(query.per_provider_limit or query.limit),
+        }
         filters: list[str] = []
         if query.year_from is not None:
             filters.append(f"from_publication_date:{query.year_from}-01-01")
         if query.year_to is not None:
             filters.append(f"to_publication_date:{query.year_to}-12-31")
+        if query.subject_categories:
+            concept_ids = [
+                ARXIV_TO_OPENALEX_CONCEPT.get(c) for c in query.subject_categories
+            ]
+            concept_ids = [c for c in concept_ids if c]
+            if concept_ids:
+                filters.append(f"concepts.id:{'|'.join(concept_ids)}")
         if filters:
             params["filter"] = ",".join(filters)
         if self.email:
@@ -479,13 +510,19 @@ class SemanticScholarProvider(HTTPProvider):
     def search(self, query: SearchQuery) -> list[PaperRecord]:
         params = {
             "query": query.query,
-            "limit": str(query.limit),
+            "limit": str(query.per_provider_limit or query.limit),
             "fields": self.FIELDS,
         }
         if query.year_from is not None or query.year_to is not None:
             start = query.year_from or 1900
             end = query.year_to or 2100
             params["year"] = f"{start}-{end}"
+        if query.subject_categories:
+            # S2 doesn't store arxiv subcategories reliably — scope to CS at the
+            # field-of-study level and let the aggregator dedup/rank downstream.
+            cs_cats = [c for c in query.subject_categories if c.startswith("cs.")]
+            if cs_cats:
+                params["fieldsOfStudy"] = "Computer Science"
         url = f"https://api.semanticscholar.org/graph/v1/paper/search?{urllib.parse.urlencode(params)}"
         headers = {"Accept": "application/json"}
         if self.api_key:
@@ -675,10 +712,15 @@ class ArxivProvider:
         self._fetcher = fetcher or default_text_fetcher
 
     def search(self, query: SearchQuery) -> list[PaperRecord]:
+        if query.subject_categories:
+            cat_clause = " OR ".join(f"cat:{c}" for c in query.subject_categories)
+            search_query_str = f"({cat_clause}) AND (all:{query.query})"
+        else:
+            search_query_str = f"all:{query.query}"
         params = {
-            "search_query": f"all:{query.query}",
+            "search_query": search_query_str,
             "start": "0",
-            "max_results": str(query.limit),
+            "max_results": str(query.per_provider_limit or query.limit),
             "sortBy": "relevance",
             "sortOrder": "descending",
         }
@@ -940,7 +982,10 @@ def build_provider_suite(fetcher: JsonFetcher | None = None) -> list[SearchProvi
     providers: list[SearchProvider] = [ArxivProvider()]
     google_url = os.environ.get("GOOGLE_SCHOLAR_API_URL", "").strip()
     openalex_key = os.environ.get("OPENALEX_API_KEY", "").strip()
-    semantic_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip()
+    semantic_key = (
+        os.environ.get("S2_API_KEY", "").strip()
+        or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip()
+    )
 
     if google_url:
         providers.append(
@@ -983,7 +1028,10 @@ def build_provider_suite(fetcher: JsonFetcher | None = None) -> list[SearchProvi
 def available_provider_specs() -> list[ProviderSpec]:
     google_url = os.environ.get("GOOGLE_SCHOLAR_API_URL", "").strip()
     openalex_key = os.environ.get("OPENALEX_API_KEY", "").strip()
-    semantic_key = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip()
+    semantic_key = (
+        os.environ.get("S2_API_KEY", "").strip()
+        or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip()
+    )
     openreview_enabled = os.environ.get("OPENREVIEW_ENABLE", "").strip().lower() in {
         "1",
         "true",

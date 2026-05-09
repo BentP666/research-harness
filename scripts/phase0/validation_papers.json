@@ -1,0 +1,447 @@
+[
+  {
+    "id": "llm_alignment_1",
+    "category": "llm_alignment",
+    "title": "LLMs Know They're Wrong and Agree Anyway: The Shared Sycophancy-Lying Circuit",
+    "abstract": "When a language model agrees with a user's false belief, is it failing to detect the error, or noticing and agreeing anyway? We show the latter. Across twelve open-weight models from five labs, spanning small to frontier scale, the same small set of attention heads carries a \"this statement is wrong\" signal whether the model is evaluating a claim on its own or being pressured to agree with a user. Silencing these heads flips sycophantic behavior sharply while leaving factual accuracy intact, so the circuit controls deference rather than knowledge. Edge-level path patching confirms that the same head-to-head connections drive sycophancy, factual lying, and instructed lying. Opinion-agreement, where no factual ground truth exists, reuses these head positions but writes into an orthogonal dir",
+    "keywords": [
+      "cs.LG"
+    ],
+    "expected_concepts": [
+      "reinforcement learning",
+      "reward model"
+    ],
+    "arxiv_id": "2604.19117v1"
+  },
+  {
+    "id": "llm_alignment_2",
+    "category": "llm_alignment",
+    "title": "Policy Gradient Primal-Dual Method for Safe Reinforcement Learning from Human Feedback",
+    "abstract": "Safe Reinforcement Learning from Human Feedback (Safe RLHF) has recently achieved empirical success in developing helpful and harmless large language models by decoupling human preferences regarding helpfulness and harmlessness. Existing approaches typically rely on fitting fixed horizon reward models from human feedback and have only been validated empirically. In this paper, we formulate safe RLHF as an infinite horizon discounted Con- strained Markov Decision Process (CMDP), since humans may interact with the model over a continuing sequence of interactions rather than within a single finite episode. We propose two Safe RLHF algorithms that do not require reward model fitting and, in contrast to prior work assuming fixed-length trajectories, support flexible trajectory lengths for train",
+    "keywords": [
+      "cs.LG"
+    ],
+    "expected_concepts": [
+      "reinforcement learning",
+      "reward model"
+    ],
+    "arxiv_id": "2604.19024v1"
+  },
+  {
+    "id": "llm_alignment_3",
+    "category": "llm_alignment",
+    "title": "ARES: Adaptive Red-Teaming and End-to-End Repair of Policy-Reward System",
+    "abstract": "Reinforcement Learning from Human Feedback (RLHF) is central to aligning Large Language Models (LLMs), yet it introduces a critical vulnerability: an imperfect Reward Model (RM) can become a single point of failure when it fails to penalize unsafe behaviors. While existing red-teaming approaches primarily target policy-level weaknesses, they overlook what we term systemic weaknesses cases where both the core LLM and the RM fail in tandem.   We present ARES, a framework that systematically discovers and mitigates such dual vulnerabilities. ARES employs a ``Safety Mentor'' that dynamically composes semantically coherent adversarial prompts by combining structured component types (topics, personas, tactics, goals) and generates corresponding malicious and safe responses. This dual-targeting a",
+    "keywords": [
+      "cs.AI",
+      "cs.CR",
+      "cs.LG"
+    ],
+    "expected_concepts": [
+      "reinforcement learning",
+      "reward model"
+    ],
+    "arxiv_id": "2604.18789v1"
+  },
+  {
+    "id": "llm_alignment_4",
+    "category": "llm_alignment",
+    "title": "Bootstrapping Post-training Signals for Open-ended Tasks via Rubric-based Self-play on Pre-training Text",
+    "abstract": "Self-play has recently emerged as a promising paradigm to train Large Language Models (LLMs). In self-play, the target LLM creates the task input (e.g., ask a question), which it then addresses itself by producing a task output (e.g., give an answer). A reward model evaluates the output, and the rewards are then used to train the LLM, typically via Reinforcement Learning (RL). Self-play incurs minimal supervision costs, and this is especially helpful for post-training LLMs, which require high-quality input-output pairs that traditionally have to be written by humans or expensive proprietary models. However, existing work explores self-play only for verifiable tasks such as math and coding. Instead, we seek to extend it to more realistic open-ended tasks. In particular, we propose POP, a se",
+    "keywords": [
+      "cs.CL",
+      "cs.LG"
+    ],
+    "expected_concepts": [
+      "instruction tuning",
+      "language model"
+    ],
+    "arxiv_id": "2604.20051v1"
+  },
+  {
+    "id": "llm_alignment_5",
+    "category": "llm_alignment",
+    "title": "Exploring Language-Agnosticity in Function Vectors: A Case Study in Machine Translation",
+    "abstract": "Function vectors (FVs) are vector representations of tasks extracted from model activations during in-context learning. While prior work has shown that multilingual model representations can be language-agnostic, it remains unclear whether the same holds for function vectors. We study whether FVs exhibit language-agnosticity, using machine translation as a case study. Across three decoder-only multilingual LLMs, we find that translation FVs extracted from a single English$\\rightarrow$Target direction transfer to other target languages, consistently improving the rank of correct translation tokens across multiple unseen languages. Ablation results show that removing the FV degrades translation across languages with limited impact on unrelated tasks. We further show that base-model FVs trans",
+    "keywords": [
+      "cs.CL"
+    ],
+    "expected_concepts": [
+      "instruction tuning",
+      "language model"
+    ],
+    "arxiv_id": "2604.19678v1"
+  },
+  {
+    "id": "llm_alignment_6",
+    "category": "llm_alignment",
+    "title": "Location Not Found: Exposing Implicit Local and Global Biases in Multilingual LLMs",
+    "abstract": "Multilingual large language models (LLMs) have minimized the fluency gap between languages. This advancement, however, exposes models to the risk of biased behavior, as knowledge and norms may propagate across languages. In this work, we aim to quantify models' inter- and intra-lingual biases, via their ability to answer locale-ambiguous questions. To this end, we present LocQA, a test set containing 2,156 questions in 12 languages, referring to various locale-dependent facts such as laws, dates, and measurements. The questions do not contain indications of the locales they relate to, other than the querying language itself. LLMs' responses to LocQA locale-ambiguous questions thus reveal models' implicit priors. We used LocQA to evaluate 32 models, and detected two types of structural bias",
+    "keywords": [
+      "cs.CL",
+      "cs.AI"
+    ],
+    "expected_concepts": [
+      "instruction tuning",
+      "language model"
+    ],
+    "arxiv_id": "2604.19292v1"
+  },
+  {
+    "id": "llm_alignment_7",
+    "category": "llm_alignment",
+    "title": "SpeechParaling-Bench: A Comprehensive Benchmark for Paralinguistic-Aware Speech Generation",
+    "abstract": "Paralinguistic cues are essential for natural human-computer interaction, yet their evaluation in Large Audio-Language Models (LALMs) remains limited by coarse feature coverage and the inherent subjectivity of assessment. To address these challenges, we introduce SpeechParaling-Bench, a comprehensive benchmark for paralinguistic-aware speech generation. It expands existing coverage from fewer than 50 to over 100 fine-grained features, supported by more than 1,000 English-Chinese parallel speech queries, and is organized into three progressively challenging tasks: fine-grained control, intra-utterance variation, and context-aware adaptation. To enable reliable evaluation, we further develop a pairwise comparison pipeline, in which candidate responses are evaluated against a fixed baseline b",
+    "keywords": [
+      "cs.CL",
+      "cs.AI",
+      "cs.SD"
+    ],
+    "expected_concepts": [
+      "language model",
+      "alignment"
+    ],
+    "arxiv_id": "2604.20842v1"
+  },
+  {
+    "id": "llm_alignment_8",
+    "category": "llm_alignment",
+    "title": "Can \"AI\" Be a Doctor? A Study of Empathy, Readability, and Alignment in Clinical LLMs",
+    "abstract": "Large Language Models (LLMs) are increasingly deployed in healthcare, yet their communicative alignment with clinical standards remains insufficiently quantified. We conduct a multidimensional evaluation of general-purpose and domain-specialized LLMs across structured medical explanations and real-world physician-patient interactions, analyzing semantic fidelity, readability, and affective resonance. Baseline models amplify affective polarity relative to physicians (Very Negative: 43.14-45.10% vs. 37.25%) and, in larger architectures such as GPT-5 and Claude, produce substantially higher linguistic complexity (FKGL up to 16.91-17.60 vs. 11.47-12.50 in physician-authored responses). Empathy-oriented prompting reduces extreme negativity and lowers grade-level complexity (up to -6.87 FKGL poi",
+    "keywords": [
+      "cs.CL",
+      "cs.AI"
+    ],
+    "expected_concepts": [
+      "language model",
+      "alignment"
+    ],
+    "arxiv_id": "2604.20791v1"
+  },
+  {
+    "id": "llm_alignment_9",
+    "category": "llm_alignment",
+    "title": "Intersectional Fairness in Large Language Models",
+    "abstract": "Large Language Models (LLMs) are increasingly deployed in socially sensitive settings, raising concerns about fairness and biases, particularly across intersectional demographic attributes. In this paper, we systematically evaluate intersectional fairness in six LLMs using ambiguous and disambiguated contexts from two benchmark datasets. We assess LLM behavior using bias scores, subgroup fairness metrics, accuracy, and consistency through multi-run analysis across contexts and negative and non-negative question polarities. Our results show that while modern LLMs generally perform well in ambiguous contexts, this limits the informativeness of fairness metrics due to sparse non-unknown predictions. In disambiguated contexts, LLM accuracy is influenced by stereotype alignment, with models bei",
+    "keywords": [
+      "cs.CL"
+    ],
+    "expected_concepts": [
+      "language model",
+      "alignment"
+    ],
+    "arxiv_id": "2604.20677v1"
+  },
+  {
+    "id": "llm_alignment_10",
+    "category": "llm_alignment",
+    "title": "WebGen-R1: Incentivizing Large Language Models to Generate Functional and Aesthetic Websites with Reinforcement Learning",
+    "abstract": "While Large Language Models (LLMs) excel at function-level code generation, project-level tasks such as generating functional and visually aesthetic multi-page websites remain highly challenging. Existing works are often limited to single-page static websites, while agentic frameworks typically rely on multi-turn execution with proprietary models, leading to substantial token costs, high latency, and brittle integration. Training a small LLM end-to-end with reinforcement learning (RL) is a promising alternative, yet it faces a critical bottleneck in designing reliable and computationally feasible rewards for website generation. Unlike single-file coding tasks that can be verified by unit tests, website generation requires evaluating inherently subjective aesthetics, cross-page interactions",
+    "keywords": [
+      "cs.CL",
+      "cs.LG",
+      "cs.SE"
+    ],
+    "expected_concepts": [
+      "language model",
+      "alignment"
+    ],
+    "arxiv_id": "2604.20398v1"
+  },
+  {
+    "id": "diffusion_multimodal_11",
+    "category": "diffusion_multimodal",
+    "title": "ParetoSlider: Diffusion Models Post-Training for Continuous Reward Control",
+    "abstract": "Reinforcement Learning (RL) post-training has become the standard for aligning generative models with human preferences, yet most methods rely on a single scalar reward. When multiple criteria matter, the prevailing practice of ``early scalarization'' collapses rewards into a fixed weighted sum. This commits the model to a single trade-off point at training time, providing no inference-time control over inherently conflicting goals -- such as prompt adherence versus source fidelity in image editing. We introduce ParetoSlider, a multi-objective RL (MORL) framework that trains a single diffusion model to approximate the entire Pareto front. By training the model with continuously varying preference weights as a conditioning signal, we enable users to navigate optimal trade-offs at inference ",
+    "keywords": [
+      "cs.LG",
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "diffusion model",
+      "image generation"
+    ],
+    "arxiv_id": "2604.20816v1"
+  },
+  {
+    "id": "diffusion_multimodal_12",
+    "category": "diffusion_multimodal",
+    "title": "GeoRelight: Learning Joint Geometrical Relighting and Reconstruction with Flexible Multi-Modal Diffusion Transformers",
+    "abstract": "Relighting a person from a single photo is an attractive but ill-posed task, as a 2D image ambiguously entangles 3D geometry, intrinsic appearance, and illumination. Current methods either use sequential pipelines that suffer from error accumulation, or they do not explicitly leverage 3D geometry during relighting, which limits physical consistency. Since relighting and estimation of 3D geometry are mutually beneficial tasks, we propose a unified Multi-Modal Diffusion Transformer (DiT) that jointly solves for both: GeoRelight. We make this possible through two key technical contributions: isotropic NDC-Orthographic Depth (iNOD), a distortion-free 3D representation compatible with latent diffusion models; and a strategic mixed-data training method that combines synthetic and auto-labeled re",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "diffusion model",
+      "image generation"
+    ],
+    "arxiv_id": "2604.20715v1"
+  },
+  {
+    "id": "diffusion_multimodal_13",
+    "category": "diffusion_multimodal",
+    "title": "Physics-Informed Conditional Diffusion for Motion-Robust Retinal Temporal Laser Speckle Contrast Imaging",
+    "abstract": "Retinal laser speckle contrast imaging (LSCI) is a noninvasive optical modality for monitoring retinal blood flow dynamics. However, conventional temporal LSCI (tLSCI) reconstruction relies on sufficiently long speckle sequences to obtain stable temporal statistics, which makes it vulnerable to acquisition disturbances and limits effective temporal resolution. A physically informed reconstruction framework, termed RetinaDiff (Retinal Diffusion Model), is proposed for retinal tLSCI that is robust to motion and requires only a few frames. In RetinaDiff, registration based on phase correlation is first applied to stabilize the raw speckle sequence before contrast computation, reducing interframe misalignment so that fluctuations at each pixel primarily reflect true flow dynamics. This step pr",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "diffusion model",
+      "image generation"
+    ],
+    "arxiv_id": "2604.20594v1"
+  },
+  {
+    "id": "diffusion_multimodal_14",
+    "category": "diffusion_multimodal",
+    "title": "Hallucination Early Detection in Diffusion Models",
+    "abstract": "Text-to-Image generation has seen significant advancements in output realism with the advent of diffusion models. However, diffusion models encounter difficulties when tasked with generating multiple objects, frequently resulting in hallucinations where certain entities are omitted. While existing solutions typically focus on optimizing latent representations within diffusion models, the relevance of the initial generation seed is typically underestimated. While using various seeds in multiple iterations can improve results, this method also significantly increases time and energy costs. To address this challenge, we introduce HEaD+ (Hallucination Early Detection +), a novel approach designed to identify incorrect generations early in the diffusion process. The HEaD+ framework integrates c",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "diffusion model",
+      "image generation"
+    ],
+    "arxiv_id": "2604.20354v1"
+  },
+  {
+    "id": "diffusion_multimodal_15",
+    "category": "diffusion_multimodal",
+    "title": "OMIBench: Benchmarking Olympiad-Level Multi-Image Reasoning in Large Vision-Language Model",
+    "abstract": "Large vision-language models (LVLMs) have made substantial advances in reasoning tasks at the Olympiad level. Nevertheless, current Olympiad-level multimodal reasoning benchmarks for these models often emphasize single-image analysis and fail to exploit contextual information across multiple images. We present OMIBench, a benchmark designed to evaluate Olympiad-level reasoning when the required evidence is distributed over multiple images. It contains problems from biology, chemistry, mathematics, and physics Olympiads, together with manually annotated rationales and evaluation protocols for both exact and semantic answer matching. Across extensive experiments on OMIBench, we observe meaningful performance gaps in existing models. Even the strongest LVLMs, such as Gemini-3-Pro, attain only",
+    "keywords": [
+      "cs.CV",
+      "cs.AI",
+      "cs.CL"
+    ],
+    "expected_concepts": [
+      "multimodal learning",
+      "vision-language model"
+    ],
+    "arxiv_id": "2604.20806v1"
+  },
+  {
+    "id": "diffusion_multimodal_16",
+    "category": "diffusion_multimodal",
+    "title": "R-CoV: Region-Aware Chain-of-Verification for Alleviating Object Hallucinations in LVLMs",
+    "abstract": "Large vision-language models (LVLMs) have demonstrated impressive performance in various multimodal understanding and reasoning tasks. However, they still struggle with object hallucinations, i.e., the claim of nonexistent objects in the visual input. To address this challenge, we propose Region-aware Chain-of-Verification (R-CoV), a visual chain-of-verification method to alleviate object hallucinations in LVLMs in a post-hoc manner. Motivated by how humans comprehend intricate visual information -- often focusing on specific image regions or details within a given sample -- we elicit such region-level processing from LVLMs themselves and use it as a chaining cue to detect and alleviate their own object hallucinations. Specifically, our R-CoV consists of six steps: initial response generat",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "multimodal learning",
+      "vision-language model"
+    ],
+    "arxiv_id": "2604.20696v1"
+  },
+  {
+    "id": "diffusion_multimodal_17",
+    "category": "diffusion_multimodal",
+    "title": "The Expense of Seeing: Attaining Trustworthy Multimodal Reasoning Within the Monolithic Paradigm",
+    "abstract": "The rapid proliferation of Vision-Language Models (VLMs) is widely celebrated as the dawn of unified multimodal knowledge discovery but its foundation operates on a dangerous, unquestioned axiom: that current VLMs faithfully synthesise multimodal data. We argue they do not. Instead, a profound crisis of trustworthiness underlies the dominant Vision Encoder-Projector-LLM paradigm. Rather than extracting grounded knowledge from visual inputs, state-of-the-art models frequently exhibit functional blindness, i.e., exploiting strong language priors to bypass severe visual representation bottlenecks. In this work, we challenge the conventional methodology of multimodal evaluation, which relies on data ablation or new dataset creation and therefore fatally conflates dataset biases with architectu",
+    "keywords": [
+      "cs.CV",
+      "cs.AI"
+    ],
+    "expected_concepts": [
+      "multimodal learning",
+      "vision-language model"
+    ],
+    "arxiv_id": "2604.20665v1"
+  },
+  {
+    "id": "diffusion_multimodal_18",
+    "category": "diffusion_multimodal",
+    "title": "Hallucination Early Detection in Diffusion Models",
+    "abstract": "Text-to-Image generation has seen significant advancements in output realism with the advent of diffusion models. However, diffusion models encounter difficulties when tasked with generating multiple objects, frequently resulting in hallucinations where certain entities are omitted. While existing solutions typically focus on optimizing latent representations within diffusion models, the relevance of the initial generation seed is typically underestimated. While using various seeds in multiple iterations can improve results, this method also significantly increases time and energy costs. To address this challenge, we introduce HEaD+ (Hallucination Early Detection +), a novel approach designed to identify incorrect generations early in the diffusion process. The HEaD+ framework integrates c",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "text-to-image",
+      "image generation"
+    ],
+    "arxiv_id": "2604.20354v1"
+  },
+  {
+    "id": "diffusion_multimodal_19",
+    "category": "diffusion_multimodal",
+    "title": "FluSplat: Sparse-View 3D Editing without Test-Time Optimization",
+    "abstract": "Recent advances in text-guided image editing and 3D Gaussian Splatting (3DGS) have enabled high-quality 3D scene manipulation. However, existing pipelines rely on iterative edit-and-fit optimization at test time, alternating between 2D diffusion editing and 3D reconstruction. This process is computationally expensive, scene-specific, and prone to cross-view inconsistencies.   We propose a feed-forward framework for cross-view consistent 3D scene editing from sparse views. Instead of enforcing consistency through iterative 3D refinement, we introduce a cross-view regularization scheme in the image domain during training. By jointly supervising multi-view edits with geometric alignment constraints, our model produces view-consistent results without per-scene optimization at inference. The ed",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "text-to-image",
+      "image generation"
+    ],
+    "arxiv_id": "2604.20038v1"
+  },
+  {
+    "id": "diffusion_multimodal_20",
+    "category": "diffusion_multimodal",
+    "title": "Camera Control for Text-to-Image Generation via Learning Viewpoint Tokens",
+    "abstract": "Current text-to-image models struggle to provide precise camera control using natural language alone. In this work, we present a framework for precise camera control with global scene understanding in text-to-image generation by learning parametric camera tokens. We fine-tune image generation models for viewpoint-conditioned text-to-image generation on a curated dataset that combines 3D-rendered images for geometric supervision and photorealistic augmentations for appearance and background diversity. Qualitative and quantitative experiments demonstrate that our method achieves state-of-the-art accuracy while preserving image quality and prompt fidelity. Unlike prior methods that overfit to object-specific appearance correlations, our viewpoint tokens learn factorized geometric representati",
+    "keywords": [
+      "cs.CV"
+    ],
+    "expected_concepts": [
+      "text-to-image",
+      "image generation"
+    ],
+    "arxiv_id": "2604.19954v1"
+  },
+  {
+    "id": "agents_21",
+    "category": "agents",
+    "title": "CHORUS: An Agentic Framework for Generating Realistic Deliberation Data",
+    "abstract": "Understanding the intricate dynamics of online discourse depends on large-scale deliberation data, a resource that remains scarce across interactive web platforms due to restrictive accessibility policies, ethical concerns and inconsistent data quality. In this paper, we propose Chorus, an agentic framework, which orchestrates LLM-powered actors with behaviorally consistent personas to generate realistic deliberation discussions. Each actor is governed by an autonomous agent equipped with memory of the evolving discussion, while participation timing is governed by a principled Poisson process-based temporal model, which approximates the heterogeneous engagement patterns of real users. The framework is further supported by structured tool usage, enabling actors to access external resources ",
+    "keywords": [
+      "cs.AI"
+    ],
+    "expected_concepts": [
+      "autonomous agent",
+      "planning"
+    ],
+    "arxiv_id": "2604.20651v1"
+  },
+  {
+    "id": "agents_22",
+    "category": "agents",
+    "title": "Behavioral Transfer in AI Agents: Evidence and Privacy Implications",
+    "abstract": "AI agents powered by large language models are increasingly acting on behalf of humans in social and economic environments. Prior research has focused on their task performance and effects on human outcomes, but less is known about the relationship between agents and the specific individuals who deploy them. We ask whether agents systematically reflect the behavioral characteristics of their human owners, functioning as behavioral extensions rather than producing generic outputs. We study this question using 10,659 matched human-agent pairs from Moltbook, a social media platform where each autonomous agent is publicly linked to its owner's Twitter/X account. By comparing agents' posts on Moltbook with their owners' Twitter/X activity across features spanning topics, values, affect, and lin",
+    "keywords": [
+      "econ.GN",
+      "cs.AI",
+      "cs.CY",
+      "cs.HC"
+    ],
+    "expected_concepts": [
+      "autonomous agent",
+      "planning"
+    ],
+    "arxiv_id": "2604.19925v1"
+  },
+  {
+    "id": "agents_23",
+    "category": "agents",
+    "title": "SafetyALFRED: Evaluating Safety-Conscious Planning of Multimodal Large Language Models",
+    "abstract": "Multimodal Large Language Models are increasingly adopted as autonomous agents in interactive environments, yet their ability to proactively address safety hazards remains insufficient. We introduce SafetyALFRED, built upon the embodied agent benchmark ALFRED, augmented with six categories of real-world kitchen hazards. While existing safety evaluations focus on hazard recognition through disembodied question answering (QA) settings, we evaluate eleven state-of-the-art models from the Qwen, Gemma, and Gemini families on not only hazard recognition, but also active risk mitigation through embodied planning. Our experimental results reveal a significant alignment gap: while models can accurately recognize hazards in QA settings, average mitigation success rates for these hazards are low in c",
+    "keywords": [
+      "cs.AI",
+      "cs.CL",
+      "cs.RO"
+    ],
+    "expected_concepts": [
+      "autonomous agent",
+      "planning"
+    ],
+    "arxiv_id": "2604.19638v1"
+  },
+  {
+    "id": "agents_24",
+    "category": "agents",
+    "title": "Meta-Tool: Efficient Few-Shot Tool Adaptation for Small Language Models",
+    "abstract": "Can small language models achieve strong tool-use performance without complex adaptation mechanisms? This paper investigates this question through Meta-Tool, a controlled empirical study comparing hypernetwork-based LoRA adaptation against carefully designed few-shot prompting. Using a Llama-3.2-3B-Instruct backbone, we evaluate four adaptation mechanisms--few-shot prompting, documentation encoding, hypernetwork-generated LoRA weights, and value-guided beam search--across four diverse benchmarks: Gorilla APIBench, Spider 2.0, WebArena, and InterCode. Our central finding is a well-supported negative result: despite generating non-trivial weight matrices, the 227.8M-parameter hypernetwork provides no measurable improvement over few-shot prompting alone. Comprehensive ablation studies reveal ",
+    "keywords": [
+      "cs.CL",
+      "cs.AI",
+      "cs.LG"
+    ],
+    "expected_concepts": [
+      "tool use",
+      "language model"
+    ],
+    "arxiv_id": "2604.20148v1"
+  },
+  {
+    "id": "agents_25",
+    "category": "agents",
+    "title": "Time Series Augmented Generation for Financial Applications",
+    "abstract": "Evaluating the reasoning capabilities of Large Language Models (LLMs) for complex, quantitative financial tasks is a critical and unsolved challenge. Standard benchmarks often fail to isolate an agent's core ability to parse queries and orchestrate computations. To address this, we introduce a novel evaluation methodology and benchmark designed to rigorously measure an LLM agent's reasoning for financial time-series analysis. We apply this methodology in a large-scale empirical study using our framework, Time Series Augmented Generation (TSAG), where an LLM agent delegates quantitative tasks to verifiable, external tools. Our benchmark, consisting of 100 financial questions, is used to compare multiple SOTA agents (e.g., GPT-4o, Llama 3, Qwen2) on metrics assessing tool selection accuracy,",
+    "keywords": [
+      "cs.AI",
+      "cs.CE"
+    ],
+    "expected_concepts": [
+      "tool use",
+      "language model"
+    ],
+    "arxiv_id": "2604.19633v1"
+  },
+  {
+    "id": "classical_26",
+    "category": "classical",
+    "title": "Block-Based Pathfinding: A Minecraft System for Visualizing Graph Algorithms",
+    "abstract": "Graph theory is a cornerstone of Computer Science education, yet entry-level students often struggle to map abstract node-edge relationships to practical applications. This paper presents the design and architecture of a Minecraft-based educational tool specifically built to visualize graph traversal and shortest-path algorithms. We propose a three-layer system: (1) a Grid Traversal module where terrain types (e.g., soul sand, ice) represent edge weights, allowing for the gamified study of shortest path algorithms; (2) a \"Sky Graph\" module for interactive 3D manipulation of both directed and undirected graphs; and (3) lessons and quizzes available through books. The system grounds its design in Constructionist learning theory, transitioning students from passive observers to active protago",
+    "keywords": [
+      "cs.HC",
+      "cs.CY",
+      "cs.DS"
+    ],
+    "expected_concepts": [
+      "graph theory",
+      "algorithm"
+    ],
+    "arxiv_id": "2604.13957v1"
+  },
+  {
+    "id": "classical_27",
+    "category": "classical",
+    "title": "Bounded Independence Edge Sampling for Combinatorial Graph Properties",
+    "abstract": "Random subsampling of edges is a commonly employed technique in graph algorithms, underlying a vast array of modern algorithmic breakthroughs. Unfortunately, using this technique often leads to randomized algorithms with no clear path to derandomization because the analyses rely on a union bound on exponentially many events. In this work, we revisit this goal of derandomizing randomized sampling in graphs.   We give several results related to bounded-independence edge subsampling, and in the process of doing so, generalize several of the results of Alon and Nussboim (FOCS 2008), who studied bounded-independence analogues of random graphs (which can be viewed as edge subsamples of the complete graph). Most notably, we show:   1. $O(\\log(m))$-wise independence suffices for preserving connect",
+    "keywords": [
+      "cs.DS",
+      "cs.CC"
+    ],
+    "expected_concepts": [
+      "graph theory",
+      "algorithm"
+    ],
+    "arxiv_id": "2603.25095v1"
+  },
+  {
+    "id": "classical_28",
+    "category": "classical",
+    "title": "Almost-Uniform Edge Sampling: Leveraging Independent-Set and Local Graph Queries",
+    "abstract": "A central theme in sublinear graph algorithms is the relationship between counting and sampling: can the ability to approximately count a combinatorial structure be leveraged to sample it nearly uniformly at essentially the same cost?   We study (i) independent-set (IS) queries, which return whether a vertex set $S$ is edge-free, and (ii) two standard local queries: degree and neighbor queries. Eden and Rosenbaum (SOSA `18) proved that in the local-query model, uniform edge sampling is no harder than approximate edge counting. We extend this phenomenon to new settings.   We establish sampling-counting equivalence for the hybrid model that combines IS and local queries, matching the complexity of edge-count estimation achieved by Adar, Hotam and Levi (2026), and an analogous equivalence for",
+    "keywords": [
+      "cs.DS"
+    ],
+    "expected_concepts": [
+      "graph theory",
+      "algorithm"
+    ],
+    "arxiv_id": "2603.14306v2"
+  },
+  {
+    "id": "classical_29",
+    "category": "classical",
+    "title": "JTON: A Token-Efficient JSON Superset with Zen Grid Tabular Encoding for Large Language Models",
+    "abstract": "When LLMs process structured data, the serialization format directly affects cost and context utilization. Standard JSON wastes tokens repeating key names in every row of a tabular array--overhead that scales linearly with row count. This paper presents JTON (JSON Tabular Object Notation), a strict JSON superset whose main idea, Zen Grid, factors column headers into a single row and encodes values with semicolons, preserving JSON's type system while cutting redundancy. Across seven real-world domains, Zen Grid reduces token counts by 15-60% versus JSON compact (28.5% average; 32% with bare_strings). Comprehension tests on 10 LLMs show a net +0.3 pp accuracy gain over JSON: four models improve, three hold steady, and three dip slightly. Generation tests on 12 LLMs yield 100% syntactic valid",
+    "keywords": [
+      "cs.AI",
+      "cs.PL"
+    ],
+    "expected_concepts": [
+      "type system",
+      "programming language"
+    ],
+    "arxiv_id": "2604.05865v1"
+  },
+  {
+    "id": "classical_30",
+    "category": "classical",
+    "title": "Proceedings 17th Workshop on Programming Language Approaches to Concurrency and Communication-cEntric Software",
+    "abstract": "This volume contains the proceedings of PLACES 2026, the 17th edition of the Workshop on Programming Language Approaches to Concurrency and Communication-cEntric Software. The workshop is scheduled to take place in Turin, Italy, on April 11, 2026, as a satellite event of ETAPS, the European Joint Conferences on Theory and Practice of Software. PLACES offers a forum for exchanging new ideas on how to address the challenges of concurrent and distributed programming and how to improve the foundations of modern and future computer applications. PLACES welcomes researchers from various fields, and its topics include the design of new programming languages, models for concurrent and distributed systems, type systems, program verification, and applications in various areas (e.g., microservices, s",
+    "keywords": [
+      "cs.PL"
+    ],
+    "expected_concepts": [
+      "type system",
+      "programming language"
+    ],
+    "arxiv_id": "2604.05737v1"
+  }
+]

@@ -9,10 +9,12 @@ import {
   type SortingState,
   flexRender,
 } from "@tanstack/react-table";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, FileText } from "lucide-react";
-import { fetchPapers, fetchTopics } from "@/lib/api";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, FileText, Star, BookOpen, RefreshCw } from "lucide-react";
+import { fetchPapers, fetchTopics, enrichBatch } from "@/lib/api";
 import type { Paper, Topic } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { PaperDrawer } from "@/components/paper/paper-drawer";
+import { useT } from "@/lib/i18n-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,6 +134,7 @@ function PaginationControls({
   totalPages: number;
   onPageChange: (p: number) => void;
 }) {
+  const { t } = useT();
   // Build a compact page range: [1, ..., page-1, page, page+1, ..., totalPages]
   const pages = useMemo(() => {
     const result: (number | "ellipsis")[] = [];
@@ -158,7 +161,7 @@ function PaginationControls({
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
-        Previous
+        {t("common.previous")}
       </Button>
       {pages.map((p, i) =>
         p === "ellipsis" ? (
@@ -186,7 +189,7 @@ function PaginationControls({
         disabled={page >= totalPages}
         onClick={() => onPageChange(page + 1)}
       >
-        Next
+        {t("common.next")}
       </Button>
     </div>
   );
@@ -218,17 +221,34 @@ function TableSkeleton() {
 // ---------------------------------------------------------------------------
 
 function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+  const { t } = useT();
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <FileText className="size-10 text-muted-foreground/50" />
-      <h3 className="mt-4 text-sm font-medium text-foreground">
-        No papers found
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full bg-background ring-4 ring-muted/40">
+        <FileText className="size-6 text-muted-foreground" />
+      </div>
+      <h3 className="mt-4 text-base font-semibold tracking-tight">
+        {hasFilters ? t("library.noMatch") : t("library.emptyTitle")}
       </h3>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {hasFilters
-          ? "Try adjusting your search or filters."
-          : "Ingest papers via the CLI or MCP tools to get started."}
+      <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+        {hasFilters ? "" : t("library.emptyBody")}
       </p>
+      {!hasFilters && (
+        <div className="mt-4 flex gap-2">
+          <a
+            href="/topics/new"
+            className="rounded-md bg-foreground px-4 py-2 text-xs font-medium text-background hover:bg-foreground/90"
+          >
+            {t("library.ctaStartTopic")}
+          </a>
+          <a
+            href="/research"
+            className="rounded-md border bg-background px-4 py-2 text-xs font-medium hover:bg-muted"
+          >
+            {t("library.ctaExploreTopics")}
+          </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -238,6 +258,7 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 // ---------------------------------------------------------------------------
 
 export default function LibraryPage() {
+  const { t } = useT();
   // -- State ----------------------------------------------------------------
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedSearch(search, 300);
@@ -246,6 +267,7 @@ export default function LibraryPage() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "year", desc: true },
   ]);
+  const [drawerPaperId, setDrawerPaperId] = useState<number | null>(null);
 
   // Reset to page 1 when filters change
   const handleSearchChange = useCallback((value: string) => {
@@ -306,130 +328,167 @@ export default function LibraryPage() {
 
   // -- TanStack Table columns -----------------------------------------------
   const columns = useMemo<ColumnDef<Paper>[]>(
-    () => [
-      {
-        id: "title",
-        accessorKey: "title",
-        header: () => (
-          <SortableHeader
-            label="Title"
-            columnId="title"
-            sorting={sorting}
-            onSort={handleSort}
-          />
-        ),
-        cell: ({ row }) => (
-          <div className="max-w-[400px]">
-            <p className="truncate font-medium text-foreground" title={row.original.title}>
-              {row.original.title}
-            </p>
-            {row.original.arxiv_id && (
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {row.original.arxiv_id}
-              </p>
-            )}
-          </div>
-        ),
-      },
-      {
-        id: "authors",
-        accessorKey: "authors",
-        header: "Authors",
-        cell: ({ row }) => (
-          <span
-            className="block max-w-[200px] truncate text-muted-foreground"
-            title={
-              Array.isArray(row.original.authors)
-                ? row.original.authors.join(", ")
-                : row.original.authors ?? ""
-            }
-          >
-            {formatAuthors(row.original.authors)}
-          </span>
-        ),
-      },
-      {
-        id: "year",
-        accessorKey: "year",
-        header: () => (
-          <SortableHeader
-            label="Year"
-            columnId="year"
-            sorting={sorting}
-            onSort={handleSort}
-          />
-        ),
-        cell: ({ row }) => (
-          <span className="tabular-nums text-muted-foreground">
-            {row.original.year ?? "--"}
-          </span>
-        ),
-      },
-      {
-        id: "venue",
-        accessorKey: "venue",
-        header: () => (
-          <SortableHeader
-            label="Venue"
-            columnId="venue"
-            sorting={sorting}
-            onSort={handleSort}
-          />
-        ),
-        cell: ({ row }) => {
-          const venue = row.original.venue;
-          if (!venue) return <span className="text-muted-foreground">--</span>;
-          return (
-            <Badge
-              variant="secondary"
-              className="max-w-[120px] truncate text-xs font-normal"
-              title={venue}
-            >
-              {venue}
-            </Badge>
-          );
-        },
-      },
-      {
-        id: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const status = derivePaperStatus(row.original);
-          const label = status.replace("_", " ");
-          return (
-            <Badge
-              variant="secondary"
-              className={cn(
-                "text-xs font-normal capitalize",
-                STATUS_STYLES[status] ?? STATUS_STYLES.meta_only
+    () => {
+      const cols: ColumnDef<Paper>[] = [
+        {
+          id: "title",
+          accessorKey: "title",
+          header: () => (
+            <SortableHeader
+              label={t("library.colTitle")}
+              columnId="title"
+              sorting={sorting}
+              onSort={handleSort}
+            />
+          ),
+          cell: ({ row }) => (
+            <div className="max-w-[400px]">
+              <div className="flex items-center gap-1.5">
+                <p className="truncate font-medium text-foreground" title={row.original.title}>
+                  {row.original.title}
+                </p>
+                {row.original.deep_read && (
+                  <Badge variant="secondary" className="shrink-0 gap-0.5 text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                    <BookOpen className="size-2.5" />
+                    {t("library.deepReadYes")}
+                  </Badge>
+                )}
+              </div>
+              {row.original.arxiv_id && (
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {row.original.arxiv_id}
+                </p>
               )}
-            >
-              {label}
-            </Badge>
-          );
+            </div>
+          ),
         },
-      },
-      {
-        id: "relevance",
-        header: "Relevance",
-        cell: ({ row }) => {
-          const rel = row.original.relevance;
-          if (!rel) return <span className="text-muted-foreground">--</span>;
-          return (
-            <Badge
-              variant="secondary"
-              className={cn(
-                "text-xs font-normal capitalize",
-                RELEVANCE_STYLES[rel] ?? RELEVANCE_STYLES.low
-              )}
+        {
+          id: "authors",
+          accessorKey: "authors",
+          header: t("library.colAuthors"),
+          cell: ({ row }) => (
+            <span
+              className="block max-w-[200px] truncate text-muted-foreground"
+              title={
+                Array.isArray(row.original.authors)
+                  ? row.original.authors.join(", ")
+                  : row.original.authors ?? ""
+              }
             >
-              {rel}
-            </Badge>
-          );
+              {formatAuthors(row.original.authors)}
+            </span>
+          ),
         },
-      },
-    ],
-    [sorting, handleSort]
+        {
+          id: "year",
+          accessorKey: "year",
+          header: () => (
+            <SortableHeader
+              label={t("library.colYear")}
+              columnId="year"
+              sorting={sorting}
+              onSort={handleSort}
+            />
+          ),
+          cell: ({ row }) => (
+            <span className="tabular-nums text-muted-foreground">
+              {row.original.year ?? "--"}
+            </span>
+          ),
+        },
+        {
+          id: "venue",
+          accessorKey: "venue",
+          header: () => (
+            <SortableHeader
+              label={t("library.colVenue")}
+              columnId="venue"
+              sorting={sorting}
+              onSort={handleSort}
+            />
+          ),
+          cell: ({ row }) => {
+            const venue = row.original.venue;
+            if (!venue) return <span className="text-muted-foreground">--</span>;
+            return (
+              <Badge
+                variant="secondary"
+                className="max-w-[120px] truncate text-xs font-normal"
+                title={venue}
+              >
+                {venue}
+              </Badge>
+            );
+          },
+        },
+        {
+          id: "citation_count",
+          accessorKey: "citation_count",
+          header: () => (
+            <SortableHeader
+              label={t("library.colCitations")}
+              columnId="citation_count"
+              sorting={sorting}
+              onSort={handleSort}
+            />
+          ),
+          cell: ({ row }) => {
+            const count = row.original.citation_count;
+            if (count == null) return <span className="text-muted-foreground">--</span>;
+            return (
+              <span className="inline-flex items-center gap-1 tabular-nums text-muted-foreground">
+                <Star className="size-3" />
+                {count.toLocaleString()}
+              </span>
+            );
+          },
+        },
+        {
+          id: "status",
+          header: t("library.colStatus"),
+          cell: ({ row }) => {
+            const status = derivePaperStatus(row.original);
+            const label = status.replace("_", " ");
+            return (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "text-xs font-normal capitalize",
+                  STATUS_STYLES[status] ?? STATUS_STYLES.meta_only
+                )}
+              >
+                {label}
+              </Badge>
+            );
+          },
+        },
+      ];
+
+      if (topicId != null) {
+        cols.push({
+          id: "relevance",
+          header: t("library.colRelevance"),
+          cell: ({ row }) => {
+            const rel = row.original.relevance;
+            if (!rel) return <span className="text-muted-foreground">--</span>;
+            return (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "text-xs font-normal capitalize",
+                  RELEVANCE_STYLES[rel] ?? RELEVANCE_STYLES.low
+                )}
+              >
+                {rel}
+              </Badge>
+            );
+          },
+        });
+      }
+
+      return cols;
+    },
+    [sorting, handleSort, t, topicId]
   );
 
   // -- TanStack Table instance ----------------------------------------------
@@ -451,11 +510,13 @@ export default function LibraryPage() {
     <div className="space-y-6 p-6 lg:p-8">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Paper Library</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="font-serif text-3xl font-medium tracking-tight">
+          {t("library.title")}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground tabular-nums">
           {total > 0
-            ? `${total.toLocaleString()} papers across all topics`
-            : "Browse and search your research paper collection."}
+            ? total.toLocaleString()
+            : ""}
         </p>
       </div>
 
@@ -464,7 +525,7 @@ export default function LibraryPage() {
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search title, authors, venue..."
+            placeholder={t("library.searchPlaceholder")}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
@@ -489,6 +550,20 @@ export default function LibraryPage() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5"
+          onClick={async () => {
+            try {
+              await enrichBatch({ topic_id: topicId ?? undefined, limit: 50 });
+              // data refreshes via refetchInterval
+            } catch {}
+          }}
+        >
+          <RefreshCw className="size-3.5" />
+          {t("library.enrichMetadata")}
+        </Button>
       </div>
 
       {/* Table */}
@@ -519,7 +594,19 @@ export default function LibraryPage() {
             </TableHeader>
             <TableBody>
               {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setDrawerPaperId(row.original.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setDrawerPaperId(row.original.id);
+                    }
+                  }}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
@@ -552,6 +639,14 @@ export default function LibraryPage() {
           />
         </div>
       )}
+
+      <PaperDrawer
+        paperId={drawerPaperId}
+        open={drawerPaperId != null}
+        onOpenChange={(open) => {
+          if (!open) setDrawerPaperId(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-05-08T14:52:23Z",
+  "skills_dir": "skills",
+  "skills": [
+    {
+      "name": "citation-trace",
+      "path": "skills/citation-trace",
+      "skill_md": "skills/citation-trace/SKILL.md",
+      "description": "Expand from seed papers by following references and citations inside Research Harness workflows. Trigger on phrases like \"citation-trace\", \"/citation-trace\", \"引用追踪\", \"沿引用链扩展\", or equivalent requests to grow a paper set from one or more seed papers."
+    },
+    {
+      "name": "claim-extraction",
+      "path": "skills/claim-extraction",
+      "skill_md": "skills/claim-extraction/SKILL.md",
+      "description": "Extract core claims from papers for Research Harness evidence structuring. Trigger on phrases like \"claim-extraction\", \"/claim-extraction\", \"提取论文声明\", \"claim extract\", or equivalent requests to identify key claims, evidence, assumptions, and limitations from ingested papers."
+    },
+    {
+      "name": "evidence-gating",
+      "path": "skills/evidence-gating",
+      "skill_md": "skills/evidence-gating/SKILL.md",
+      "description": "Decide whether a research stage has enough evidence to advance in Research Harness. Trigger on phrases like \"evidence-gating\", \"/evidence-gating\", \"证据门控\", \"现在能推进吗\", or equivalent requests to check whether current literature, claims, and artifacts justify moving to the next stage."
+    },
+    {
+      "name": "gap-analysis",
+      "path": "skills/gap-analysis",
+      "skill_md": "skills/gap-analysis/SKILL.md",
+      "description": "Analyze research gaps using Research Harness paper pools and extracted evidence. Trigger on phrases like \"gap-analysis\", \"/gap-analysis\", \"研究空白分析\", \"找研究 gap\", or equivalent requests to identify underexplored questions, missing baselines, or contradictory findings."
+    },
+    {
+      "name": "literature-mapping",
+      "path": "skills/literature-mapping",
+      "skill_md": "skills/literature-mapping/SKILL.md",
+      "description": "Build a structured literature map in Research Harness. Trigger on phrases like \"literature-mapping\", \"/literature-mapping\", \"文献地图\", \"建立文献库\", \"systematic literature map\", or equivalent requests to cluster papers, identify baselines, and organize a topic-level paper pool."
+    },
+    {
+      "name": "literature-search",
+      "path": "skills/literature-search",
+      "skill_md": "skills/literature-search/SKILL.md",
+      "description": "Run comprehensive literature search for Research Harness. Trigger on phrases like \"literature-search\", \"/literature-search\", \"文献检索\", \"系统检索论文\", \"帮我搜相关论文\", or equivalent requests to search, shortlist, and ingest relevant papers."
+    },
+    {
+      "name": "paper-sync",
+      "path": "skills/paper-sync",
+      "skill_md": "skills/paper-sync/SKILL.md",
+      "description": "Check paper pool health, enrich metadata, download PDFs, and annotate — with relevance filtering to skip noise",
+      "allowed_tools": [
+        "mcp__research-harness__paper_list",
+        "mcp__research-harness__paper_coverage_check",
+        "mcp__research-harness__paper_acquire",
+        "mcp__research-harness__paper_dismiss",
+        "mcp__research-harness__topic_show",
+        "mcp__research-harness__topic_list",
+        "Read"
+      ]
+    },
+    {
+      "name": "paper-verify",
+      "path": "skills/paper-verify",
+      "skill_md": "skills/paper-verify/SKILL.md",
+      "description": "Verify whether papers actually exist and match the claimed metadata before or after ingestion. Trigger on phrases like \"paper-verify\", \"/paper-verify\", \"验证论文存在性\", \"核对 DOI arxiv\", or equivalent requests to validate titles, identifiers, and source consistency."
+    },
+    {
+      "name": "paper-writing",
+      "path": "skills/paper-writing",
+      "skill_md": "skills/paper-writing/SKILL.md",
+      "description": "论文撰写全流程指导 skill，覆盖六种类型：专项研究、综述、系统/基准、短论文/Workshop、立场论文、科研汇报。融合导师核心原则 + 国际顶会写作方法论。Trigger: write paper, 写论文, 论文撰写, draft paper, paper writing, 写综述, survey writing, 科研汇报, research report, position paper, workshop paper, short paper, 写introduction, 写related work, 写实验, camera-ready, rebuttal, 投稿准备",
+      "tracks": [
+        "advisor-report",
+        "original-research",
+        "position-paper",
+        "short-workshop",
+        "survey-review",
+        "system-benchmark"
+      ]
+    },
+    {
+      "name": "provenance-review",
+      "path": "skills/provenance-review",
+      "skill_md": "skills/provenance-review/SKILL.md",
+      "description": "Review Research Harness execution history, recorded artifacts, and process quality. Trigger on phrases like \"provenance-review\", \"/provenance-review\", \"溯源审查\", \"回顾执行历史\", or equivalent requests to inspect what was done, what was recorded, and what is missing."
+    },
+    {
+      "name": "research-harness",
+      "path": "skills/research-harness",
+      "skill_md": "skills/research-harness/SKILL.md",
+      "description": "Main entry skill for Research Harness workflows in Codex. Trigger on phrases like \"research-harness\", \"/research-harness\", \"用 Research Harness\", \"进入科研工作流\", \"开始科研流程\", or equivalent requests to route the task to topic initialization, literature search, citation tracing, claim extraction, gap analysis, evidence gating, section drafting, paper verification, or provenance review."
+    },
+    {
+      "name": "research-init",
+      "path": "skills/research-init",
+      "skill_md": "skills/research-init/SKILL.md",
+      "description": "Initialize a new research topic or new project integration for Research Harness. Trigger on phrases like \"research-init\", \"/research-init\", \"初始化研究主题\", \"初始化 Research Harness\", \"给项目接入 Research Harness\", or equivalent requests to create topic scaffolding, update AGENTS or CLAUDE guidance, and ingest seed papers."
+    },
+    {
+      "name": "research-primitives",
+      "path": "skills/research-primitives",
+      "skill_md": "skills/research-primitives/SKILL.md",
+      "description": "Reference guide for all 9 research primitive operations",
+      "allowed_tools": [
+        "Read"
+      ]
+    },
+    {
+      "name": "section-drafting",
+      "path": "skills/section-drafting",
+      "skill_md": "skills/section-drafting/SKILL.md",
+      "description": "Draft paper sections from Research Harness evidence. Trigger on phrases like \"section-drafting\", \"/section-drafting\", \"章节起草\", \"根据证据写 related work\", or equivalent requests to produce evidence-backed draft sections tied to ingested papers and extracted claims."
+    },
+    {
+      "name": "task-taxonomy",
+      "path": "skills/task-taxonomy",
+      "skill_md": "skills/task-taxonomy/SKILL.md",
+      "description": "Research task classification and model routing guidance",
+      "allowed_tools": [
+        "Read"
+      ]
+    }
+  ]
+}

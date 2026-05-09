@@ -25,7 +25,7 @@ from research_harness.primitives.registry import PRIMITIVE_REGISTRY
 
 
 def test_primitive_registry_has_all_specs() -> None:
-    assert len(PRIMITIVE_REGISTRY) == 69
+    assert len(PRIMITIVE_REGISTRY) == 81
     for spec in PRIMITIVE_REGISTRY.values():
         assert spec.name
         assert spec.category
@@ -43,6 +43,7 @@ def test_list_by_category() -> None:
         "expand_citations",
         "iterative_retrieval_loop",
         "method_layer_expansion",
+        "cs_harvest",
     }
     assert {spec.name for spec in list_by_category(PrimitiveCategory.EXTRACTION)} == {
         "claim_extract",
@@ -74,6 +75,16 @@ def test_list_by_category() -> None:
         "topic_set_contributions",
         "topic_get_contributions",
         "design_gap_probe",
+        "head_paper_rank",
+        "cs_classify",
+        "task_canonicalize",
+        "compute_area_red_ocean",
+        "compute_task_red_ocean",
+        "compute_method_red_ocean",
+        "candidate_seed",
+        "candidate_upsert",
+        "recommendations_generate",
+        "gap_cross_verify",
     }
     assert {spec.name for spec in list_by_category(PrimitiveCategory.GENERATION)} == {
         "section_draft",
@@ -90,6 +101,7 @@ def test_list_by_category() -> None:
         "consistency_check",
         "code_validate",
         "experiment_run",
+        "experiment_loop",
         "verified_registry_build",
         "verified_registry_check",
         "paper_verify_numbers",

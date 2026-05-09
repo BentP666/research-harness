@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-bm-001", "title": "M5 Forecasting: Lessons from Walmart Sales", "abstract": "Hierarchical sales forecasting at 30k SKU × 10 store granularity. LightGBM ensemble winner reports 0.522 weighted RMSSE.", "authors": ["O. Olsen"], "venue": "Int. J. Forecasting 2022", "year": 2022, "doi": "10.0000/fixture.bm.001", "topic_match": "fixture-benchmark"}

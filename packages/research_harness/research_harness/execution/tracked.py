@@ -32,6 +32,12 @@ class TrackedBackend:
         )
         parent_id = kwargs.pop("_parent_id", None)
         stage = kwargs.pop("_stage", "")
+        # Audit substrate (migration 055) — source of truth for drilldown UI.
+        actor = kwargs.pop("_actor", None)
+        origin = kwargs.pop("_origin", None)
+        retry_ordinal = int(kwargs.pop("_retry_ordinal", 0) or 0)
+        cache_hit = bool(kwargs.pop("_cache_hit", False))
+        parallel_group = kwargs.pop("_parallel_group", None)
 
         result = self._inner.execute(primitive, **kwargs)
         try:
@@ -41,6 +47,11 @@ class TrackedBackend:
                 topic_id=topic_id,
                 stage=stage,
                 parent_id=parent_id,
+                actor=actor,
+                origin=origin,
+                retry_ordinal=retry_ordinal,
+                cache_hit=cache_hit,
+                parallel_group=parallel_group,
             )
         except Exception:
             logging.getLogger(__name__).debug(

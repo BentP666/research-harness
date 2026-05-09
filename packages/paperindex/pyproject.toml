@@ -4,32 +4,20 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paperindex"
-version = "0.2.0"
-description = "Paper understanding engine: PDF -> structure -> knowledge fragments"
-requires-python = ">=3.10"
+version = "0.3.1"
+description = "Thin compatibility shim — the real engine lives in research_harness.paperindex"
+requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
-  "pymupdf>=1.24.0",
-  "PyPDF2>=3.0.0",
-  "pyyaml>=6.0",
-  "tiktoken>=0.7.0",
-  "click>=8.1",
-  "llm-router>=0.2.0",
+  # The shim re-exports research_harness.paperindex. The [paperindex] extra
+  # on research-harness pulls the PDF runtime deps (pymupdf, PyPDF2, pyyaml,
+  # tiktoken) — standalone `pip install paperindex` gets them automatically.
+  "research-harness[paperindex]>=0.3.1",
 ]
 
 [project.optional-dependencies]
-llm = [
-  "openai>=1.0.0",
-]
-tables = [
-  "pdfplumber>=0.11.0",
-]
 dev = [
   "pytest>=8.0",
-  "pytest-cov>=5.0",
-  "ruff>=0.11.0",
-  "pdfplumber>=0.11.0",
-  "openai>=1.0.0",
 ]
 
 [project.scripts]
