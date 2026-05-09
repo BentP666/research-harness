@@ -17,69 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-
-// ---------------------------------------------------------------------------
-// API stubs — will be replaced when api.ts adds these functions
-// ---------------------------------------------------------------------------
-
-interface WriteResponse {
-  status: string;
-  summary: string;
-  output: unknown;
-  next_actions: string[];
-  artifacts: unknown[];
-  recovery_hint: string | null;
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-async function detectGaps(
-  topicId: number,
-  params: { focus?: string }
-): Promise<WriteResponse> {
-  const res = await fetch(`${API_BASE}/api/topics/${topicId}/gaps`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
-
-async function rankDirections(
-  topicId: number,
-  params: { focus?: string }
-): Promise<WriteResponse> {
-  const res = await fetch(`${API_BASE}/api/topics/${topicId}/directions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
-
-async function extractClaims(
-  topicId: number,
-  params: { paper_ids: number[]; focus?: string }
-): Promise<WriteResponse> {
-  const res = await fetch(`${API_BASE}/api/topics/${topicId}/claims`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
+import { detectGaps, rankDirections, extractClaims } from "@/lib/api";
+import { RetrievalTriggerButton } from "@/components/topic/retrieval-trigger-button";
+import { WhyPopover } from "@/components/brand/why-popover";
 
 // ---------------------------------------------------------------------------
 // Shared inline feedback
@@ -129,6 +69,7 @@ interface GapItem {
   description?: string;
   severity?: string;
   evidence?: string;
+  confidence?: number;
 }
 
 interface DirectionItem {
@@ -239,7 +180,21 @@ function GapsTab({ topicId }: { topicId: number }) {
                   #{idx + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{gap.gap}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium">{gap.gap}</p>
+                    <WhyPopover
+                      title={`Why gap #${idx + 1}?`}
+                      reasoning={
+                        gap.description ||
+                        `Surfaced from recent literature signals${
+                          focus ? ` while focusing on "${focus}"` : ""
+                        }. Confidence is a rough model estimate — treat it as a starting point for discussion, not gospel.`
+                      }
+                      confidence={
+                        typeof gap.confidence === "number" ? gap.confidence : undefined
+                      }
+                    />
+                  </div>
                   {gap.description && (
                     <p className="text-xs text-muted-foreground mt-1">
                       {gap.description}
@@ -261,9 +216,11 @@ function GapsTab({ topicId }: { topicId: number }) {
       )}
 
       {mut.isSuccess && gaps.length === 0 && (
-        <p className="py-4 text-center text-sm text-muted-foreground">
-          No gaps detected.
-        </p>
+        <div className="py-2">
+          <p className="text-center text-sm text-muted-foreground">
+            No gaps surfaced for this focus. Try a different angle or expand the paper pool.
+          </p>
+        </div>
       )}
     </div>
   );
@@ -531,11 +488,12 @@ interface AnalysisPanelProps {
 export function AnalysisPanel({ topicId }: AnalysisPanelProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Crosshair className="size-4" />
           Literature Analysis
         </CardTitle>
+        <RetrievalTriggerButton topicId={topicId} stage="analyze" />
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="gaps">

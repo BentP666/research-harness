@@ -18,10 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-
-// ---------------------------------------------------------------------------
-// API stubs — will be replaced when api.ts adds these functions
-// ---------------------------------------------------------------------------
+import { searchPapers, ingestPaper, type StageActionResponse } from "@/lib/api";
 
 interface SearchResult {
   title: string;
@@ -31,51 +28,6 @@ interface SearchResult {
   arxiv_id: string | null;
   doi: string | null;
   source: string | null;
-}
-
-interface WriteResponse {
-  status: string;
-  summary: string;
-  output: unknown;
-  next_actions: string[];
-  artifacts: unknown[];
-  recovery_hint: string | null;
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-async function searchPapers(params: {
-  query: string;
-  topic_id: number;
-  max_results?: number;
-}): Promise<WriteResponse> {
-  const res = await fetch(`${API_BASE}/api/papers/search`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
-
-async function ingestPaper(params: {
-  source: string;
-  topic_id: number;
-  relevance?: string;
-}): Promise<WriteResponse> {
-  const res = await fetch(`${API_BASE}/api/papers/ingest`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +75,7 @@ export function PaperSearchPanel({ topicId }: PaperSearchPanelProps) {
   const ingestMut = useMutation({
     mutationFn: async () => {
       const items = Array.from(selected).map((idx) => results[idx]);
-      const responses: WriteResponse[] = [];
+      const responses: StageActionResponse[] = [];
       for (const item of items) {
         const source =
           item.arxiv_id ?? item.doi ?? item.title ?? "unknown";
@@ -196,9 +148,6 @@ export function PaperSearchPanel({ topicId }: PaperSearchPanelProps) {
     if (!importId.trim()) return;
     importMut.mutate();
   };
-
-  const isLoading =
-    searchMut.isPending || ingestMut.isPending || importMut.isPending;
 
   return (
     <Card>

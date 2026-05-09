@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-lb-002", "title": "Adaptive Retrieval for Iterative Claim Extraction", "abstract": "Re-runs retrieval when extraction confidence drops below threshold; on FactScore the second pass adds 14% recall.", "authors": ["K. Khan"], "venue": "ACL 2025", "year": 2025, "doi": "10.0000/fixture.lb.002", "topic_match": "fixture-loopback"}

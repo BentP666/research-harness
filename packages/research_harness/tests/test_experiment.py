@@ -118,6 +118,61 @@ class TestValidator:
         assert "x = None" in fixed
 
 
+class TestValidatorModes:
+    """Strict vs agent validator modes."""
+
+    def test_strict_blocks_httpx(self):
+        code = "import httpx\nr = httpx.get('https://api.openai.com')\n"
+        issues = validate_security(code, mode="strict")
+        # httpx is 'unknown' under strict (warning, not error)
+        assert not any(i.severity == "error" for i in issues)
+
+    def test_strict_blocks_urllib(self):
+        issues = validate_security("import urllib.request\n", mode="strict")
+        assert any(i.severity == "error" and "urllib" in i.message for i in issues)
+
+    def test_agent_permits_urllib(self):
+        issues = validate_security("import urllib.request\n", mode="agent")
+        assert not any(i.severity == "error" and "urllib" in i.message for i in issues)
+
+    def test_agent_permits_requests(self):
+        issues = validate_security("import requests\n", mode="agent")
+        assert not any(i.severity == "error" for i in issues)
+
+    def test_agent_still_blocks_subprocess(self):
+        issues = validate_security("import subprocess\n", mode="agent")
+        assert any(i.severity == "error" and "subprocess" in i.message for i in issues)
+
+    def test_agent_still_blocks_ctypes(self):
+        issues = validate_security("import ctypes\n", mode="agent")
+        assert any(i.severity == "error" and "ctypes" in i.message for i in issues)
+
+    def test_agent_still_blocks_eval(self):
+        issues = validate_security("eval('1+1')\n", mode="agent")
+        assert any(i.severity == "error" and "eval" in i.message for i in issues)
+
+    def test_agent_mode_imports_known_packages(self):
+        code = (
+            "import openai\nimport anthropic\nimport httpx\nfrom openai import OpenAI\n"
+        )
+        issues = validate_imports(code, mode="agent")
+        assert not any(i.severity == "error" for i in issues)
+        # These are now known packages, not warnings.
+        for pkg in ("openai", "anthropic", "httpx"):
+            assert not any(pkg in i.message for i in issues), (
+                f"{pkg} should not warn in agent mode"
+            )
+
+    def test_validate_code_agent_mode_passes_full_llm_script(self):
+        code = (
+            "import os\nfrom openai import OpenAI\n"
+            "client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])\n"
+            "print('accuracy: 0.9')\n"
+        )
+        result = validate_code(code, mode="agent")
+        assert result.ok, result.summary()
+
+
 # -- Sandbox ------------------------------------------------------------------
 
 
@@ -147,6 +202,45 @@ class TestSandbox:
         assert not is_improvement(0.85, 0.90, direction="maximize")
         assert is_improvement(0.10, 0.15, direction="minimize")
         assert not is_improvement(0.20, 0.15, direction="minimize")
+
+    def test_multi_file_with_import(self):
+        files = {
+            "helper.py": "def score(x):\n    return x * 2\n",
+            "main.py": "from helper import score\nprint(f'accuracy: {score(0.45)}')\n",
+        }
+        result = run_experiment(files=files, entry_point="main.py", timeout_sec=10.0)
+        assert result.returncode == 0, result.stderr
+        assert result.metrics["accuracy"] == pytest.approx(0.9)
+
+    def test_env_allowlist_transparent(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test-123")
+        monkeypatch.setenv("UNRELATED_SECRET", "do-not-pass")
+        code = (
+            "import os\n"
+            "print(f\"key: {os.environ.get('OPENAI_API_KEY', 'MISSING')}\")\n"
+            "print(f\"unrelated: {os.environ.get('UNRELATED_SECRET', 'MISSING')}\")\n"
+        )
+        result = run_experiment(code, timeout_sec=10.0)
+        assert "sk-test-123" in result.stdout
+        assert "unrelated: MISSING" in result.stdout
+
+    def test_extra_env_overlay(self):
+        code = (
+            "import os\n"
+            "print(f\"spec_only: {os.environ.get('MY_SPEC_VAR', 'MISSING')}\")\n"
+        )
+        result = run_experiment(
+            code, timeout_sec=10.0, extra_env={"MY_SPEC_VAR": "hello-spec"}
+        )
+        assert "spec_only: hello-spec" in result.stdout
+
+    def test_entry_point_missing_raises(self):
+        with pytest.raises(ValueError, match="not present in files"):
+            run_experiment(files={"other.py": "print('ok')\n"}, entry_point="main.py")
+
+    def test_empty_input_raises(self):
+        with pytest.raises(ValueError, match="requires either 'code' or 'files'"):
+            run_experiment()
 
 
 # -- Verified Registry --------------------------------------------------------

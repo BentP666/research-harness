@@ -7,6 +7,139 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+## [0.3.0] — 2026-05-09
+
+### Added — CS Research Workflow v2 (Phases 3–4)
+
+End-to-end recommendation + experiment-handoff pipeline for the
+CS-paper-first workflow. Complements Phases 0–2 (CSO validation, bulk
+harvest, classification + red-ocean) already shipped under
+`feat(cs-workflow)` commits.
+
+- **Migration 048 — `research_candidates`** table with multi-dimensional
+  red-ocean columns, `opportunity_angle`, `lineage_key` (sha1 of signal
+  family + normalized pitch, stable across re-seeding), and
+  `evidence_signature` (sha1 of sorted evidence IDs, triggers re-score).
+  Two-lane sort index keeps non-red-ocean candidates above red-ocean
+  ones even when the latter has a higher LLM score.
+- **`candidate_seed` primitive** — seeds drafts from `gaps`
+  (≥ `min_gap_severity`) and `contradictions` within a `topic:N` scope.
+- **`candidate_upsert` primitive** — preserves user status
+  (dismissed/promoted) across evidence-triggered updates.
+- **`opportunity_angle()`** classifies (area_red, task_red, method_red)
+  into `{new_task_mature_method, novel_method_known_task, frontier,
+  red_ocean}` using `RED_THRESHOLD=0.7`.
+- **`recommendations_generate`** pipeline — seeds → compute triplet →
+  optional LLM score (degrades to 0.0 on failure) → upsert. Optional
+  `skip_llm_scoring=True` for deterministic unit tests.
+- **Migration 047 — `gaps.confidence`, `gaps.cross_verified`,
+  `gaps.cross_check_runs`**. `gap_detect` prompt + parser emit per-gap
+  confidence 0-1.
+- **`gap_cross_verify` primitive** — re-runs gap_detect pinned to a
+  different LLM tier (default `heavy`) and marks originals verified
+  when Jaccard over content words ≥ `min_jaccard` (default 0.6).
+  Cross-verified flag is sticky.
+- **`direction_ranking` saturation-aware** — new optional kwargs
+  (`area/task/method_red_ocean`, `opportunity_angle`) grow the prompt
+  with red-ocean scoring guidance; baseline prompt unchanged when
+  kwargs omitted.
+- **MCP `experiment_handoff_prepare`** — packages a research_candidate
+  into an `experiment_brief` artifact on the experiment stage;
+  dereferences evidence IDs into full rows and validates
+  `candidate.scope` matches the caller's `topic_id`.
+- **MCP `experiment_handoff_submit`** — records an `experiment_handoff`
+  artifact linked via `consumed_by` dependency, flips the originating
+  candidate's status to `promoted`.
+- **MCP `workflow_entry`** — single-call status + ranked
+  `next_actions` list (gap_detect → cross_verify →
+  recommendations_generate → experiment_handoff_prepare →
+  orchestrator_advance) so agents can resume any topic without
+  threading multiple tool calls.
+
+### Fixed — Calibration, rollback mode, and web polish
+
+Release stabilization: tightens three spec deviations found during the v0.3.0 audit and moves three CLI-only actions into the web UI.
+
+### Fixed
+
+- **Publishability formula restored to weighted product with ε-floor** (spec
+  §15 Q7). `compute_publishability` in `trends/pipeline.py` was shipping as
+  a weighted sum, which let one strong factor mask a dead one. Now:
+  `max(ε, v) · max(ε, c) · max(ε, q) · 10`, ε = 0.1.
+- **Auto-rollback default flipped back to shadow mode** (spec §7.3). v0.3.0
+  shipped with `RUBRIC_AUTO_ROLLBACK=true` as the default against uncalibrated
+  thresholds. The new default is `false` (shadow mode) until calibration runs.
+- **Calibration anchor corpus now ships**. 60-entry seed corpus at
+  `research_harness/calibration/anchors.jsonl` covers all 6 stages with
+  labeled accept/reject rows. `rh calibrate run` and `rh calibrate all` now
+  actually execute Youden's J on the anchors instead of writing the default.
+
+### Added
+
+- **`research_harness.calibration` package.** Anchor loader, Youden's J
+  threshold selection, and a runner that writes to `rubric_calibrations`.
+- **Web UI: `/admin/calibration`.** Threshold table per (stage × tier),
+  per-row "Recalibrate" button, "Recalibrate all" button, and a
+  shadow/live toggle. No CLI needed.
+- **Web UI: trends "Refresh" button.** On both the dashboard carousel and
+  the trends explorer. Empty states offer a "Generate trends" call to
+  action instead of a CLI hint.
+- **`POST /api/domains/trends/refresh`** — run the trends pipeline.
+- **`GET /api/calibrations` + `POST /api/calibrations/run`** — list + trigger
+  rubric calibrations.
+- **`user_preferences.auto_rollback_live`** (migration 041) — shadow/live
+  mode toggled from the UI at runtime, no env-var edit required.
+- **`rh calibrate all` + `rh calibrate list`** — batch-calibrate every
+  (stage × tier) pair, inspect current state.
+
+### Changed
+
+- Judge engine resolves shadow/live mode at call time, checking (1) DB
+  preference, (2) env var, (3) default. Module-level `SHADOW_MODE` kept
+  as a back-compat alias but no longer the source of truth.
+- Judge engine reads per-stage thresholds from `rubric_calibrations` when
+  present, falling back to venue-tier defaults only when no calibration
+  row exists.
+
+### Added — Agent platform, budgets, judge, and trends
+
+- **Agent registry + onboarding wizard (S2a).** Multi-agent management with
+  provider configuration, agent pairings (generator/judge/challenger), preset
+  gallery, and demo mode for offline exploration.
+- **Token ledger + budgets (S2b).** Per-agent token usage tracking with monthly
+  budget caps, hard-stop enforcement, and live cost counters in the web UI.
+- **Venue ranks + quality tiers (S3).** CCF/CAS venue ranking database with seed
+  data for 80+ venues. Three-tier quality system (economy/standard/premium) with
+  per-topic autonomy levels (supervised/semi/autonomous).
+- **Stage snapshots + rollback (S4pre).** Artifact snapshots on stage transitions
+  with staleness propagation. One-click rollback from the web UI with reason
+  logging and rollback history.
+- **Rubric scoring + judge engine (S4).** Per-stage rubric definitions across 3
+  tiers (economy 3 dims, standard 7, premium 10+). Weighted scoring with venue-
+  tier thresholds, dual-judge routing for premium, and calibration CLI.
+- **Domain suggest + topic candidates (S5).** AI-assisted domain creation from a
+  research idea. Async job infrastructure for topic candidate generation with
+  polling and batch creation.
+- **Trends pipeline (S6).** Research trend clustering with publishability scoring
+  (velocity × citations × venue quality). 12-entry seed dataset for AI/ML
+  research directions. Dashboard carousel and full explorer page.
+
+### Changed
+
+- **Auto-rollback enabled by default.** `RUBRIC_AUTO_ROLLBACK` now defaults to
+  `true`. Shadow mode (observation without enforcement) can be restored by
+  setting `RUBRIC_AUTO_ROLLBACK=false`. (Folded into 0.3.0 — see stabilization notes above.)
+
+### Infrastructure
+
+- 7 new SQLite migrations (039–045).
+- ~150 new tests across rubric scoring, judge engine, snapshots, claims,
+  domains, and trends modules.
+- Web dashboard expanded: agent management, budget controls, rubric scorecards,
+  rollback UI, trend explorer, domain from-idea wizard.
+
 ## [0.2.0] — 2026-04-22
 
 ### Added
@@ -148,5 +281,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `environment.yml` for conda setup
 - `setup.sh` one-command bootstrap
 
-[Unreleased]: https://github.com/your-org/research-harness/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/your-org/research-harness/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/your-org/research-harness/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/your-org/research-harness/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/your-org/research-harness/releases/tag/v0.1.0

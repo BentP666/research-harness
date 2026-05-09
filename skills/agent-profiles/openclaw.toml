@@ -1,0 +1,30 @@
+# .rh-agent.toml — OpenClaw consumer profile (template)
+#
+# OpenClaw is an example of a third-party agent that wants Research Harness
+# skills without RH having to know anything about it. The agent author writes
+# this file once and ships it with the agent's repo.
+#
+# install_path can reference an env var the agent itself sets at startup,
+# which is the cleanest way to stay decoupled from filesystem layout choices.
+
+[agent]
+name    = "openclaw"
+version = ">=0.4"
+
+[skills]
+install_path = "${OPENCLAW_HOME}/skills"
+format       = "claude-skill-md"
+strategy     = "copy"           # OpenClaw's skill loader doesn't follow symlinks
+
+# Optional include/exclude — most agents won't need these. Useful when an
+# agent specializes (e.g. a writing-only assistant) and wants a subset.
+[skills.include]
+only = [
+  "paper-writing",
+  "literature-search",
+  "literature-mapping",
+  "citation-trace",
+  "claim-extraction",
+  "gap-analysis",
+  "section-drafting",
+]

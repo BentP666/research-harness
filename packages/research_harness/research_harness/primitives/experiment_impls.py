@@ -36,15 +36,23 @@ logger = logging.getLogger(__name__)
 
 @register_primitive(CODE_VALIDATE_SPEC)
 def code_validate(
-    *, code: str, auto_fix: bool = True, **_: Any
+    *,
+    code: str,
+    auto_fix: bool = True,
+    mode: str = "strict",
+    **_: Any,
 ) -> CodeValidationOutput:
-    """Validate experiment code: syntax, security, imports."""
+    """Validate experiment code: syntax, security, imports.
+
+    mode="agent" permits HTTP and LLM-client imports; still blocks
+    subprocess/ctypes/eval/exec.
+    """
     auto_fixed = 0
     if auto_fix:
         code, n = auto_fix_unbound_locals(code)
         auto_fixed = n
 
-    result = validate_code(code)
+    result = validate_code(code, mode=mode)
     issues = [
         CodeValidationIssue(
             severity=i.severity,
@@ -65,13 +73,26 @@ def code_validate(
 @register_primitive(EXPERIMENT_RUN_SPEC)
 def experiment_run(
     *,
-    code: str,
+    code: str = "",
+    files: dict[str, str] | None = None,
+    entry_point: str = "main.py",
+    env_vars: dict[str, str] | None = None,
     timeout_sec: float = 300.0,
     primary_metric: str = "",
     **_: Any,
 ) -> ExperimentRunOutput:
-    """Run experiment in local sandbox."""
-    result = run_experiment(code, timeout_sec=timeout_sec)
+    """Run experiment in local sandbox.
+
+    Supports both single-file (``code``) and multi-file (``files``) inputs.
+    ``env_vars`` are overlaid onto the default LLM-key allowlist for agent experiments.
+    """
+    result = run_experiment(
+        code=code or None,
+        files=files,
+        entry_point=entry_point,
+        timeout_sec=timeout_sec,
+        extra_env=env_vars,
+    )
 
     primary_value = None
     if primary_metric and result.metrics:

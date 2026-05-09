@@ -142,13 +142,61 @@ _ANTHROPIC_BLOCKED_PRIMITIVES: frozenset[str] = frozenset(
 )
 
 
+_provider_override_local = _threading.local()
+
+
+def set_provider_override(provider: str | None) -> None:
+    """Thread-local override that pins `_get_client` to a specific LLM provider.
+
+    Used by parallel workers (e.g. the expansion deep-read pool) to spread
+    requests across every available agent in the pool (anthropic proxy,
+    cursor_agent, openai, kimi, …) rather than hammering the single
+    tier-routed default. Pass ``None`` to clear. Only in-process; does not
+    survive across threads.
+    """
+    if provider:
+        _provider_override_local.provider = provider
+    else:
+        _provider_override_local.provider = None
+
+
+def _current_provider_override() -> str | None:
+    return getattr(_provider_override_local, "provider", None)
+
+
+def _describe_client(client: LLMClient) -> str:
+    """Return ``provider:model`` for logging / model_used fields.
+
+    Plugin providers may resolve with ``model=''`` and substitute
+    their own default inside the chat fn. In that case we emit ``provider:*``
+    so downstream displays show *which* backend was used, not an empty string.
+    """
+    provider = getattr(client, "provider", "") or "?"
+    model = getattr(client, "model", "") or "*"
+    override = getattr(client, "_override_provider", None)
+    if override and override != provider:
+        provider = override
+    return f"{provider}:{model}"
+
+
 def _get_client(
     model_override: str | None = None, tier: TaskTier | None = None, task_name: str = ""
 ) -> LLMClient:
-    overrides = {"model": model_override} if model_override else None
-    client = LLMClient(resolve_llm_config(overrides))
-    # Store tier so chat() can use it
+    overrides: dict[str, Any] = {}
+    if model_override:
+        overrides["model"] = model_override
+    provider_hint = _current_provider_override()
+    if provider_hint:
+        overrides["provider"] = provider_hint
+        # A per-call provider override should not inherit a model intended for
+        # a different provider (e.g. LLM_ROUTE_MEDIUM pointing at openai:gpt-4o
+        # while the thread pinned a different provider).
+        overrides.pop("model", None)
+    client = LLMClient(resolve_llm_config(overrides or None))
     client._default_tier = tier  # type: ignore[attr-defined]
+    # Stash the provider override on the client so _client_chat can bypass
+    # tier routing (which would otherwise read LLM_ROUTE_* and ignore us).
+    client._override_provider = provider_hint  # type: ignore[attr-defined]
     return client
 
 
@@ -218,10 +266,37 @@ def _accumulated_tokens() -> tuple[int | None, int | None]:
     )
 
 
-def _client_chat(client: LLMClient, prompt: str) -> str:
-    """Call client.chat with tier if available and accumulate token usage."""
+def _client_chat(client: LLMClient, prompt: str | tuple[str, str]) -> str:
+    """Call client.chat with tier if available and accumulate token usage.
+
+    ``prompt`` may be a single string or a ``(system, user)`` tuple (from
+    algorithm-design prompts). Tuples are joined into one string because
+    the generic chat interface only takes a flat prompt; this loses the
+    system-vs-user boundary but keeps the single-call path simple.
+    """
+    if isinstance(prompt, tuple):
+        prompt = prompt[0] + "\n\n---\n\n" + prompt[1]
     tier = getattr(client, "_default_tier", None)
-    text = client.chat(prompt, tier=tier)
+    override_provider = getattr(client, "_override_provider", None)
+    # Only honour a real non-empty string — MagicMock in tests, etc. should
+    # fall through to the standard tier path.
+    if isinstance(override_provider, str) and override_provider:
+        # Thread-local provider pinning. Skip tier routing entirely — chat()'s
+        # tier branch calls resolve_route(tier) which reads LLM_ROUTE_* env
+        # vars and would silently route us back to the default provider.
+        from llm_router.client import get_provider, _clear_usage
+
+        _clear_usage()
+        fn = get_provider(override_provider)
+        text = fn(
+            prompt,
+            client.model or "",
+            api_key=client._config.api_key,  # type: ignore[attr-defined]
+            base_url=client._config.base_url,  # type: ignore[attr-defined]
+            temperature=0.0,
+        )
+    else:
+        text = client.chat(prompt, tier=tier)
     usage = get_last_usage()
     if usage is not None and (
         usage.prompt_tokens is not None or usage.completion_tokens is not None
@@ -256,6 +331,16 @@ def _parse_json(text: str, *, primitive: str = "", context: str = "") -> dict[st
         try:
             return json.loads(block.strip())
         except json.JSONDecodeError:
+            # Some models emit truncated / unterminated JSON when hitting
+            # max_tokens. Try a best-effort recovery by scanning backward
+            # for the last closing brace and trimming there.
+            stripped = block.strip()
+            last_brace = stripped.rfind("}")
+            if last_brace > 0:
+                try:
+                    return json.loads(stripped[: last_brace + 1])
+                except json.JSONDecodeError:
+                    pass
             continue
     logger.warning(
         "JSON parse failed for %s [%s]: %.200s",
@@ -300,7 +385,7 @@ def _get_paper_text(db: Database, paper_id: int) -> tuple[str, str]:
     conn = db.connect()
     try:
         row = conn.execute(
-            "SELECT id, title, compiled_summary FROM papers WHERE id = ?",
+            "SELECT id, title, abstract, compiled_summary FROM papers WHERE id = ?",
             (paper_id,),
         ).fetchone()
         if row is None:
@@ -364,6 +449,13 @@ def _get_paper_text(db: Database, paper_id: int) -> tuple[str, str]:
                 if content:
                     parts.append(f"[{note_type}]\n{content}")
 
+        if not parts:
+            abstract = (
+                (row["abstract"] or "").strip() if "abstract" in row.keys() else ""
+            )
+            if abstract:
+                parts.append(f"[abstract]\n{abstract}")
+
         return (title, "\n\n".join(parts).strip())
     finally:
         conn.close()
@@ -410,7 +502,7 @@ def _get_paperindex_context(db: Database, paper_id: int, task_type: str) -> str 
         import json as _json
 
         structure_data = _json.loads(Path(structure_path).read_text())
-        from paperindex.types import SectionNode, StructureResult
+        from research_harness.paperindex.types import SectionNode, StructureResult
 
         structure = StructureResult(
             doc_name=structure_data.get("doc_name", ""),
@@ -422,8 +514,8 @@ def _get_paperindex_context(db: Database, paper_id: int, task_type: str) -> str 
             raw=structure_data.get("raw", {}),
         )
 
-        from paperindex.retrieval.search import find_structure_matches
-        from paperindex.types import PaperRecord as PIRecord
+        from research_harness.paperindex.retrieval import find_structure_matches
+        from research_harness.paperindex.types import PaperRecord as PIRecord
 
         record = PIRecord(
             paper_id=f"paper_{paper_id}",
@@ -946,6 +1038,11 @@ def claim_extract(
     )
     parsed = _parse_json(raw, primitive="claim_extract")
 
+    from ..primitives.types import EvidenceSpan
+
+    valid_paper_ids = {int(p) for p in paper_ids}
+    default_paper_id = paper_ids[0] if paper_ids else None
+
     claims: list[Claim] = []
     for item in parsed.get("claims", []):
         if not isinstance(item, dict):
@@ -953,13 +1050,54 @@ def claim_extract(
         content = str(item.get("content", "")).strip()
         if not content:
             continue
+
+        # Per-claim paper attribution (ADR-001 Decision 3).
+        claim_paper_ids: list[int] = []
+        raw_pid = item.get("paper_id")
+        if raw_pid is not None:
+            try:
+                pid = int(raw_pid)
+                if pid in valid_paper_ids:
+                    claim_paper_ids = [pid]
+            except (TypeError, ValueError):
+                pass
+        if not claim_paper_ids and default_paper_id is not None:
+            # Fallback when LLM omits paper_id; use first input paper instead
+            # of the v1 behavior of assigning ALL input papers.
+            claim_paper_ids = [default_paper_id]
+
+        # Modality — default to "text" when the LLM doesn't specify.
+        raw_modality = str(item.get("modality", "")).strip().lower()
+        if raw_modality not in {"text", "figure", "table", "equation", "mixed"}:
+            raw_modality = "text"
+
+        # Evidence spans — best-effort parse; silently drop malformed entries.
+        spans: list[EvidenceSpan] = []
+        raw_spans = item.get("evidence_spans")
+        if isinstance(raw_spans, list):
+            for span in raw_spans[:3]:
+                if not isinstance(span, dict):
+                    continue
+                try:
+                    spans.append(
+                        EvidenceSpan(
+                            paper_id=int(span.get("paper_id", claim_paper_ids[0])),
+                            section=str(span.get("section", "")).strip(),
+                            snippet=str(span.get("snippet", "")).strip()[:500],
+                        )
+                    )
+                except (TypeError, ValueError):
+                    continue
+
         claims.append(
             Claim(
                 claim_id="",
                 content=content,
-                paper_ids=paper_ids,
+                paper_ids=claim_paper_ids,
                 evidence_type=str(item.get("evidence_type", "")).strip(),
                 confidence=_coerce_float(item.get("confidence"), 0.5),
+                modality=raw_modality,
+                evidence_spans=spans,
             )
         )
 
@@ -972,8 +1110,39 @@ def gap_detect(
     topic_id: int,
     focus: str = "",
     _model: str | None = None,
+    _dag_bypass: bool = False,
     **_: Any,
 ) -> GapDetectOutput:
+    # v2 Step 10 — opt-in DAG pilot. Gated by RESEARCH_HARNESS_GAP_DAG=1.
+    # _dag_bypass=True lets the DAG layer call this leaf function without
+    # triggering infinite recursion.
+    if not _dag_bypass:
+        from .dag_reasoning import is_dag_enabled
+
+        if is_dag_enabled():
+            from .dag_reasoning import gap_detect_dag
+
+            def _leaf(**kwargs: Any) -> GapDetectOutput:
+                return gap_detect(**kwargs, _dag_bypass=True)
+
+            dag_result = gap_detect_dag(
+                db=db, topic_id=topic_id, focus=focus, leaf_fn=_leaf
+            )
+            gaps_out: list[Gap] = [
+                Gap(
+                    gap_id="",
+                    description=g.description,
+                    gap_type=g.gap_type,
+                    severity=g.severity,
+                    related_paper_ids=g.related_paper_ids,
+                    confidence=g.confidence,
+                )
+                for g in dag_result.gaps
+            ]
+            return GapDetectOutput(
+                gaps=gaps_out, papers_analyzed=dag_result.papers_analyzed
+            )
+
     summary, related_paper_ids = _get_topic_literature_summary(
         db, topic_id, task_type="gap_detect"
     )
@@ -995,6 +1164,9 @@ def gap_detect(
                 gap_type=str(item.get("gap_type", "")).strip(),
                 severity=str(item.get("severity", "medium")).strip() or "medium",
                 related_paper_ids=related_paper_ids,
+                confidence=max(
+                    0.0, min(1.0, _coerce_float(item.get("confidence"), 0.0))
+                ),
             )
         )
 
@@ -1009,8 +1181,9 @@ def gap_detect(
                 conn.execute(
                     """
                     INSERT OR IGNORE INTO gaps
-                        (topic_id, description, gap_type, severity, related_paper_ids, focus)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                        (topic_id, description, gap_type, severity,
+                         related_paper_ids, focus, confidence)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         topic_id,
@@ -1019,6 +1192,7 @@ def gap_detect(
                         gap.severity,
                         related_ids_json,
                         focus,
+                        gap.confidence,
                     ),
                 )
             conn.commit()
@@ -1533,6 +1707,134 @@ def _default_citation_quota(section: str) -> int:
     return SECTION_CITATION_QUOTA.get(section.lower().strip(), 0)
 
 
+# v2 Step 3.3: sentence-level evidence map for section_draft sidecar.
+
+_CITATION_PATTERNS = (
+    # LaTeX \cite{foo,bar}
+    re.compile(r"\\cite[pt]?\{([^}]+)\}"),
+    # Numeric [1] or [1, 2, 3]
+    re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]"),
+    # Author-year style (Smith, 2024) or (Smith et al., 2024)
+    re.compile(r"\(([A-Z][A-Za-z]+(?: et al\.?)?(?:,\s*\d{4}))\)"),
+)
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Lightweight sentence splitter — good enough for citation auditing.
+
+    Splits on ., !, ? followed by whitespace. Keeps URLs and abbreviations
+    intact for the common cases we encounter in drafts.
+    """
+    # Preserve \cite{} tokens from splitting by ".": mask them first.
+    masked = re.sub(
+        r"\\cite[pt]?\{[^}]+\}", lambda m: m.group(0).replace(".", "§DOT§"), text
+    )
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-Z\\\[\(])", masked)
+    return [p.replace("§DOT§", ".").strip() for p in parts if p.strip()]
+
+
+def _sentence_citations(sentence: str, paper_ids: list[int]) -> list[int]:
+    """Return source paper IDs cited in this sentence.
+
+    Maps numeric [N] markers to paper_ids by index (1-based, matching how
+    _build_numbered_evidence renders them). Non-numeric markers are grouped
+    as a symbolic citation (we cannot resolve author-year without a bibmap).
+    """
+    cited_ids: list[int] = []
+    for pattern in _CITATION_PATTERNS:
+        for match in pattern.finditer(sentence):
+            token = match.group(1)
+            for part in re.split(r"[,;]\s*", token):
+                part = part.strip()
+                if not part:
+                    continue
+                # Numeric index -> map via paper_ids list
+                if part.isdigit():
+                    idx = int(part) - 1
+                    if 0 <= idx < len(paper_ids):
+                        cited_ids.append(paper_ids[idx])
+    # Deduplicate while preserving order
+    seen: set[int] = set()
+    result: list[int] = []
+    for pid in cited_ids:
+        if pid not in seen:
+            seen.add(pid)
+            result.append(pid)
+    return result
+
+
+def _has_any_citation(sentence: str) -> bool:
+    return any(p.search(sentence) for p in _CITATION_PATTERNS)
+
+
+def _classify_relation(sentence: str) -> str:
+    """Heuristic: quoted text -> quotation; hedged language -> inference;
+    otherwise -> compression (paraphrased summary).
+    """
+    if '"' in sentence or "“" in sentence or "”" in sentence:
+        return "quotation"
+    lowered = sentence.lower()
+    if any(
+        kw in lowered
+        for kw in (
+            " suggest ",
+            " imply ",
+            " indicate ",
+            " likely ",
+            " may ",
+            " could ",
+            " appears ",
+            " seems ",
+        )
+    ):
+        return "inference"
+    return "compression"
+
+
+def _extract_evidence_map(content: str, paper_ids: list[int]):
+    """Build EvidenceMapping entries, one per citation-marked sentence.
+
+    Uses a local import for the dataclass to avoid a module-level circular
+    import between primitives.types and execution.llm_primitives.
+    """
+    from ..primitives.types import EvidenceMapping
+
+    entries: list[EvidenceMapping] = []
+    sentences = _split_sentences(content)
+    for idx, sent in enumerate(sentences):
+        if not _has_any_citation(sent):
+            continue
+        sources = _sentence_citations(sent, paper_ids)
+        relation = _classify_relation(sent)
+        if sources:
+            for pid in sources:
+                entries.append(
+                    EvidenceMapping(
+                        sentence_index=idx,
+                        sentence_text=sent[:500],
+                        source_paper_id=pid,
+                        relation_type=relation,
+                        source_span="",
+                        confidence=0.7,
+                    )
+                )
+        else:
+            # Sentence has a citation we cannot resolve to a paper_id
+            # (e.g., author-year without bib map). Still emit an entry
+            # with source_paper_id=0 so coverage accounting fires.
+            entries.append(
+                EvidenceMapping(
+                    sentence_index=idx,
+                    sentence_text=sent[:500],
+                    source_paper_id=0,
+                    relation_type=relation,
+                    source_span="",
+                    confidence=0.3,
+                )
+            )
+    return entries
+
+
 def section_draft(
     *,
     db: Database,
@@ -1543,6 +1845,7 @@ def section_draft(
     writing_patterns: str = "",
     max_words: int = 0,
     citation_quota: int = -1,
+    extra_instructions: str = "",
     _model: str | None = None,
     **_: Any,
 ) -> SectionDraftOutput:
@@ -1601,6 +1904,15 @@ def section_draft(
         writing_patterns=writing_patterns,
         evidence_count=len(_paper_ids),
     )
+    # User-supplied "custom requirements" from the advisor-report composer get
+    # appended as an extra instruction block so they steer THIS draft without
+    # overwriting the section-specific prompt scaffolding.
+    if extra_instructions.strip():
+        prompt_text = (
+            prompt_text
+            + "\n\nAdditional author instructions (apply on top of everything above):\n"
+            + extra_instructions.strip()
+        )
     raw = _client_chat(client, prompt_text)
 
     parsed = _parse_json(raw, primitive="section_draft", context=section)
@@ -1621,6 +1933,10 @@ def section_draft(
         db, topic_id, section, content, audit_warnings, max_words
     )
 
+    # v2 Step 3.3: sidecar evidence map (every citation-marked sentence gets
+    # at least one EvidenceMapping entry).
+    evidence_map = _extract_evidence_map(content, _paper_ids)
+
     return SectionDraftOutput(
         draft=DraftText(
             section=section,
@@ -1628,8 +1944,12 @@ def section_draft(
             citations_used=_coerce_int_list(parsed.get("citations_used")),
             evidence_ids=evidence_ids or [],
             word_count=_coerce_int(parsed.get("word_count"), len(content.split())),
-        )
+        ),
+        evidence_map=evidence_map,
     )
+
+
+_DRAFT_WITH_REVIEW_LOOP_WARNED = False
 
 
 def draft_with_review_loop(
@@ -1646,7 +1966,9 @@ def draft_with_review_loop(
     _model: str | None = None,
     **_: Any,
 ) -> SectionDraftOutput:
-    """Draft a section with automatic review-revise loop.
+    """DEPRECATED. Use research_harness.execution.loops.run_section_loop instead.
+
+    Draft a section with automatic review-revise loop.
 
     This is the "self-correct" wire of the self-evolution loop:
     1. Draft via section_draft
@@ -1655,7 +1977,24 @@ def draft_with_review_loop(
     4. Return the best version
 
     Lessons are recorded automatically by section_draft (Wire 2).
+
+    ADR-001 Decision 1 (v2 Step 5): this function is superseded by
+    ``run_section_loop`` which folds run_all_checks in as a sub-check and is
+    wired through tool_dispatch when ``RESEARCH_HARNESS_SECTION_LOOP=1``.
     """
+    global _DRAFT_WITH_REVIEW_LOOP_WARNED
+    if not _DRAFT_WITH_REVIEW_LOOP_WARNED:
+        import warnings
+
+        warnings.warn(
+            "draft_with_review_loop() is deprecated; use "
+            "research_harness.execution.loops.run_section_loop instead "
+            "(ADR-001 Decision 1).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        _DRAFT_WITH_REVIEW_LOOP_WARNED = True
+
     from .writing_checks import run_all_checks
 
     # Initial draft
@@ -1724,6 +2063,12 @@ def draft_with_review_loop(
             max_revisions,
         )
 
+    # v2 Step 3.3: refresh evidence_map against the final revised content.
+    _ev_text, _pids = _build_numbered_evidence(
+        db, topic_id, max_papers=50, task_type="section_draft"
+    )
+    evidence_map = _extract_evidence_map(content, _pids)
+
     return SectionDraftOutput(
         draft=DraftText(
             section=section,
@@ -1731,7 +2076,8 @@ def draft_with_review_loop(
             citations_used=result.draft.citations_used,
             evidence_ids=evidence_ids or [],
             word_count=len(content.split()),
-        )
+        ),
+        evidence_map=evidence_map,
     )
 
 
@@ -1957,6 +2303,66 @@ def section_review(
     )
 
 
+def adversarial_section_review(
+    *,
+    db: Database,
+    section: str,
+    content: str,
+    target_words: int = 0,
+    _model: str | None = None,
+    **_: Any,
+) -> dict[str, Any]:
+    """v2 Step 5.2: adversarial second-pass review with skeptical persona.
+
+    Runs AFTER section_review() to catch weaknesses the cooperative reviewer
+    misses. Returns structured weaknesses with categories + evidence. The
+    caller (orchestrator) is responsible for merging these with the positive
+    review and auto-opening review_issues rows for severity=critical items.
+    """
+    # Use a different tier/model if available to avoid same-model bias.
+    client = _get_client(
+        _model,
+        tier=_PRIMITIVE_TIERS.get("section_review", "medium"),
+        task_name="adversarial_section_review",
+    )
+    raw = _client_chat(
+        client,
+        prompts.adversarial_section_review_prompt(section, content, target_words),
+    )
+    parsed = _parse_json(raw, primitive="adversarial_section_review", context=section)
+
+    weaknesses: list[dict[str, Any]] = []
+    for item in parsed.get("weaknesses", []) or []:
+        if not isinstance(item, dict):
+            continue
+        cat = str(item.get("category", "")).strip().lower()
+        desc = str(item.get("description", "")).strip()
+        evidence = str(item.get("evidence", "")).strip()
+        sev = str(item.get("severity", "minor")).strip().lower()
+        if sev not in {"critical", "major", "minor"}:
+            sev = "minor"
+        if not desc or not evidence:
+            # Enforce the prompt contract: no evidence -> drop.
+            continue
+        weaknesses.append(
+            {
+                "category": cat or "general",
+                "description": desc,
+                "evidence": evidence,
+                "severity": sev,
+            }
+        )
+
+    return {
+        "section": section,
+        "weaknesses": weaknesses,
+        "critical_count": sum(1 for w in weaknesses if w["severity"] == "critical"),
+        "major_count": sum(1 for w in weaknesses if w["severity"] == "major"),
+        "minor_count": sum(1 for w in weaknesses if w["severity"] == "minor"),
+        "model_used": client.model,
+    }
+
+
 def section_revise(
     *,
     db: Database,
@@ -2047,10 +2453,14 @@ def deep_read(
     """Two-pass deep reading: extraction (medium) then critical analysis (heavy)."""
     title, text = _get_paper_text(db, paper_id)
     if not text:
+        # Deliberate short-circuit: no full text available. Record a named
+        # local marker rather than the ambiguous literal "none" so the
+        # route-audit assertion can distinguish "not yet run" from
+        # "deliberately skipped because the paper has only an abstract".
         return DeepReadingOutput(
             paper_id=paper_id,
             note=DeepReadingNote(),
-            model_used="none",
+            model_used="local:abstract_only",
             confidence=0.0,
         )
 
@@ -2062,7 +2472,7 @@ def deep_read(
     )
     raw1 = _client_chat(client1, prompts.deep_read_pass1_prompt(title, text, focus))
     p1 = _parse_json(raw1, primitive="deep_read", context="pass1")
-    pass1_model = client1.model
+    pass1_model = _describe_client(client1)
 
     # --- Pass 2: critical analysis (heavy tier) ---
     topic_summary, _ = _get_topic_literature_summary(
@@ -2080,7 +2490,7 @@ def deep_read(
         prompts.deep_read_pass2_prompt(title, pass1_json, text, topic_summary, focus),
     )
     p2 = _parse_json(raw2, primitive="deep_read", context="pass2")
-    pass2_model = client2.model
+    pass2_model = _describe_client(client2)
 
     # Parse industrial feasibility
     feas_raw = p2.get("industrial_feasibility", {})
@@ -3391,10 +3801,19 @@ def direction_ranking(
     db: Database,
     topic_id: int,
     focus: str = "",
+    area_red_ocean: float | None = None,
+    task_red_ocean: float | None = None,
+    method_red_ocean: float | None = None,
+    opportunity_angle: str | None = None,
     _model: str | None = None,
     **_: Any,
 ) -> DirectionRankingOutput:
-    """Rank candidate research directions by novelty × feasibility × impact."""
+    """Rank candidate research directions by novelty × feasibility × impact.
+
+    When red-ocean scores + opportunity_angle are supplied (typically by
+    recommendations_generate), the prompt grows an extra section
+    instructing the LLM to weight saturation signals into its ranking.
+    """
     summary, related_paper_ids = _get_topic_literature_summary(
         db, topic_id, task_type="direction_ranking"
     )
@@ -3430,7 +3849,15 @@ def direction_ranking(
     client = _get_client(_model, tier=_PRIMITIVE_TIERS.get("direction_ranking"))
     raw = _client_chat(
         client,
-        prompts.direction_ranking_prompt(gaps_text, claims_text, summary),
+        prompts.direction_ranking_prompt(
+            gaps_text,
+            claims_text,
+            summary,
+            area_red_ocean=area_red_ocean,
+            task_red_ocean=task_red_ocean,
+            method_red_ocean=method_red_ocean,
+            opportunity_angle=opportunity_angle,
+        ),
     )
     parsed = _parse_json(raw, primitive="direction_ranking")
 
@@ -4076,7 +4503,9 @@ def algorithm_candidate_generate(
     brief_text = json.dumps(brief, indent=2, default=str)
     gap_text = json.dumps(gap_probe, indent=2, default=str) if gap_probe else ""
 
-    client = _get_client(_model, tier="heavy")
+    # Use medium tier (not heavy) — Opus frequently times out on large
+    # prompts when routed through proxies with upstream caps.
+    client = _get_client(_model, tier="medium")
     raw = _client_chat(
         client,
         prompts.algorithm_candidate_generate_prompt(

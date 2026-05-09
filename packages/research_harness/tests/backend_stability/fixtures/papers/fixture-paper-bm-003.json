@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-bm-003", "title": "GIFT-Eval: General-purpose Forecasting Benchmark", "abstract": "97 datasets, 23 frequencies. Reports MASE/sMAPE/CRPS for 24 models including foundation forecasters.", "authors": ["Q. Quintero"], "venue": "ICLR 2025", "year": 2025, "doi": "10.0000/fixture.bm.003", "topic_match": "fixture-benchmark"}

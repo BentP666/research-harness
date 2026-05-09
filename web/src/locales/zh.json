@@ -1,0 +1,751 @@
+{
+  "brand": {
+    "name": "Atlas",
+    "tagline": "你的 AI 研究伙伴",
+    "poweredBy": "Powered by Research Harness"
+  },
+  "nav": {
+    "dashboard": "今日概览",
+    "research": "研究中心",
+    "library": "文献资料",
+    "discover": "学术发现",
+    "reports": "研究汇报",
+    "agents": "模型配置",
+    "budgets": "用量统计",
+    "settings": "系统设置"
+  },
+  "sidebar": {
+    "todayGroup": "今日",
+    "researchGroup": "研究",
+    "knowledgeGroup": "知识",
+    "systemGroup": "系统"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "早上好",
+      "afternoon": "下午好",
+      "evening": "晚上好"
+    },
+    "activePrompt": "你有 {count} 个课题正在进行。",
+    "noProjectsPrompt": "还没有研究课题。先跑个 demo，或直接创建第一个。",
+    "cta": {
+      "tryDemo": "试个 demo 课题",
+      "createTopic": "开启新课题",
+      "importBibtex": "导入 BibTeX"
+    },
+    "recommendedTitle": "今天建议你推进",
+    "opportunitiesTitle": "为你发现的新研究方向",
+    "activeTopicsTitle": "进行中",
+    "activeTopicsSubtitle": "从你停下的地方继续。",
+    "stageProgress": "阶段 {current} / {total}",
+    "stageNotStarted": "未开始",
+    "papersCount": "{count} 篇论文",
+    "daysAgo": "{days} 天前",
+    "today": "今天",
+    "yesterday": "昨天",
+    "trendsTitle": "研究趋势",
+    "trendsSubtitle": "什么在升温、什么在冷却、什么还是蓝海 — 点任意一行看依据。",
+    "refresh": "刷新",
+    "refreshing": "刷新中…",
+    "generating": "生成中…",
+    "generateTrends": "生成趋势",
+    "noTrends": "还没有趋势数据。根据当前文献池生成聚类（或在文献库为空时使用种子数据）。",
+    "hot": "升温中",
+    "redOcean": "红海",
+    "score": "得分",
+    "seedPapers": "篇种子论文",
+    "topVenues": "主要会议 / 期刊",
+    "statPapers": "论文",
+    "statDomains": "领域",
+    "statTopics": "课题"
+  },
+  "welcome": {
+    "title": "欢迎来到 Atlas",
+    "subtitle": "你的 AI 研究伙伴，从搜集文献到写完草稿全程同行。",
+    "pillars": {
+      "gather": {
+        "title": "找到真正重要的文献",
+        "body": "不止看引用数 — 找到会改变你思路的那几篇论文。"
+      },
+      "analyze": {
+        "title": "看见研究空白",
+        "body": "交叉比对数百个论断，找出矛盾，圈出值得你做的开放问题。"
+      },
+      "write": {
+        "title": "基于证据撰写",
+        "body": "每句话都能溯源。几分钟生成可以直接发给导师看的干净草稿。"
+      }
+    },
+    "cta": {
+      "startDemo": "跑一个 demo 课题",
+      "startBlank": "从头开始",
+      "configureModel": "我有 API Key，去配置"
+    }
+  },
+  "modelStatus": {
+    "demoMode": "演示模式",
+    "demoModeHint": "当前使用本地演示引擎。配置一个大模型后即可跑真实研究。",
+    "connected": "已连接 {count} 个模型",
+    "none": "未连接任何模型",
+    "noneHint": "至少连接一个模型，才能执行付费操作。",
+    "testing": "测试中…",
+    "healthy": "健康",
+    "failing": "异常",
+    "addModel": "连接模型",
+    "manage": "管理模型",
+    "personasSection": "你的模型",
+    "providersSection": "可用提供商",
+    "tiersSection": "分层路由"
+  },
+  "tokens": {
+    "todayBudget": "今日：${spent} / ${cap}",
+    "budgetWarnNearCap": "已用今日预算 {percent}%，要切换到经济模式吗？",
+    "estimate": "约 {seconds} 秒 · 约 ${cost}",
+    "spentToast": "完成 — 花费 ${cost}",
+    "savedToast": "命中缓存，复用了之前的结果（节省 ~${cost})",
+    "thisMonth": "本月 token 消耗",
+    "promptCompletionSplit": "输入 {prompt} · 输出 {completion}",
+    "byModel": "按模型",
+    "byStage": "按阶段",
+    "fullBreakdown": "完整明细"
+  },
+  "budgets": {
+    "title": "预算",
+    "subtitle": "token 去了哪里 — 按模型与研究阶段拆解。",
+    "byModelTitle": "各模型消耗",
+    "byModelSubtitle": "本月各模型的 token 占比。",
+    "byStageTitle": "各研究阶段消耗",
+    "byStageSubtitle": "6 个流水线阶段分别消耗了多少 token。",
+    "recentTitle": "最近活动",
+    "trendTitle": "每日趋势",
+    "trendSubtitle": "本月每天的 token 使用量。",
+    "totalTokens": "总 token",
+    "promptTokens": "输入",
+    "completionTokens": "输出",
+    "shareLabel": "占比",
+    "tokens": "token",
+    "noUsage": "本月暂无使用记录。",
+    "calls": "次调用",
+    "filters": {
+      "allModels": "所有模型",
+      "allStages": "所有阶段",
+      "noMatches": "当前筛选下无活动记录。"
+    }
+  },
+  "empty": {
+    "topics": {
+      "title": "还没有研究课题",
+      "body": "一个课题对应一个研究项目 — 它的文献池、论断、草稿和决策都在一处。",
+      "cta": "创建第一个课题"
+    },
+    "papers": {
+      "title": "这个课题还没有论文",
+      "body": "用几个关键词搜索，或直接粘贴你已经知道的 arXiv ID。",
+      "cta": "搜索论文",
+      "secondaryCta": "粘贴 arXiv ID"
+    },
+    "gaps": {
+      "title": "还没有发现研究空白",
+      "body": "累积 15 篇以上论文后，我可以帮你扫描真正的开放问题。",
+      "cta": "扫描研究空白",
+      "estimate": "约 45 秒 · 约 $0.03"
+    },
+    "contradictions": {
+      "title": "暂无矛盾论断",
+      "body": "要么你的文献高度一致（罕见），要么还没跑过检测。通常我会找到 2-5 个值得深挖的矛盾。",
+      "cta": "交叉比对论断",
+      "estimate": "约 30 秒 · 约 $0.02"
+    },
+    "drafts": {
+      "title": "还没有草稿",
+      "body": "我可以根据你的论文生成任何章节。从「引言」开始？",
+      "cta": "生成引言草稿",
+      "secondaryCta": "先生成大纲"
+    },
+    "reports": {
+      "title": "还没有生成过汇报",
+      "body": "汇报是给导师看的 PDF — 你挑选想包含的部分。",
+      "cta": "生成第一份汇报"
+    }
+  },
+  "reports": {
+    "title": "导师汇报",
+    "subtitle": "按导师想看的内容生成干净的 PDF。",
+    "searchPlaceholder": "按 topic 或模板搜索",
+    "onlyShared": "仅显示已分享",
+    "noMatches": "当前筛选下无汇报。",
+    "customRequirements": "自定义要求（可选）",
+    "customPlaceholder": "例如：重点对比 GPT-4 基线；语气简洁、不含混；受众：我的导师。",
+    "customHint": "会作为额外作者指令传入每个章节的生成，重新起草而不是复用旧草稿。",
+    "someBlocked": "部分模板需要更靠后的阶段——生成时会被跳过",
+    "pickAtLeastOne": "至少勾选一个模板。",
+    "templates": {
+      "abstract_only": {
+        "name": "摘要快审",
+        "description": "只给摘要。导师 5 分钟就能过完。",
+        "sections": [
+          "abstract"
+        ],
+        "estimate": "约 2 分钟 · 约 $0.05"
+      },
+      "abstract_intro": {
+        "name": "方向 Pitch",
+        "description": "摘要 + 引言。让导师先判断「方向行不行」。",
+        "sections": [
+          "abstract",
+          "introduction"
+        ],
+        "estimate": "约 4 分钟 · 约 $0.10"
+      },
+      "deep_pitch": {
+        "name": "深度 Pitch",
+        "description": "摘要 + 引言 + 相关工作 + 方法大纲。",
+        "sections": [
+          "abstract",
+          "introduction",
+          "related_work",
+          "method"
+        ],
+        "estimate": "约 8 分钟 · 约 $0.18"
+      },
+      "full_review": {
+        "name": "完整评审",
+        "description": "全文草稿 + 自评 + 风险清单。",
+        "sections": [
+          "abstract",
+          "introduction",
+          "related_work",
+          "method",
+          "experiments",
+          "results",
+          "discussion",
+          "conclusion"
+        ],
+        "estimate": "约 18 分钟 · 约 $0.45"
+      }
+    },
+    "actions": {
+      "generate": "生成汇报",
+      "regenerate": "重新生成",
+      "download": "下载 PDF",
+      "share": "生成只读分享链接",
+      "markdown": "复制为 Markdown",
+      "googleDocs": "在 Google Docs 打开"
+    },
+    "versionLabel": "v{major}.{minor}",
+    "confidenceNote": "AI 生成的段落会标注置信度，方便导师一眼看出哪些稳、哪些需要再斟酌。",
+    "emptyLibrary": "你生成的汇报会出现在这里。",
+    "selected": "已选",
+    "needsStage": "需要 {stage}",
+    "blockedHint": "这个模板需要推进到「{stage}」阶段。当前阶段：{current}。",
+    "unstarted": "未开始",
+    "goToTopic": "去推进阶段"
+  },
+  "celebration": {
+    "firstOutline": "🎉 你的第一份大纲已就绪",
+    "firstDraft": "✨ 第一个章节已生成 — {wordCount} 字，引用 {citations} 篇",
+    "firstVerification": "🔎 交叉比对完成 — 发现 {contradictions} 个矛盾可审",
+    "firstGap": "💡 发现 {count} 个值得思考的研究空白"
+  },
+  "nextStage": {
+    "currentLabel": "当前阶段",
+    "heroTitle": "下一步：{stage}",
+    "allDoneTitle": "已经到了最后阶段",
+    "allDoneBody": "整个流程已完成。可以复查产出、撰写论文、或开启新课题。",
+    "checkReadiness": "检查就绪度",
+    "advanceTo": "推进到 {stage}",
+    "complete": "标记完成",
+    "advanced": "阶段已推进",
+    "readinessResult": "就绪度：{status}"
+  },
+  "common": {
+    "loading": "加载中…",
+    "cancel": "取消",
+    "confirm": "确认",
+    "continue": "继续",
+    "back": "返回",
+    "save": "保存",
+    "delete": "删除",
+    "close": "关闭",
+    "viewAll": "查看全部",
+    "whyThis": "为什么？",
+    "seeEvidence": "查看证据",
+    "notEnoughData": "数据还不够",
+    "previous": "上一页",
+    "next": "下一页",
+    "search": "搜索",
+    "all": "全部",
+    "unassigned": "未分类",
+    "generate": "生成",
+    "regenerate": "重新生成",
+    "approve": "批准",
+    "unlock": "解锁",
+    "pause": "暂停",
+    "activate": "启用",
+    "export": "导出",
+    "import": "导入",
+    "refresh": "刷新"
+  },
+  "research": {
+    "title": "研究",
+    "subtitle": "你的研究领域（domain）以及每个领域下的课题（topic）。",
+    "newDomain": "新建 domain",
+    "newTopic": "新建 topic",
+    "searchPlaceholder": "搜索课题名称、描述或领域...",
+    "emptyTitle": "还没有研究课题",
+    "emptyBody": "创建一个 topic 开始做文献检索、claim 抽取和草稿撰写。",
+    "assignToDomain": "归入 domain",
+    "reconcileCta": "分类整理",
+    "editHint": "双击重命名",
+    "renaming": "重命名中..."
+  },
+  "reconcile": {
+    "title": "整理未分类 topic",
+    "subtitle": "基于 topic 名称和描述，与已有 domain 进行词汇匹配给出推荐。不会自动生效 — 每行点「应用」，或检查完批量「应用全部」。",
+    "applyAll": "应用全部 {count} 个",
+    "apply": "应用",
+    "applied": "已归入：{name}",
+    "undo": "撤销",
+    "undone": "已恢复为未分类",
+    "pickDomain": "选择 domain...",
+    "confidence": "匹配度 · {pct}%",
+    "recentAssignments": "最近操作",
+    "allCleanTitle": "所有 topic 都已归类",
+    "allCleanBody": "每个 topic 都有 domain — 无需整理。",
+    "noDescription": "暂无描述。",
+    "createNew": "+ 新建 domain...",
+    "createAndAssign": "创建并归入",
+    "lowConfidence": "匹配度较低 — 建议创建新 domain",
+    "suggestedName": "推荐名称"
+  },
+  "library": {
+    "title": "文献资料",
+    "searchPlaceholder": "搜索标题、作者、会议 / 期刊...",
+    "colTitle": "标题",
+    "colAuthors": "作者",
+    "colYear": "年份",
+    "colVenue": "venue",
+    "colCitations": "引用量",
+    "colStatus": "状态",
+    "colRelevance": "相关度",
+    "colDeepRead": "精读",
+    "deepReadYes": "已精读",
+    "deepReadNo": "未精读",
+    "markDeepRead": "标为精读",
+    "unmarkDeepRead": "取消精读",
+    "emptyTitle": "文献库还是空的",
+    "emptyBody": "从 arXiv 抓一篇或者导入 BibTeX 开始。",
+    "noMatch": "没有匹配这些筛选条件的论文",
+    "ctaStartTopic": "开启一个 topic",
+    "ctaExploreTopics": "查看已有的 topic",
+    "relevanceHigh": "高",
+    "relevanceMedium": "中",
+    "relevanceLow": "低",
+    "allTopics": "全部 topic",
+    "showing": "第 {start}-{end} 条，共 {total} 条",
+    "enrichMetadata": "补全元数据"
+  },
+  "discover": {
+    "intelligence": "研究情报",
+    "heroTitle": "学术领域在关注什么？",
+    "heroBody": "热门聚类、值得投入的开放问题、以及诚实的方向建议 — 基于你的文献池和更广泛的文献综合判断。",
+    "emptyTitle": "暂无趋势数据",
+    "emptyBody": "需要有一定历史的文献池才能分析领域动态。先创建一个课题、入库论文，再回来看。",
+    "startTopic": "创建课题",
+    "refreshTrends": "刷新趋势",
+    "hot": "正在升温",
+    "hotSubtitle": "文献年增速最大的聚类",
+    "volumeTitle": "近 5 年发表量",
+    "peak": "峰值 · {count} 篇",
+    "openProblems": "值得投入的开放问题",
+    "openProblemsSubtitle": "高分聚类但尚未被大量涌入",
+    "directions": "值得探索的方向",
+    "directionsPersonalized": "适合你研究方向的探索建议",
+    "directionsSubtitle": "三个值得考虑的方向 — 包含上行空间和诚实的风险评估",
+    "coolingOff": "正在降温 — 请谨慎推进",
+    "coolingDetail": "年增速下降 {pct}% — 领域注意力可能在转移。不一定是坏事（成熟方法会稳定），但需要考量。",
+    "whyConsider": "为什么值得考虑",
+    "honestWarning": "诚实提醒：年增速 +{pct}% 意味着竞争激烈。想脱颖而出比数字看起来要难。",
+    "turnIntoTopic": "转为课题",
+    "yoy": "同比",
+    "showMore": "展开更多",
+    "showLess": "收起",
+    "whyMatters": "发表潜力高、竞争尚可控 — 适合差异化切入。",
+    "pubScore": "发表潜力",
+    "papers": "论文",
+    "recScore": "得分 {score}/10",
+    "recVenues": "发表于 {venues}",
+    "recSummaryFallback": "发表潜力 {score}/10，年增速 {velocity}% — 会议覆盖强且有差异化空间。"
+  },
+  "agents": {
+    "title": "模型",
+    "subtitle": "管理执行工作的 LLM — 生成者、裁判、挑战者。",
+    "register": "注册模型",
+    "pause": "暂停",
+    "activate": "启用",
+    "delete": "删除",
+    "pairings": "模型搭配",
+    "providersTitle": "已检测的提供商",
+    "providersSubtitle": "从环境变量中检测到的 LLM 提供商。",
+    "providersEmpty": "未检测到提供商。请设置 API 密钥环境变量（如 ANTHROPIC_API_KEY）以启用提供商。",
+    "tierRoutingTitle": "分层路由",
+    "tierRoutingSubtitle": "任务如何按复杂度分层路由到不同模型。",
+    "tierLight": "轻量",
+    "tierMedium": "中等",
+    "tierHeavy": "重度",
+    "tierLightDesc": "快速低成本任务 — 摘要、格式化、分类",
+    "tierMediumDesc": "均衡任务 — 草稿、分析、论断抽取",
+    "tierHeavyDesc": "复杂任务 — 深度推理、对抗审阅、空白检测",
+    "sourceEnv": "环境变量",
+    "sourceConfig": "配置文件",
+    "sourceDefault": "默认",
+    "family": "族系",
+    "model": "模型",
+    "provider": "提供商",
+    "registeredTitle": "已注册的智能体",
+    "registeredSubtitle": "用户注册的 LLM 智能体，用于生成、评审和挑战。",
+    "noAgents": "尚未注册智能体。",
+    "noAgentsHint": "完成引导流程或手动注册。",
+    "configLoaded": "已加载配置",
+    "configNotLoaded": "使用默认值"
+  },
+  "settings": {
+    "title": "系统设置",
+    "subtitle": "偏好、评分规则与连接的账号。",
+    "scoring": {
+      "title": "评分规则",
+      "description": "设置各研究阶段的评分严格度，以及系统是否可以回退不达标的产出。",
+      "pageDescription": "每个课题经过六个阶段 — 初始化、构建、分析、提案、实验、撰写 — 每个阶段由 LLM 评审打分。下方的数字是各阶段的通过线。你可以调整严格度，以及系统是否允许回退未达标的产出。",
+      "failGateTitle": "未通过关卡时的行为",
+      "failGateDescription": "影子模式仅记录评审结果 — 你的工作始终放行。实时模式则在产出未达标时实际回退该阶段。建议在真实课题上观察至少两周评分后再开启实时模式。",
+      "shadowRecommended": "影子模式（推荐）",
+      "live": "实时模式",
+      "currently": "当前状态：",
+      "liveEnforcing": "实时模式（强制执行）",
+      "shadowLogging": "影子模式（仅记录）",
+      "liveWarning": "实时模式已开启。低于通过线的产出将在下次阶段运行时自动回退。请先在真实产出上调好通过线再依赖此功能。",
+      "strictnessTitle": "严格度分级",
+      "strictnessDescription": "在课题详情页选择每个课题的严格度等级。不同等级对应不同的发表水准。",
+      "tierDescEconomy": "最宽松。系统放行大多数产出；只标记最差的部分。",
+      "tierDescStandard": "均衡。各阶段按 B 类论文的一般水准打分。推荐使用。",
+      "tierDescPremium": "严格。两位评审同时打分；通过线以 A 类会议为目标。",
+      "advancedTitle": "进阶 — 各阶段通过线",
+      "advancedDescription": "实际的数值阈值。如需重新校准，可基于内置的锚定论文重新计算。",
+      "recomputing": "重新计算中…",
+      "recomputeAll": "重新计算所有通过线",
+      "colStage": "阶段",
+      "colTier": "等级",
+      "colPassMark": "通过线",
+      "colReferencePapers": "参考论文数",
+      "colLastRecomputed": "上次计算时间",
+      "never": "从未"
+    },
+    "trends": {
+      "title": "趋势管线",
+      "description": "重新生成驱动首页轮播和趋势浏览器的研究趋势聚类。"
+    },
+    "agentsKeys": {
+      "title": "模型与 API 密钥",
+      "description": "增删和配对系统用于生成、评审和对抗审阅的 LLM 模型。"
+    },
+    "providers": {
+      "title": "模型提供商配置",
+      "description": "管理 LLM 提供商、自动检测 API 密钥、配置分层路由。",
+      "detectedTitle": "已检测的提供商",
+      "detectedSubtitle": "从环境变量中自动检测到的提供商。",
+      "noProviders": "未检测到提供商。设置 API 密钥环境变量（如 DEEPSEEK_API_KEY）以启用提供商。",
+      "tierRoutingTitle": "分层路由",
+      "tierRoutingSubtitle": "任务如何按复杂度分层路由到不同模型。",
+      "autoSuggest": "自动推荐",
+      "testConnection": "测试",
+      "testing": "测试中…",
+      "testOk": "已连接",
+      "testFail": "连接失败",
+      "hasKey": "密钥已设",
+      "noKey": "无密钥",
+      "lightTier": "轻量",
+      "mediumTier": "中等",
+      "heavyTier": "重度"
+    }
+  },
+  "topicPage": {
+    "backLink": "所有 topic",
+    "rollback": "回滚",
+    "reviewIssues": "审核问题",
+    "noIssues": "暂无审核问题。",
+    "activity": "活动",
+    "noEvents": "暂无事件记录。",
+    "autonomyLabels": {
+      "L0": "手动推进",
+      "L1": "阶段推进",
+      "L2": "智能检查点",
+      "L3": "全自动"
+    },
+    "qualityTiers": {
+      "economy": "经济",
+      "standard": "标准",
+      "premium": "高级"
+    }
+  },
+  "panels": {
+    "paperSearch": "文献检索与入库",
+    "searchQuery": "搜索关键词",
+    "arxivOrDoi": "arXiv ID 或 DOI",
+    "selectAll": "全选",
+    "ingestSelected": "入库所选",
+    "noPapersFound": "没有找到论文",
+    "analysis": "文献分析",
+    "tabGaps": "研究空白",
+    "tabDirections": "方向",
+    "tabClaims": "Claim",
+    "detectGaps": "检测空白",
+    "rankDirections": "方向排序",
+    "extractClaims": "抽取 claim",
+    "paperOutline": "论文大纲",
+    "sections": "章节",
+    "abstract": "摘要",
+    "introduction": "引言",
+    "relatedWork": "相关工作",
+    "method": "方法",
+    "experiments": "实验",
+    "results": "结果",
+    "discussion": "讨论",
+    "conclusion": "结论",
+    "evidenceMap": "证据地图",
+    "draft": "起草",
+    "redraft": "重写",
+    "adversarial": "对抗审阅",
+    "adversarialWeaknesses": "对抗审阅弱点"
+  },
+  "orchestrator": {
+    "title": "流水线进度",
+    "completionPct": "已完成 {pct}%",
+    "checklistTitle": "阶段清单",
+    "noArtifactsYet": "尚未开始",
+    "artifactCount": "{count} 个产出",
+    "stages": {
+      "init": "初始化",
+      "build": "构建",
+      "analyze": "分析",
+      "propose": "提议",
+      "experiment": "实验",
+      "write": "撰写"
+    }
+  },
+  "experiments": {
+    "title": "实验轮次",
+    "loading": "加载实验中…",
+    "loadingRuns": "加载轮次中…",
+    "noRuns": "尚未产生任何轮次。",
+    "empty": "还没有实验 — 点击「新建」启动一次自主迭代。",
+    "new": "新建",
+    "newTitle": "新建实验循环",
+    "iterationShort": "第",
+    "col": {
+      "iter": "轮次",
+      "metric": "指标",
+      "time": "耗时",
+      "cost": "成本",
+      "status": "状态"
+    },
+    "form": {
+      "name": "名称",
+      "task": "任务描述",
+      "metric": "主指标",
+      "direction": "方向",
+      "maxIter": "最大迭代",
+      "patience": "早停耐心",
+      "budget": "预算 $（0=无限）",
+      "fixtures": "固定文件（JSON {文件名:内容}）",
+      "submit": "启动循环"
+    }
+  },
+  "roadmap": {
+    "graphTitle": "流水线",
+    "graphHint": "点击任一阶段节点，查看这个阶段跑过的每个原语、决策与不变式校验。",
+    "legend": {
+      "completed": "已完成",
+      "current": "进行中",
+      "idle": "已暂停",
+      "failed": "已阻塞",
+      "rollback": "回滚",
+      "loopback": "回环"
+    }
+  },
+  "stage": {
+    "drawer": {
+      "description": "逐步查看这个阶段所有原语执行、决策与不变式校验。",
+      "trace": "执行流",
+      "artifacts": "产出",
+      "emptyTrace": "这个阶段还没有活动记录。",
+      "emptyArtifacts": "这个阶段还没有产出记录。",
+      "summary": {
+        "planned": "计划",
+        "ran": "执行",
+        "skipped": "跳过",
+        "failed": "失败",
+        "invariant": "不变式违反"
+      },
+      "gate": {
+        "loopback": "已回滚"
+      },
+      "rollback": {
+        "prompt": "回滚原因",
+        "placeholder": "为什么要回滚？"
+      }
+    }
+  },
+  "costCard": {
+    "title": "成本与消耗",
+    "tokens": "Token",
+    "calls": "调用次数",
+    "spendByPrimitive": "按 primitive 汇总的 token 消耗 (top 10)",
+    "noActivity": "这个 topic 还没有记录过活动。"
+  },
+  "onboarding": {
+    "title": "欢迎使用 Research Harness",
+    "subtitle": "配置你的研究环境。",
+    "persona": {
+      "stepTitle": "你是谁？",
+      "stepDesc": "选择最符合你起点的角色。",
+      "p1": {
+        "title": "AI 研究新手",
+        "scenario": "带我了解 AI 领域，帮我选方向"
+      },
+      "p2": {
+        "title": "已有研究方向",
+        "scenario": "帮我找一个值得做的课题"
+      },
+      "p3": {
+        "title": "已有课题",
+        "scenario": "帮我梳理领域 — 数据集、SOTA、投稿方向"
+      },
+      "p4": {
+        "title": "课题 + 种子论文",
+        "scenario": "用我已有的工作快速推进"
+      }
+    },
+    "constraints": {
+      "stepTitle": "研究约束",
+      "stepDesc": "定义投稿目标、算力和时间约束。",
+      "venueLabel": "投稿约束",
+      "venue": {
+        "locked": "锁定",
+        "preferred": "偏好",
+        "open": "开放"
+      },
+      "venuePlaceholder": "如 EMNLP、NeurIPS、ICML",
+      "computeLabel": "算力预算",
+      "compute": {
+        "cpu": "仅 CPU",
+        "cpuDesc": "无 GPU",
+        "singleGpu": "单卡",
+        "singleGpuDesc": "1× A100/V100",
+        "multiGpu": "多卡",
+        "multiGpuDesc": "2-8× GPU",
+        "cluster": "集群",
+        "clusterDesc": "8+ 节点"
+      },
+      "deadlineLabel": "截止日期",
+      "days": "天"
+    }
+  },
+  "fieldBrief": {
+    "title": "领域概览",
+    "loading": "加载领域概览...",
+    "error": "加载领域概览失败",
+    "retry": "重试",
+    "empty": "尚无领域概览",
+    "generate": "生成领域概览",
+    "building": "生成中...",
+    "stale": "已过期",
+    "refresh": "刷新",
+    "datasets": "数据集",
+    "baselines": "基线",
+    "narratives": "叙事模式",
+    "challenges": "挑战",
+    "compute": "算力",
+    "venues": "投稿方向"
+  },
+  "goalPool": {
+    "title": "目标池",
+    "loading": "加载目标...",
+    "error": "加载目标失败",
+    "retry": "重试",
+    "empty": "尚无目标",
+    "emptyHint": "请先生成领域概览",
+    "build": "构建目标池",
+    "rebuild": "重建",
+    "building": "构建中...",
+    "dataset": "数据集",
+    "baseline": "基线",
+    "delta": "目标增量",
+    "venue": "投稿方向",
+    "score": "评分",
+    "actions": "操作",
+    "skip": "跳过",
+    "moveUp": "上移",
+    "moveDown": "下移"
+  },
+  "atoms": {
+    "title": "方法原子",
+    "loading": "加载原子...",
+    "error": "加载原子失败",
+    "empty": "尚无方法原子。请先从论文中提取。"
+  },
+  "matrix": {
+    "title": "实验矩阵",
+    "loading": "加载矩阵...",
+    "error": "加载矩阵失败",
+    "empty": "尚无实验矩阵",
+    "build": "构建矩阵",
+    "rebuild": "重建",
+    "building": "构建中...",
+    "runProxy": "运行代理实验",
+    "running": "运行中..."
+  },
+  "venue": {
+    "loading": "加载投稿决策...",
+    "error": "加载投稿决策失败",
+    "noDecision": "尚未决定投稿方向",
+    "decide": "决定投稿方向",
+    "deciding": "决策中...",
+    "risks": "个风险"
+  },
+  "styleKit": {
+    "title": "投稿风格包",
+    "loading": "加载风格包...",
+    "error": "加载风格包失败",
+    "empty": "尚无风格包",
+    "build": "构建风格包",
+    "building": "构建中...",
+    "introLength": "引言长度",
+    "citationDensity": "引用密度/百词",
+    "hedgingTerms": "缓冲词",
+    "sourcePapers": "来源论文",
+    "sourceVenues": "来源会议"
+  },
+  "retrieval": {
+    "trigger": "需要补充论文？",
+    "modalTitle": "触发论文检索",
+    "reasonLabel": "检索原因",
+    "queryLabel": "检索关键词",
+    "queryPlaceholder": "例：time series forecasting reasoning benchmark",
+    "search": "检索",
+    "searching": "检索中...",
+    "cancel": "取消",
+    "results": "找到 {count} 篇论文",
+    "noResults": "未找到论文，换个关键词试试",
+    "error": "检索失败",
+    "ingest": "入库选中",
+    "ingesting": "入库中...",
+    "logged": "已记录到检索时间线",
+    "reasons": {
+      "missing_evidence": "证据缺失",
+      "weak_baseline": "基线薄弱",
+      "new_atom_idea": "新方法思路",
+      "venue_pattern": "目标会议风格",
+      "user_request": "主动检索"
+    }
+  }
+}

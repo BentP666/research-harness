@@ -67,6 +67,49 @@ BANNED_MODULES: frozenset[str] = frozenset(
     }
 )
 
+# Strict mode bans these; agent mode needs network for LLM API calls.
+AGENT_MODE_BANNED: frozenset[str] = frozenset(
+    {
+        "subprocess",
+        "ctypes",
+        "signal",
+        "ftplib",
+        "smtplib",
+    }
+)
+
+# Packages/stdlib agent-mode experiments may legitimately import.
+AGENT_MODE_EXTRA_ALLOWED: frozenset[str] = frozenset(
+    {
+        "http",
+        "urllib",
+        "urllib3",
+        "httpx",
+        "requests",
+        "aiohttp",
+        "websocket",
+        "websockets",
+        "openai",
+        "anthropic",
+        "google",
+        "genai",
+        "cohere",
+        "mistralai",
+        "groq",
+        "together",
+        "tiktoken",
+        "langchain",
+        "langchain_core",
+        "langchain_openai",
+        "langchain_anthropic",
+        "llama_index",
+        "dspy",
+        "litellm",
+        "instructor",
+        "pydantic",
+    }
+)
+
 SAFE_STDLIB: frozenset[str] = frozenset(
     {
         "os",
@@ -185,8 +228,9 @@ class CodeValidation:
 class _SecurityVisitor(ast.NodeVisitor):
     """AST visitor that detects dangerous calls and imports."""
 
-    def __init__(self) -> None:
+    def __init__(self, banned: frozenset[str] = BANNED_MODULES) -> None:
         self.issues: list[ValidationIssue] = []
+        self._banned = banned
 
     def visit_Call(self, node: ast.Call) -> None:
         func_name = self._get_call_name(node)
@@ -213,7 +257,7 @@ class _SecurityVisitor(ast.NodeVisitor):
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
             mod = alias.name.split(".")[0]
-            if mod in BANNED_MODULES:
+            if mod in self._banned:
                 self.issues.append(
                     ValidationIssue(
                         severity="error",
@@ -227,7 +271,7 @@ class _SecurityVisitor(ast.NodeVisitor):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         if node.module:
             mod = node.module.split(".")[0]
-            if mod in BANNED_MODULES:
+            if mod in self._banned:
                 self.issues.append(
                     ValidationIssue(
                         severity="error",
@@ -264,18 +308,23 @@ def validate_syntax(code: str) -> list[ValidationIssue]:
         ]
 
 
-def validate_security(code: str) -> list[ValidationIssue]:
-    """Scan AST for dangerous calls and banned modules."""
+def validate_security(code: str, mode: str = "strict") -> list[ValidationIssue]:
+    """Scan AST for dangerous calls and banned modules.
+
+    mode="strict" uses BANNED_MODULES; mode="agent" uses AGENT_MODE_BANNED
+    to permit HTTP and LLM-client libraries.
+    """
     try:
         tree = ast.parse(code)
     except SyntaxError:
         return []  # syntax errors caught separately
-    visitor = _SecurityVisitor()
+    banned = AGENT_MODE_BANNED if mode == "agent" else BANNED_MODULES
+    visitor = _SecurityVisitor(banned=banned)
     visitor.visit(tree)
     return visitor.issues
 
 
-def validate_imports(code: str) -> list[ValidationIssue]:
+def validate_imports(code: str, mode: str = "strict") -> list[ValidationIssue]:
     """Check that all imports are from known-safe packages."""
     try:
         tree = ast.parse(code)
@@ -283,11 +332,14 @@ def validate_imports(code: str) -> list[ValidationIssue]:
         return []
     issues: list[ValidationIssue] = []
     known = SAFE_STDLIB | COMMON_SCIENCE
+    if mode == "agent":
+        known = known | AGENT_MODE_EXTRA_ALLOWED
+    banned = AGENT_MODE_BANNED if mode == "agent" else BANNED_MODULES
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 mod = alias.name.split(".")[0]
-                if mod not in known and mod not in BANNED_MODULES:
+                if mod not in known and mod not in banned:
                     issues.append(
                         ValidationIssue(
                             severity="warning",
@@ -298,7 +350,7 @@ def validate_imports(code: str) -> list[ValidationIssue]:
                     )
         elif isinstance(node, ast.ImportFrom) and node.module:
             mod = node.module.split(".")[0]
-            if mod not in known and mod not in BANNED_MODULES:
+            if mod not in known and mod not in banned:
                 issues.append(
                     ValidationIssue(
                         severity="warning",
@@ -310,13 +362,17 @@ def validate_imports(code: str) -> list[ValidationIssue]:
     return issues
 
 
-def validate_code(code: str) -> CodeValidation:
-    """Run all validation checks and return a combined result."""
+def validate_code(code: str, mode: str = "strict") -> CodeValidation:
+    """Run all validation checks and return a combined result.
+
+    mode="strict" is the default (no network, curated stdlib).
+    mode="agent" permits HTTP clients and LLM SDKs, still blocks subprocess/ctypes.
+    """
     result = CodeValidation()
     result.issues.extend(validate_syntax(code))
     if result.ok:  # only proceed if syntax is valid
-        result.issues.extend(validate_security(code))
-        result.issues.extend(validate_imports(code))
+        result.issues.extend(validate_security(code, mode=mode))
+        result.issues.extend(validate_imports(code, mode=mode))
     return result
 
 

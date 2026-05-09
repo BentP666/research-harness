@@ -121,6 +121,21 @@ def _load_local_dispatch() -> None:
         "experiment_design_checklist",
         "dataset_index",
         "author_coverage",
+        # CS workflow v2 (no LLM — deterministic ranking & bulk harvest)
+        "head_paper_rank",
+        "cs_harvest",
+        # CS workflow v2 classification (manages its own LLM client)
+        "cs_classify",
+        "task_canonicalize",
+        # CS workflow v2 red-ocean (pure math + SQL, no LLM)
+        "compute_area_red_ocean",
+        "compute_task_red_ocean",
+        "compute_method_red_ocean",
+        # CS workflow v2 recommendation pipeline (deterministic + optional LLM)
+        "candidate_seed",
+        "candidate_upsert",
+        "recommendations_generate",
+        "gap_cross_verify",
         # Phase 3 (no LLM)
         "metrics_aggregate",
         # Phase 4 (no LLM)

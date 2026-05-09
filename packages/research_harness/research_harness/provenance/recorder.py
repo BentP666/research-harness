@@ -28,8 +28,20 @@ class ProvenanceRecorder:
         quality_score: float | None = None,
         human_accept: bool | None = None,
         loop_round: int = 0,
+        actor: str | None = None,
+        origin: str | None = None,
+        retry_ordinal: int = 0,
+        cache_hit: bool = False,
+        parallel_group: str | None = None,
+        skipped: bool = False,
+        skip_reason: str | None = None,
     ) -> int:
-        """Record a primitive execution and return the record id."""
+        """Record a primitive execution and return the record id.
+
+        The optional audit kwargs (actor/origin/retry_ordinal/cache_hit/
+        parallel_group/skipped/skip_reason) back the topic drilldown UI. All
+        default to NULL/0 so older call sites remain source-compatible.
+        """
 
         conn = self._db.connect()
         try:
@@ -39,8 +51,9 @@ class ProvenanceRecorder:
                     (primitive, category, started_at, finished_at, backend, model_used,
                      topic_id, stage, input_hash, output_hash, cost_usd, success, error, parent_id,
                      artifact_id, quality_score, human_accept, loop_round,
-                     prompt_tokens, completion_tokens)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     prompt_tokens, completion_tokens,
+                     actor, origin, retry_ordinal, cache_hit, parallel_group, skipped, skip_reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     result.primitive,
@@ -63,6 +76,13 @@ class ProvenanceRecorder:
                     loop_round,
                     result.prompt_tokens,
                     result.completion_tokens,
+                    actor,
+                    origin,
+                    int(retry_ordinal or 0),
+                    1 if cache_hit else 0,
+                    parallel_group,
+                    1 if skipped else 0,
+                    skip_reason,
                 ),
             )
             conn.commit()
@@ -269,6 +289,12 @@ class ProvenanceRecorder:
             except (TypeError, ValueError):
                 return None
 
+        def _opt_str(col: str) -> str | None:
+            if col not in keys:
+                return None
+            value = row[col]
+            return value if value is not None else None
+
         return ProvenanceRecord(
             id=int(row["id"]),
             primitive=row["primitive"],
@@ -296,4 +322,17 @@ class ProvenanceRecorder:
             created_at=row["created_at"],
             prompt_tokens=_opt_int("prompt_tokens"),
             completion_tokens=_opt_int("completion_tokens"),
+            actor=_opt_str("actor"),
+            origin=_opt_str("origin"),
+            retry_ordinal=int(row["retry_ordinal"] or 0)
+            if "retry_ordinal" in keys
+            else 0,
+            cache_hit=bool(row["cache_hit"])
+            if "cache_hit" in keys and row["cache_hit"] is not None
+            else False,
+            parallel_group=_opt_str("parallel_group"),
+            skipped=bool(row["skipped"])
+            if "skipped" in keys and row["skipped"] is not None
+            else False,
+            skip_reason=_opt_str("skip_reason"),
         )

@@ -213,26 +213,26 @@ startup_timeout_sec = 30.0
 
 ## Vibe Coding 可用的 Skill
 
-在 Claude Code 或 Codex 里，常态是用自然语言驱动 —— 你描述任务，Agent 自动路由到合适的 Skill，再由 Skill 调度对应的 MCP 工具。仓库里 [`codex-skills/`](codex-skills/) 下随发行版提供了 14 个 Skill，采用 Claude Code 通用的 YAML frontmatter 格式；把目录挂进 skills 路径后，下表里的触发语就能直接生效。
+在 Claude Code 或 Codex 里，常态是用自然语言驱动 —— 你描述任务，Agent 自动路由到合适的 Skill，再由 Skill 调度对应的 MCP 工具。仓库里 [`skills/`](skills/) 下随发行版提供了 14 个 Skill，采用 Claude Code 通用的 YAML frontmatter 格式；把目录挂进 skills 路径后，下表里的触发语就能直接生效。
 
 ### 对照表
 
 | Skill | 作用 | 自然语言触发示例 |
 |-------|------|------------------|
-| [`research-harness`](codex-skills/research-harness/SKILL.md) | 路由 Skill —— 意图宽泛时自动转到更具体的子 Skill | "进入科研工作流"、"用 Research Harness 开工" |
-| [`research-init`](codex-skills/research-init/SKILL.md) | 初始化主题、搭项目骨架 | "给这个项目接入 Research Harness，主题是 X" |
-| [`literature-search`](codex-skills/literature-search/SKILL.md) | 按查询做大范围论文检索 | "帮我搜一下 diffusion bidding 最近的论文" |
-| [`literature-mapping`](codex-skills/literature-mapping/SKILL.md) | 聚类论文、识别 baseline、建主题地图 | "给这个主题做一份文献地图" |
-| [`citation-trace`](codex-skills/citation-trace/SKILL.md) | 从种子论文沿引用链前/后扩展 | "从这三篇种子论文扩展" |
-| [`paper-sync`](codex-skills/paper-sync/SKILL.md) | 体检论文池：元数据、PDF、dismiss | "同步一下我的论文池" |
-| [`paper-verify`](codex-skills/paper-verify/SKILL.md) | 校验论文是否真实存在、元数据是否匹配 | "这个 DOI 是真的吗" |
-| [`claim-extraction`](codex-skills/claim-extraction/SKILL.md) | 从论文抽取结构化 claim | "把论文 42 的核心 claim 抽出来" |
-| [`gap-analysis`](codex-skills/gap-analysis/SKILL.md) | 找研究 gap、缺失的 baseline | "现在的研究 gap 在哪里" |
-| [`evidence-gating`](codex-skills/evidence-gating/SKILL.md) | 判断阶段是否可以推进 | "现在能推进到 propose 阶段了吗" |
-| [`section-drafting`](codex-skills/section-drafting/SKILL.md) | 基于已挂接的证据起草章节 | "根据抽出的 claim 写 related work" |
-| [`provenance-review`](codex-skills/provenance-review/SKILL.md) | 回顾执行历史、已录 artifact、挂接关系 | "审一下这个项目最近的 provenance" |
-| [`research-primitives`](codex-skills/research-primitives/SKILL.md) | 参考 —— 所有 MCP 原语一览 | "给我看原语参考表" |
-| [`task-taxonomy`](codex-skills/task-taxonomy/SKILL.md) | 参考 —— 模型路由与任务分类指引 | "claim extraction 该用哪一档模型" |
+| [`research-harness`](skills/research-harness/SKILL.md) | 路由 Skill —— 意图宽泛时自动转到更具体的子 Skill | "进入科研工作流"、"用 Research Harness 开工" |
+| [`research-init`](skills/research-init/SKILL.md) | 初始化主题、搭项目骨架 | "给这个项目接入 Research Harness，主题是 X" |
+| [`literature-search`](skills/literature-search/SKILL.md) | 按查询做大范围论文检索 | "帮我搜一下 diffusion bidding 最近的论文" |
+| [`literature-mapping`](skills/literature-mapping/SKILL.md) | 聚类论文、识别 baseline、建主题地图 | "给这个主题做一份文献地图" |
+| [`citation-trace`](skills/citation-trace/SKILL.md) | 从种子论文沿引用链前/后扩展 | "从这三篇种子论文扩展" |
+| [`paper-sync`](skills/paper-sync/SKILL.md) | 体检论文池：元数据、PDF、dismiss | "同步一下我的论文池" |
+| [`paper-verify`](skills/paper-verify/SKILL.md) | 校验论文是否真实存在、元数据是否匹配 | "这个 DOI 是真的吗" |
+| [`claim-extraction`](skills/claim-extraction/SKILL.md) | 从论文抽取结构化 claim | "把论文 42 的核心 claim 抽出来" |
+| [`gap-analysis`](skills/gap-analysis/SKILL.md) | 找研究 gap、缺失的 baseline | "现在的研究 gap 在哪里" |
+| [`evidence-gating`](skills/evidence-gating/SKILL.md) | 判断阶段是否可以推进 | "现在能推进到 propose 阶段了吗" |
+| [`section-drafting`](skills/section-drafting/SKILL.md) | 基于已挂接的证据起草章节 | "根据抽出的 claim 写 related work" |
+| [`provenance-review`](skills/provenance-review/SKILL.md) | 回顾执行历史、已录 artifact、挂接关系 | "审一下这个项目最近的 provenance" |
+| [`research-primitives`](skills/research-primitives/SKILL.md) | 参考 —— 所有 MCP 原语一览 | "给我看原语参考表" |
+| [`task-taxonomy`](skills/task-taxonomy/SKILL.md) | 参考 —— 模型路由与任务分类指引 | "claim extraction 该用哪一档模型" |
 
 ### 示例 —— 自然语言到 Skill 路由
 
@@ -243,19 +243,30 @@ startup_timeout_sec = 30.0
 - "现在能不能推进到 experiment 阶段" → `evidence-gating`
 - "审一下这个项目上周做过什么" → `provenance-review`
 
-### 在 Claude Code 里启用
+### 安装 Skill
+
+`setup.sh` 会自动生成 skill manifest，`rh skill` CLI 把 skill 装到 agent
+期望的位置。**RH 不需要预知你的 agent**——由 agent 通过 `.rh-agent.toml`
+自声明装在哪里、用什么策略。完整设计见
+[`docs/skills/`](docs/skills/README.md)。
 
 ```bash
-# 方案 A：把仓库里的 skill 软链到用户级 skills 目录
-mkdir -p ~/.claude/skills
-ln -s "$(pwd)/codex-skills"/* ~/.claude/skills/
+# A. 自动：在仓库根放一份 .rh-agent.toml，跑一次 install
+cp skills/agent-profiles/claude-code.toml .rh-agent.toml
+rh skill install
 
-# 方案 B：项目级
-mkdir -p .claude/skills
-cp -r codex-skills/* .claude/skills/
+# B. 用仓库内置的 agent profile（无需手写 .rh-agent.toml）
+rh skill install --agent claude-code
+rh skill install --agent codex
+
+# C. 临时直接指定目标目录
+rh skill install --target ~/.claude/skills
+
+# D. 不落盘：通过 MCP 运行时拉取（agent 端调 skill_list / skill_get）
 ```
 
-Codex 直接从 `codex-skills/` 读取。两种客户端都认同一份 `SKILL.md` 格式 —— 上表里的触发语在任一侧都适用。
+Claude Code 和 Codex 共用同一份 `SKILL.md` 格式 —— 上表的触发语在两边都适用。
+新增任何 agent，只需写一行 `.rh-agent.toml`，RH 这边零改动。
 
 ## 可信机制
 
@@ -333,6 +344,14 @@ extension_points:
 
 公共仓库每轮迭代的核心工作，最新在上。
 
+### 2026-05-09 — v0.3.0 一体化科研工作流发布
+
+- **科研工作流扩展**：CS Research Workflow v2 增加 candidate seed/upsert、red-ocean 评分、gap 交叉验证、推荐排序、experiment handoff，以及单入口 workflow resume 能力。
+- **Web 产品化**：Next.js 控制台覆盖 agent 配置、预算、发现、onboarding、论文阅读、报告、topic 阶段面板、venue decision、method atoms、goal pool、retrieval log 等核心路径。
+- **LLM 路由增强**：支持 LiteLLM 生态 provider、tier routing、token accounting、并行 deep-read provider pool、provider 自隔离和单篇超时。
+- **Paperindex 内嵌**：PDF/card/retrieval 能力迁入 `research_harness.paperindex`，`paperindex` package 保留为兼容 shim。
+- **发布整理**：系统版本统一到 `0.3.0`；本地 Python ruff、Python tests、web lint、web tests、web build 均通过。
+
 ### 2026-04-22 — 公共仓库 CI 修复
 
 - CI matrix 移除 Python 3.10：`research_harness_mcp` 已声明 `>=3.11`，不再假装兼容。
@@ -342,9 +361,9 @@ extension_points:
 
 ## 项目状态
 
-**0.1.0** —— 首个公开版本。三个 package 合计 987+ 单元测试、69 个原语、112 个 MCP 工具、6 个阶段。版本说明见 [`CHANGELOG.md`](CHANGELOG.md)。
+**0.3.0** —— 一体化科研工作流版本。当前轻量 gate 下本地 40 个 Python 测试通过，69 个原语继续可用，Web 控制台已覆盖 agent、预算、发现、报告、论文阅读和 topic 工作流。版本说明见 [`CHANGELOG.md`](CHANGELOG.md)。
 
-已支持的 LLM Provider：OpenAI、Anthropic、Kimi / Moonshot。Qwen、DeepSeek、GLM 通过 tier 路由接入在近期路线图中。
+已支持的 LLM Provider：OpenAI、Anthropic、Kimi / Moonshot，并通过 LiteLLM / tier routing 接入 DeepSeek、Qwen / 通义、Zhipu / GLM、Doubao、MiniMax、Yi / Baichuan、SiliconFlow 等 provider。
 
 已知边界：
 

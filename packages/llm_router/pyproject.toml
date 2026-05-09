@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-router"
-version = "0.2.0"
+version = "0.3.0"
 description = "Pluggable multi-provider LLM router with tier-based task routing"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 dependencies = []
 
@@ -17,9 +17,13 @@ openai = [
 anthropic = [
   "anthropic>=0.40.0",
 ]
+litellm = [
+  "litellm>=1.40.0",
+]
 all = [
   "openai>=1.0.0",
   "anthropic>=0.40.0",
+  "litellm>=1.40.0",
 ]
 dev = [
   "pytest>=8.0",
@@ -27,6 +31,7 @@ dev = [
   "ruff>=0.11.0",
   "openai>=1.0.0",
   "anthropic>=0.40.0",
+  "litellm>=1.40.0",
 ]
 
 [tool.hatch.build.targets.wheel]

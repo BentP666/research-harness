@@ -1,0 +1,18 @@
+{
+  "topic_id": "fixture-tfr-small",
+  "name": "small-time-series-bench",
+  "venue_target": "NeurIPS 2026 Datasets",
+  "deadline": "2026-09-15",
+  "direction": "Time-series forecasting reasoning benchmark — minimal pool to exercise smoke tier.",
+  "scope": "5 representative seed papers covering classical and LLM-based forecasters.",
+  "seeds": [
+    "fixture-paper-tfr-001",
+    "fixture-paper-tfr-002",
+    "fixture-paper-tfr-003",
+    "fixture-paper-tfr-004",
+    "fixture-paper-tfr-005"
+  ],
+  "tier": "smoke",
+  "expected_terminal_stage": "build",
+  "notes": "Used by tests that only need a topic with seeds — never expected to reach write."
+}

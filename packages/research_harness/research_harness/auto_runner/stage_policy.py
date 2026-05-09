@@ -6,10 +6,14 @@ Legacy 13-stage policies preserved for reference.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+import os
+from dataclasses import dataclass, field
 from typing import Literal
 
-from ..orchestrator.stages import STAGE_REGISTRY
+from ..orchestrator.stages import STAGE_ORDER, STAGE_REGISTRY
+
+logger = logging.getLogger(__name__)
 
 
 CodexPolicy = Literal["required", "recommended", "optional", "none"]
@@ -287,3 +291,165 @@ def decide_recovery(
         return "fallback_stage"
 
     return "pause_human"
+
+
+# ---------------------------------------------------------------------------
+# Pre-execution planner: should_execute()
+# ---------------------------------------------------------------------------
+
+ExecutionReason = Literal[
+    "run",
+    "fresh_artifact_present",
+    "gate_already_passed",
+    "resumed_past_stage",
+    "deliberation_said_skip",
+]
+
+
+@dataclass(frozen=True)
+class ExecutionDecision:
+    """Result of pre-execution planner for a stage."""
+
+    should_run: bool
+    reason: ExecutionReason = "run"
+    advisory_notes: list[str] = field(default_factory=list)
+
+
+# Maps each stage to the artifact types it is expected to produce.
+# If all required types exist and are non-stale, the stage may be skippable.
+# Keys are stage names from STAGE_ORDER; values reference ARTIFACT_SCHEMAS keys.
+_STAGE_REQUIRED_ARTIFACTS: dict[str, tuple[str, ...]] = {
+    "init": ("topic_brief",),
+    "build": ("literature_map", "paper_pool_snapshot"),
+    "analyze": ("evidence_pack",),
+    "propose": ("direction_proposal",),
+    "experiment": ("experiment_result",),
+    "write": ("draft_pack",),
+}
+
+
+def should_execute(
+    db,
+    topic_id: int,
+    stage: str,
+    *,
+    current_checkpoint_stage: str | None = None,
+) -> ExecutionDecision:
+    """Determine whether a stage needs to run.
+
+    Runs BEFORE execute_stage() in the runner loop. Deterministic checks first,
+    optional LLM deliberation only if gated by RESEARCH_HARNESS_DELIBERATION env.
+
+    Existing post-execution gates (TransitionValidator, GateEvaluator) are NOT
+    duplicated here — this is a pre-execution planner only.
+
+    Args:
+        db: Database handle
+        topic_id: Topic being run
+        stage: Stage name (must be in STAGE_ORDER)
+        current_checkpoint_stage: Checkpoint's current_stage, if available
+
+    Returns:
+        ExecutionDecision with should_run=True (default) unless a skip reason fires.
+    """
+    notes: list[str] = []
+
+    if stage not in STAGE_ORDER:
+        return ExecutionDecision(should_run=True, reason="run", advisory_notes=[])
+
+    # Check 1: resumed_past_stage
+    if current_checkpoint_stage and current_checkpoint_stage in STAGE_ORDER:
+        try:
+            cur_idx = STAGE_ORDER.index(current_checkpoint_stage)
+            tgt_idx = STAGE_ORDER.index(stage)
+            if tgt_idx < cur_idx:
+                notes.append(
+                    f"checkpoint is at {current_checkpoint_stage} (index {cur_idx}); "
+                    f"target {stage} (index {tgt_idx}) is in the past"
+                )
+                return ExecutionDecision(
+                    should_run=False,
+                    reason="resumed_past_stage",
+                    advisory_notes=notes,
+                )
+        except ValueError:
+            pass
+
+    # Check 2: fresh_artifact_present
+    required_types = _STAGE_REQUIRED_ARTIFACTS.get(stage, ())
+    if required_types:
+        try:
+            conn = db.connect()
+            try:
+                found_types: set[str] = set()
+                all_fresh = True
+                for art_type in required_types:
+                    row = conn.execute(
+                        """
+                        SELECT id, stale
+                        FROM project_artifacts
+                        WHERE topic_id = ? AND artifact_type = ? AND status = 'active'
+                        ORDER BY id DESC LIMIT 1
+                        """,
+                        (topic_id, art_type),
+                    ).fetchone()
+                    if row is None:
+                        all_fresh = False
+                        break
+                    if row["stale"]:
+                        all_fresh = False
+                        break
+                    found_types.add(art_type)
+
+                if all_fresh and len(found_types) == len(required_types):
+                    notes.append(
+                        f"all required artifact types present and non-stale: "
+                        f"{sorted(required_types)}"
+                    )
+                    return ExecutionDecision(
+                        should_run=False,
+                        reason="fresh_artifact_present",
+                        advisory_notes=notes,
+                    )
+            finally:
+                conn.close()
+        except Exception as exc:
+            logger.warning(
+                "should_execute artifact check failed for topic=%d stage=%s: %s",
+                topic_id,
+                stage,
+                exc,
+            )
+
+    # Check 3: gate_already_passed
+    try:
+        from ..orchestrator.transitions import GateEvaluator
+
+        evaluator = GateEvaluator(db)
+        decision = evaluator.evaluate(topic_id, stage)
+        outcome = getattr(decision, "outcome", None)
+        if outcome == "pass":
+            notes.append(f"gate for stage {stage} already evaluates to pass")
+            return ExecutionDecision(
+                should_run=False,
+                reason="gate_already_passed",
+                advisory_notes=notes,
+            )
+    except Exception as exc:
+        # Defensive: gate eval is not the authority here, just an optimization.
+        logger.debug(
+            "should_execute gate check skipped for topic=%d stage=%s: %s",
+            topic_id,
+            stage,
+            exc,
+        )
+
+    # Check 4: optional LLM deliberation (off by default)
+    if os.environ.get("RESEARCH_HARNESS_DELIBERATION") == "1":
+        # Advisory only; no LLM call in v2 Step 3 since that requires prompt
+        # infrastructure. Flag is reserved for future extension.
+        notes.append(
+            "deliberation enabled but no implementation yet; defaulting to run"
+        )
+
+    return ExecutionDecision(should_run=True, reason="run", advisory_notes=notes)

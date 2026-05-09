@@ -6,6 +6,7 @@ import csv
 import dataclasses
 import io
 import json
+import logging
 import os
 import platform
 import sqlite3
@@ -22,6 +23,7 @@ from .storage.models import Paper, TopicPaperNote
 REQUIRED_ANNOTATION_SECTIONS = ("summary", "methodology", "experiments", "limitations")
 NOTE_TYPES = ("relevance", "comparison", "usage_plan", "critique")
 BACKEND_CHOICES = ("local", "claude_code", "research_harness")
+logger = logging.getLogger(__name__)
 
 
 def get_runtime_config(ctx: click.Context):
@@ -475,6 +477,13 @@ def main(
     ctx.obj["backend_name"] = ctx.obj["runtime_config"].execution_backend
 
 
+# Skill subcommands live in research_harness/skill/cli.py to keep this file
+# from growing further. Registered after `main` is defined.
+from .skill.cli import register as _register_skill_cli  # noqa: E402
+
+_register_skill_cli(main)
+
+
 @main.group()
 def config() -> None:
     """Manage runtime config."""
@@ -566,6 +575,72 @@ def domain() -> None:
     """Manage research domains."""
 
 
+CS_DOMAIN_SEED: list[tuple[str, str]] = [
+    ("cs.AI", "Artificial Intelligence"),
+    ("cs.LG", "Machine Learning"),
+    ("cs.CV", "Computer Vision"),
+    ("cs.CL", "Computation and Language / NLP"),
+    ("cs.IR", "Information Retrieval"),
+    ("cs.RO", "Robotics"),
+    ("cs.CR", "Cryptography and Security"),
+    ("cs.DB", "Databases"),
+    ("cs.DC", "Distributed Computing"),
+    ("cs.DS", "Data Structures and Algorithms"),
+    ("cs.HC", "Human-Computer Interaction"),
+    ("cs.PL", "Programming Languages"),
+    ("cs.SE", "Software Engineering"),
+    ("cs.SY", "Systems and Control"),
+    ("cs.OTHER", "Other Computer Science"),
+]
+
+
+@domain.command("seed")
+@click.argument("kind", type=click.Choice(["cs"]))
+@click.pass_context
+def domain_seed(ctx: click.Context, kind: str) -> None:
+    """Seed a pre-defined set of domains (currently: cs → 15 arxiv CS cats)."""
+    db = get_db(ctx)
+    if kind != "cs":
+        raise click.ClickException(f"Unknown seed kind: {kind}")
+    inserted: list[str] = []
+    updated: list[str] = []
+    conn = db.connect()
+    try:
+        for name, description in CS_DOMAIN_SEED:
+            existing = conn.execute(
+                "SELECT id, description FROM domains WHERE name = ?", (name,)
+            ).fetchone()
+            if existing is None:
+                conn.execute(
+                    "INSERT INTO domains (name, description) VALUES (?, ?)",
+                    (name, description),
+                )
+                inserted.append(name)
+            elif not existing[1]:
+                conn.execute(
+                    "UPDATE domains SET description = ? WHERE name = ?",
+                    (description, name),
+                )
+                updated.append(name)
+        conn.commit()
+    finally:
+        conn.close()
+    payload = {
+        "kind": kind,
+        "inserted": inserted,
+        "updated": updated,
+        "skipped": [
+            n for n, _ in CS_DOMAIN_SEED if n not in inserted and n not in updated
+        ],
+    }
+    _echo(
+        ctx,
+        payload,
+        f"Seeded CS domains — {len(inserted)} inserted, {len(updated)} updated, "
+        f"{len(payload['skipped'])} already present.",
+    )
+
+
 @domain.command("init")
 @click.argument("name")
 @click.option("--description", "-d", default="")
@@ -653,6 +728,82 @@ def domain_show(ctx: click.Context, domain_name: str) -> None:
     click.echo(f"Status: {row['status']}  Topics: {len(topic_list)}")
     for t in topic_list:
         click.echo(f"  [{t['id']}] {t['name']} ({t['status']})")
+
+
+@main.group()
+def cs() -> None:
+    """CS-workflow bulk operations (harvest, classify, red-ocean)."""
+
+
+@cs.command("harvest")
+@click.option("--year", type=int, required=True, help="Publication year to harvest.")
+@click.option(
+    "--target",
+    type=int,
+    default=1000,
+    show_default=True,
+    help="Keep top-N head papers after deterministic ranking.",
+)
+@click.option(
+    "--per-provider-limit",
+    type=int,
+    default=50,
+    show_default=True,
+    help="Per-provider cap per (category × seed_query) call.",
+)
+@click.option(
+    "--classify/--no-classify",
+    default=False,
+    show_default=True,
+    help="After harvest, LLM-classify head papers into research_areas.",
+)
+@click.option(
+    "--red-ocean/--no-red-ocean",
+    "red_ocean",
+    default=False,
+    show_default=True,
+    help="After classify, compute red-ocean score for affected areas. "
+    "No-op without --classify.",
+)
+@click.pass_context
+def cs_harvest_cmd(
+    ctx: click.Context,
+    year: int,
+    target: int,
+    per_provider_limit: int,
+    classify: bool,
+    red_ocean: bool,
+) -> None:
+    """Harvest CS papers across 14 arxiv categories × seed queries.
+
+    Ingests with topic_id=NULL (pool-only), dedupes, ranks with
+    head_paper_rank. With --classify, runs cs_classify on the head set
+    (LLM cost ≈ N * 1 call). With --red-ocean, scores all touched
+    research_areas (deterministic).
+    """
+    from .primitives.cs_harvest import cs_harvest as _cs_harvest
+
+    db = get_db(ctx)
+    result = _cs_harvest(
+        db=db,
+        year=year,
+        target=target,
+        per_provider_limit=per_provider_limit,
+        classify=classify,
+        compute_red_ocean=red_ocean,
+    )
+    payload = result.to_dict()
+    summary_parts = [
+        f"Harvested year={result.year}: {result.ingested} kept as head,",
+        f"{result.discovered} unique discovered,",
+        f"{result.total_ingested} total ingested across",
+        f"{len(result.categories_covered)} categories.",
+    ]
+    if classify:
+        summary_parts.append(f"Classified {result.classified} papers.")
+    if red_ocean:
+        summary_parts.append(f"Scored {result.areas_scored} research_areas.")
+    _echo(ctx, payload, " ".join(summary_parts))
 
 
 @main.group()
@@ -1215,9 +1366,9 @@ def paper_ingest(
 ) -> None:
     from .core.paper_pool import PaperPool
 
-    if not any([arxiv_id, doi, s2_id, title]):
+    if not any([arxiv_id, doi, s2_id, title, url, pdf_path]):
         raise click.ClickException(
-            "provide at least one of --arxiv-id, --doi, --s2-id, --title"
+            "provide at least one of --arxiv-id, --doi, --s2-id, --title, --url, --pdf-path"
         )
 
     paper_obj = Paper(
@@ -1242,17 +1393,72 @@ def paper_ingest(
 
     db = get_db(ctx)
     conn = db.connect()
+    html_ingest_summary: dict[str, object] = {}
     try:
         topic_id = _topic_id_or_exit(conn, topic_name) if topic_name else None
         paper_id = PaperPool(conn).ingest(
             paper_obj, topic_id=topic_id, relevance=relevance
         )
+        # URL-only ingest: fetch HTML so downstream claim_extract /
+        # paper_summarize have text to read instead of silently landing
+        # meta_only. See tool-gaps.md [2026-04-27].
+        if (
+            url
+            and (url.startswith("http://") or url.startswith("https://"))
+            and not pdf_path
+        ):
+            from .acquisition.html_ingest import fetch_html_as_markdown
+            from .storage.models import PaperAnnotation
+
+            page = fetch_html_as_markdown(url)
+            if page.ok:
+                PaperPool(conn).upsert_annotation(
+                    PaperAnnotation(
+                        paper_id=paper_id,
+                        section="summary",
+                        content=page.markdown,
+                        source=f"html_ingest:{url}",
+                        confidence=0.9,
+                        extractor_version="html_ingest.v1",
+                    )
+                )
+                conn.execute(
+                    "UPDATE papers SET status = ?, abstract = COALESCE(NULLIF(abstract, ''), ?) WHERE id = ?",
+                    ("text_only", page.markdown[:2000], paper_id),
+                )
+                if page.title and not (paper_obj.title or "").strip():
+                    conn.execute(
+                        "UPDATE papers SET title = ? WHERE id = ?",
+                        (page.title, paper_id),
+                    )
+                    paper_obj.title = page.title
+                conn.commit()
+                html_ingest_summary = {
+                    "fetched": True,
+                    "chars": len(page.markdown),
+                    "http_status": page.http_status,
+                }
+            else:
+                html_ingest_summary = {
+                    "fetched": False,
+                    "reason": page.error or "no body",
+                }
     finally:
         conn.close()
     _echo(
         ctx,
-        {"paper_id": paper_id, "title": paper_obj.title, "status": "ingested"},
-        f"Paper ingested: id={paper_id}, title='{paper_obj.title[:60]}'",
+        {
+            "paper_id": paper_id,
+            "title": paper_obj.title,
+            "status": "ingested",
+            "html_ingest": html_ingest_summary,
+        },
+        f"Paper ingested: id={paper_id}, title='{paper_obj.title[:60]}'"
+        + (
+            f" [html: {html_ingest_summary.get('chars', 0)} chars]"
+            if html_ingest_summary.get("fetched")
+            else ""
+        ),
     )
 
 
@@ -1389,84 +1595,153 @@ def paper_update(
 @click.argument("paper_id", type=int, required=False)
 @click.option("--topic", "topic_name", default=None, help="Enrich all papers in topic")
 @click.option(
+    "--with-s2/--no-s2",
+    default=True,
+    help="Call Semantic Scholar API for venue/citation/abstract (default: on)",
+)
+@click.option(
+    "--limit", "max_papers", type=int, default=None, help="Max papers to enrich"
+)
+@click.option(
+    "--missing",
+    "missing_fields",
+    default=None,
+    help="Comma-separated fields to target, e.g. venue,citation_count",
+)
+@click.option(
     "--dry-run", is_flag=True, default=False, help="Preview changes without applying"
 )
 @click.pass_context
 def paper_enrich(
-    ctx: click.Context, paper_id: int | None, topic_name: str | None, dry_run: bool
+    ctx: click.Context,
+    paper_id: int | None,
+    topic_name: str | None,
+    with_s2: bool,
+    max_papers: int | None,
+    missing_fields: str | None,
+    dry_run: bool,
 ) -> None:
-    """Auto-fill missing metadata from available identifiers.
+    """Enrich paper metadata via Semantic Scholar API.
 
-    Currently supports:
-    - arXiv ID -> URL (builds arxiv.org/abs/{id} URL)
+    Fills missing venue, citation_count, abstract, authors, affiliations,
+    and cross-links (DOI, arXiv ID, S2 ID).  Also builds arXiv URL when absent.
 
     Examples:
-        hub paper enrich 5                    # Enrich paper 5
-        hub paper enrich --topic my-topic     # Enrich all papers in topic
-        hub paper enrich 5 --dry-run          # Preview changes
+        rh paper enrich 5                         # Enrich paper 5 via S2
+        rh paper enrich --topic my-topic          # Enrich all in topic
+        rh paper enrich --topic my-topic --missing venue,citation_count
+        rh paper enrich --topic my-topic --limit 50 --dry-run
+        rh paper enrich --no-s2 --topic my-topic  # URL-only (legacy mode)
     """
+    import time
+
     from .core.paper_pool import PaperPool
+
+    target_fields = set()
+    if missing_fields:
+        target_fields = {f.strip() for f in missing_fields.split(",") if f.strip()}
 
     db = get_db(ctx)
     conn = db.connect()
     try:
         pool = PaperPool(conn)
-        papers_to_enrich: list[tuple[int, str, str | None]] = []
+        papers_raw: list = []
 
         if paper_id is not None:
-            paper = pool.get(paper_id)
-            if paper is None:
+            p = pool.get(paper_id)
+            if p is None:
                 raise click.ClickException(f"paper {paper_id} not found")
-            papers_to_enrich.append((paper.id or 0, paper.title or "", paper.arxiv_id))
+            papers_raw = [p]
         elif topic_name:
             topic_id = _topic_id_or_exit(conn, topic_name)
-            papers = pool.list_papers(topic_id=topic_id)
-            for p in papers:
-                if p.arxiv_id and not p.url:
-                    papers_to_enrich.append((p.id or 0, p.title or "", p.arxiv_id))
+            papers_raw = pool.list_papers(topic_id=topic_id)
         else:
             raise click.ClickException("provide either paper_id or --topic")
 
+        candidates: list[tuple[int, str, str | None]] = []
+        for p in papers_raw:
+            pid = p.id or 0
+            title = p.title or ""
+            has_id = bool(p.arxiv_id or p.doi or getattr(p, "s2_id", None))
+            if not has_id:
+                continue
+            if target_fields:
+                row = conn.execute(
+                    "SELECT * FROM papers WHERE id = ?", (pid,)
+                ).fetchone()
+                if row is None:
+                    continue
+                needs = False
+                for f in target_fields:
+                    val = row[f] if f in row.keys() else None
+                    if not val or (
+                        f == "venue"
+                        and str(val).strip().lower()
+                        in ("", "arxiv", "arxiv.org", "arxiv preprint")
+                    ):
+                        needs = True
+                        break
+                if not needs:
+                    continue
+            candidates.append((pid, title, p.arxiv_id))
+            if max_papers and len(candidates) >= max_papers:
+                break
+
         updated: list[dict] = []
         skipped: list[dict] = []
+        s2_enriched = 0
 
-        for pid, title, arxiv_id in papers_to_enrich:
-            if not arxiv_id:
-                skipped.append(
-                    {"paper_id": pid, "title": title, "reason": "no arxiv_id"}
-                )
-                continue
+        for pid, title, arxiv_id in candidates:
+            result_info: dict = {"paper_id": pid, "title": title[:50]}
 
-            arxiv_url = f"https://arxiv.org/abs/{arxiv_id}"
-
-            if dry_run:
-                updated.append(
-                    {
-                        "paper_id": pid,
-                        "title": title[:50],
-                        "arxiv_id": arxiv_id,
-                        "url": arxiv_url,
-                        "action": "would_update",
-                    }
-                )
+            if with_s2:
+                if dry_run:
+                    result_info["action"] = "would_enrich_s2"
+                    updated.append(result_info)
+                    continue
+                try:
+                    s2_result = pool.enrich_metadata(pid)
+                    if s2_result and "error" not in s2_result:
+                        result_info["s2_fields"] = list(s2_result.keys())
+                        s2_enriched += 1
+                        updated.append(result_info)
+                    else:
+                        err = (
+                            s2_result.get("error", "unknown") if s2_result else "empty"
+                        )
+                        skipped.append({**result_info, "reason": f"s2: {err}"})
+                    time.sleep(1.05)
+                except Exception as exc:
+                    skipped.append({**result_info, "reason": str(exc)[:80]})
             else:
-                conn.execute("UPDATE papers SET url = ? WHERE id = ?", (arxiv_url, pid))
-                updated.append(
-                    {
-                        "paper_id": pid,
-                        "title": title[:50],
-                        "arxiv_id": arxiv_id,
-                        "url": arxiv_url,
-                    }
-                )
+                if not arxiv_id:
+                    skipped.append({**result_info, "reason": "no arxiv_id"})
+                    continue
+                arxiv_url = f"https://arxiv.org/abs/{arxiv_id}"
+                if dry_run:
+                    result_info.update(
+                        {
+                            "arxiv_id": arxiv_id,
+                            "url": arxiv_url,
+                            "action": "would_update",
+                        }
+                    )
+                    updated.append(result_info)
+                else:
+                    conn.execute(
+                        "UPDATE papers SET url = ? WHERE id = ?", (arxiv_url, pid)
+                    )
+                    result_info.update({"arxiv_id": arxiv_id, "url": arxiv_url})
+                    updated.append(result_info)
 
         if not dry_run:
             conn.commit()
 
         payload = {
             "dry_run": dry_run,
-            "processed": len(papers_to_enrich),
+            "processed": len(candidates),
             "updated": len(updated),
+            "s2_enriched": s2_enriched,
             "skipped": len(skipped),
             "updates": updated,
             "skip_reasons": skipped,
@@ -1476,14 +1751,117 @@ def paper_enrich(
             click.echo(json.dumps(payload, ensure_ascii=False))
             return
 
-        action_word = "would update" if dry_run else "updated"
+        action_word = "would enrich" if dry_run else "enriched"
         click.echo(
-            f"Paper enrichment: {len(updated)} {action_word}, {len(skipped)} skipped"
+            f"Paper enrichment: {len(updated)} {action_word} ({s2_enriched} via S2), {len(skipped)} skipped"
         )
         for u in updated:
-            click.echo(f"  [{u['paper_id']}] {u['title'][:45]}... -> {u['url']}")
+            fields = u.get("s2_fields", [])
+            label = ", ".join(fields) if fields else u.get("url", "url-only")
+            click.echo(f"  [{u['paper_id']}] {u['title'][:45]}... -> {label}")
         for s in skipped:
             click.echo(f"  [{s['paper_id']}] skipped: {s['reason']}")
+    finally:
+        conn.close()
+
+
+@paper.command("backfill-metadata")
+@click.option(
+    "--missing",
+    "missing_fields",
+    default="venue,citation_count",
+    help="Comma-separated fields to target",
+)
+@click.option("--limit", "max_papers", type=int, default=100, help="Max papers per run")
+@click.option("--dry-run", is_flag=True, default=False, help="Preview only")
+@click.pass_context
+def paper_backfill_metadata(
+    ctx: click.Context,
+    missing_fields: str,
+    max_papers: int,
+    dry_run: bool,
+) -> None:
+    """Batch-enrich papers missing key metadata across ALL topics.
+
+    Scans the entire pool for papers missing the specified fields and calls
+    Semantic Scholar to fill them. Rate-limited to ~1 req/sec.
+
+    Examples:
+        rh paper backfill-metadata                         # default: venue + citation_count, limit 100
+        rh paper backfill-metadata --missing venue --limit 50
+        rh paper backfill-metadata --dry-run
+    """
+    import time
+
+    from .core.paper_pool import PaperPool
+
+    fields = [f.strip() for f in missing_fields.split(",") if f.strip()]
+    if not fields:
+        raise click.ClickException("--missing must list at least one field")
+
+    venue_placeholders = ("", "arxiv", "arxiv.org", "arxiv preprint")
+
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        pool = PaperPool(conn)
+        rows = conn.execute(
+            "SELECT id, title, arxiv_id, doi, s2_id, venue, citation_count FROM papers ORDER BY id DESC"
+        ).fetchall()
+
+        candidates: list[tuple[int, str]] = []
+        for row in rows:
+            has_id = bool(
+                (row["arxiv_id"] or "").strip()
+                or (row["doi"] or "").strip()
+                or (row["s2_id"] or "").strip()
+            )
+            if not has_id:
+                continue
+            for f in fields:
+                val = row[f] if f in row.keys() else None
+                if f == "venue" and (
+                    not val or str(val).strip().lower() in venue_placeholders
+                ):
+                    candidates.append((row["id"], (row["title"] or "")[:50]))
+                    break
+                elif f != "venue" and (val is None or val == 0):
+                    candidates.append((row["id"], (row["title"] or "")[:50]))
+                    break
+            if len(candidates) >= max_papers:
+                break
+
+        click.echo(
+            f"Found {len(candidates)} papers missing {', '.join(fields)} (limit {max_papers})"
+        )
+        if dry_run:
+            for pid, title in candidates[:20]:
+                click.echo(f"  [{pid}] {title}")
+            if len(candidates) > 20:
+                click.echo(f"  ... and {len(candidates) - 20} more")
+            return
+
+        enriched = 0
+        failed = 0
+        for i, (pid, title) in enumerate(candidates):
+            try:
+                result = pool.enrich_metadata(pid)
+                if result and "error" not in result:
+                    enriched += 1
+                    if (i + 1) % 10 == 0:
+                        click.echo(
+                            f"  [{i + 1}/{len(candidates)}] enriched {enriched} so far..."
+                        )
+                else:
+                    failed += 1
+                time.sleep(1.05)
+            except Exception as exc:
+                failed += 1
+                logger.debug("Backfill failed for paper %d: %s", pid, exc)
+
+        click.echo(
+            f"Done: {enriched} enriched, {failed} failed out of {len(candidates)}"
+        )
     finally:
         conn.close()
 
@@ -3689,7 +4067,7 @@ def doctor(ctx: click.Context) -> None:
     checks.append({"check": "python", "version": platform.python_version(), "ok": True})
     checks.append({"check": "sqlite3", "version": sqlite3.sqlite_version, "ok": True})
     try:
-        import paperindex  # type: ignore
+        from research_harness import paperindex  # type: ignore
 
         checks.append(
             {
@@ -3867,6 +4245,468 @@ def auto_runner_status(ctx: click.Context, topic_id: int) -> None:
         result,
         f"{result.get('current_stage', '?')} [{result.get('stage_state', '?')}]",
     )
+
+
+@main.group()
+def venues() -> None:
+    """Manage venue rankings."""
+
+
+@venues.command("load")
+@click.option(
+    "--file",
+    "json_file",
+    default=None,
+    help="Custom JSON file (default: bundled venue_ranks_cs_2024.json)",
+)
+@click.pass_context
+def venues_load(ctx: click.Context, json_file: str | None) -> None:
+    """Load venue rankings into the database."""
+    if json_file:
+        src = Path(json_file)
+    else:
+        src = Path(__file__).parent / "data" / "venue_ranks_cs_2024.json"
+    if not src.exists():
+        raise click.ClickException(f"file not found: {src}")
+    with open(src, encoding="utf-8") as f:
+        entries = json.load(f)
+
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        inserted = 0
+        for entry in entries:
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO venue_ranks (canonical_name, aliases, ccf_rank, cas_zone, discipline, source_snapshot)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(canonical_name) DO UPDATE SET
+                        aliases = excluded.aliases,
+                        ccf_rank = excluded.ccf_rank,
+                        cas_zone = excluded.cas_zone,
+                        discipline = excluded.discipline,
+                        source_snapshot = excluded.source_snapshot,
+                        updated_at = datetime('now')
+                    """,
+                    (
+                        entry["canonical_name"],
+                        json.dumps(entry.get("aliases", []), ensure_ascii=False),
+                        entry.get("ccf_rank"),
+                        entry.get("cas_zone"),
+                        entry.get("discipline", "cs"),
+                        str(src.name),
+                    ),
+                )
+                inserted += 1
+            except Exception as exc:
+                click.echo(
+                    f"  skip {entry.get('canonical_name', '?')}: {exc}", err=True
+                )
+        conn.commit()
+    finally:
+        conn.close()
+    _echo(
+        ctx,
+        {"loaded": inserted, "source": str(src)},
+        f"Loaded {inserted} venues from {src.name}",
+    )
+
+
+@main.group()
+def calibrate() -> None:
+    """Rubric threshold calibration (Youden's J on anchor corpus)."""
+
+
+@calibrate.command("run")
+@click.option("--stage", required=True, help="Stage to calibrate (e.g. analyze)")
+@click.option("--tier", default="standard", help="Tier (economy/standard/premium)")
+@click.option("--venue-tier", default="B", help="Venue tier (A/B/workshop)")
+@click.option("--dry-run", is_flag=True, help="Print recommendation without writing")
+@click.pass_context
+def calibrate_run(
+    ctx: click.Context,
+    stage: str,
+    tier: str,
+    venue_tier: str,
+    dry_run: bool,
+) -> None:
+    """Run rubric calibration for a stage+tier and write the threshold."""
+    from .calibration import calibrate_stage_tier, load_anchors
+
+    anchors = load_anchors()
+    matching = [a for a in anchors if a.stage == stage and a.tier == tier]
+    click.echo(f"Stage: {stage}, Tier: {tier}, Venue: {venue_tier}")
+    click.echo(f"Anchor corpus: {len(matching)} entries for this (stage, tier)")
+
+    if dry_run:
+        from .calibration.runner import _score_anchor
+        from .calibration.roc import youdens_j_threshold
+        from .rubrics import get_threshold
+
+        if not matching:
+            click.echo("No anchors — dry-run would fall back to default threshold.")
+            click.echo(
+                f"Default threshold (venue {venue_tier}): {get_threshold(venue_tier)}"
+            )
+            return
+        pos = [_score_anchor(a) for a in matching if a.label == "accept"]
+        neg = [_score_anchor(a) for a in matching if a.label == "reject"]
+        th, fr, rr = youdens_j_threshold(pos, neg, get_threshold(venue_tier))
+        click.echo(
+            f"[DRY RUN] threshold={th} false_rollback={fr:.2%} reject_rate={rr:.2%}"
+        )
+        return
+
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        result = calibrate_stage_tier(
+            conn, stage, tier, anchors=anchors, venue_tier=venue_tier
+        )
+    finally:
+        conn.close()
+    click.echo(
+        f"Wrote: threshold={result.threshold} "
+        f"anchors={result.anchor_count} "
+        f"false_rollback={result.false_rollback_rate:.2%} "
+        f"reject_rate={result.reject_rate:.2%}"
+        + (" (default — no anchors)" if result.used_default else "")
+    )
+
+
+@calibrate.command("all")
+@click.pass_context
+def calibrate_all_cmd(ctx: click.Context) -> None:
+    """Calibrate every (stage × tier) pair using the bundled anchor corpus."""
+    from .calibration import calibrate_all
+
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        results = calibrate_all(conn)
+    finally:
+        conn.close()
+
+    click.echo(f"Calibrated {len(results)} (stage, tier) pairs:")
+    for r in results:
+        suffix = " (default)" if r.used_default else ""
+        click.echo(
+            f"  {r.stage}/{r.tier}: threshold={r.threshold} anchors={r.anchor_count}"
+            f" fr={r.false_rollback_rate:.2%} rr={r.reject_rate:.2%}{suffix}"
+        )
+
+
+@calibrate.command("list")
+@click.pass_context
+def calibrate_list(ctx: click.Context) -> None:
+    """List current calibration state from rubric_calibrations."""
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        rows = conn.execute(
+            "SELECT stage, tier, threshold, anchor_count, false_rollback_rate,"
+            " reject_rate, calibrated_at FROM rubric_calibrations"
+            " ORDER BY stage, tier"
+        ).fetchall()
+    finally:
+        conn.close()
+    if not rows:
+        click.echo("No calibrations recorded. Run `rh calibrate all` to seed them.")
+        return
+    for r in rows:
+        click.echo(
+            f"{r['stage']}/{r['tier']}: threshold={r['threshold']}"
+            f" anchors={r['anchor_count']} calibrated_at={r['calibrated_at']}"
+        )
+
+
+@main.group()
+def trends() -> None:
+    """Domain trends pipeline."""
+
+
+@trends.command("refresh")
+@click.option("--tier", default="standard", help="Tier (economy/standard/premium)")
+@click.option("--dry-run", is_flag=True, help="Print results without writing to DB")
+@click.pass_context
+def trends_refresh(ctx: click.Context, tier: str, dry_run: bool) -> None:
+    """Refresh domain trends by analyzing the paper corpus."""
+    from .trends import refresh_trends
+
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        clusters = refresh_trends(conn, tier=tier, dry_run=dry_run)
+        if dry_run:
+            click.echo(f"[DRY RUN] Found {len(clusters)} trend clusters:")
+        else:
+            click.echo(f"Wrote {len(clusters)} trend clusters (tier={tier})")
+        for i, c in enumerate(clusters):
+            click.echo(
+                f"  {i + 1}. {c.name} — score={c.publishability_score:.1f}, "
+                f"velocity={c.velocity_yoy:.0f}%"
+            )
+    finally:
+        conn.close()
+
+
+@main.group()
+def experiment() -> None:
+    """Autonomous experiment iteration loop (CPU agent experiments)."""
+
+
+_AGENT_TEMPLATE_PROGRAM = """\
+# Experiment: {name}
+
+## Task
+{description}
+
+## Primary metric
+- **Name:** {metric}
+- **Direction:** {direction} (higher is better = max; lower is better = min)
+
+## Fixtures (do NOT modify)
+- `eval.jsonl` — evaluation set
+- `scorer.py`  — grading logic; reads predictions, prints metrics
+
+## What the LLM edits
+- `main.py` — your implementation. Must print one line like:
+  `{metric}: <float>`
+
+## Budget
+Filled from CLI flags: max_iterations, max_cost_usd, patience.
+"""
+
+_AGENT_TEMPLATE_EVAL = (
+    '{"input": "2+2", "answer": "4"}\n{"input": "3*5", "answer": "15"}\n'
+)
+
+_AGENT_TEMPLATE_SCORER = '''\
+"""Fixture scorer: reads eval.jsonl, runs the solver, prints metrics."""
+
+import json
+from pathlib import Path
+
+
+def score(solver):
+    correct = 0
+    total = 0
+    for line in Path("eval.jsonl").read_text().splitlines():
+        if not line.strip():
+            continue
+        item = json.loads(line)
+        try:
+            pred = solver(item["input"])
+        except Exception:  # noqa: BLE001
+            pred = ""
+        total += 1
+        if str(pred).strip() == str(item["answer"]).strip():
+            correct += 1
+    acc = correct / total if total else 0.0
+    print(f"val_acc: {acc:.4f}")
+'''
+
+_AGENT_TEMPLATE_MAIN = '''\
+"""Mutable implementation. The LLM rewrites this each iteration."""
+
+from scorer import score
+
+
+def solve(question: str) -> str:
+    # TODO: call your LLM / rule / tool here. Must return a string.
+    return ""
+
+
+if __name__ == "__main__":
+    score(solve)
+'''
+
+
+@experiment.command("scaffold")
+@click.option("--name", required=True, help="Experiment name.")
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("./experiment_scaffold"),
+    help="Output directory for the three-file template.",
+)
+@click.option(
+    "--description",
+    default="Agent experiment — edit main.py to beat the baseline.",
+    help="Task description (written into program.md).",
+)
+@click.option("--metric", default="val_acc", help="Primary metric name.")
+@click.option(
+    "--direction",
+    type=click.Choice(["max", "min"]),
+    default="max",
+)
+@click.pass_context
+def experiment_scaffold(
+    ctx: click.Context,
+    name: str,
+    out_dir: Path,
+    description: str,
+    metric: str,
+    direction: str,
+) -> None:
+    """Write a karpathy-style three-file experiment template.
+
+    Produces program.md (task spec, read-only), eval.jsonl + scorer.py
+    (fixtures) and main.py (mutable). Ready to feed into `rh experiment run`.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "program.md").write_text(
+        _AGENT_TEMPLATE_PROGRAM.format(
+            name=name,
+            description=description,
+            metric=metric,
+            direction=direction,
+        ),
+        encoding="utf-8",
+    )
+    (out_dir / "eval.jsonl").write_text(_AGENT_TEMPLATE_EVAL, encoding="utf-8")
+    (out_dir / "scorer.py").write_text(_AGENT_TEMPLATE_SCORER, encoding="utf-8")
+    (out_dir / "main.py").write_text(_AGENT_TEMPLATE_MAIN, encoding="utf-8")
+
+    click.echo(f"Wrote scaffold to {out_dir}")
+    click.echo("  program.md   — task spec (read-only)")
+    click.echo("  eval.jsonl   — fixture: evaluation set")
+    click.echo("  scorer.py    — fixture: grading logic")
+    click.echo("  main.py      — mutable: the LLM rewrites this")
+    click.echo("")
+    click.echo(
+        f"Next: rh experiment run --topic <name> --scaffold {out_dir} "
+        f"--metric {metric} --direction {direction}"
+    )
+
+
+def _load_scaffold(scaffold_dir: Path) -> tuple[str, dict[str, str], str]:
+    """Return (task_description, fixture_files, mutable_code)."""
+    program_md = (scaffold_dir / "program.md").read_text(encoding="utf-8")
+    fixtures: dict[str, str] = {}
+    for name in ("eval.jsonl", "scorer.py"):
+        path = scaffold_dir / name
+        if path.exists():
+            fixtures[name] = path.read_text(encoding="utf-8")
+    # Include any additional fixture files (read-only support: anything not main.py)
+    for path in scaffold_dir.iterdir():
+        if path.is_file() and path.name not in {"program.md", "main.py"}:
+            fixtures.setdefault(path.name, path.read_text(encoding="utf-8"))
+    mutable_path = scaffold_dir / "main.py"
+    mutable_code = (
+        mutable_path.read_text(encoding="utf-8") if mutable_path.exists() else ""
+    )
+    return program_md, fixtures, mutable_code
+
+
+@experiment.command("run")
+@click.option("--topic", required=True, help="Topic name.")
+@click.option(
+    "--scaffold",
+    "scaffold_dir",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    required=True,
+)
+@click.option("--name", default="", help="Experiment display name.")
+@click.option("--metric", default="val_acc")
+@click.option("--direction", type=click.Choice(["max", "min"]), default="max")
+@click.option("--mode", type=click.Choice(["strict", "agent"]), default="agent")
+@click.option("--max-iterations", type=int, default=5)
+@click.option("--max-cost-usd", type=float, default=0.0)
+@click.option("--patience", type=int, default=3)
+@click.option("--timeout-sec", type=float, default=300.0)
+@click.pass_context
+def experiment_run_cmd(
+    ctx: click.Context,
+    topic: str,
+    scaffold_dir: Path,
+    name: str,
+    metric: str,
+    direction: str,
+    mode: str,
+    max_iterations: int,
+    max_cost_usd: float,
+    patience: int,
+    timeout_sec: float,
+) -> None:
+    """Run experiment_loop on a scaffold directory."""
+    from .primitives.experiment_loop_impl import experiment_loop
+    from .primitives.types import ExperimentBudget
+
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        topic_id = _topic_id_or_exit(conn, topic)
+    finally:
+        conn.close()
+
+    task_description, fixtures, _mutable = _load_scaffold(scaffold_dir)
+
+    out = experiment_loop(
+        db=db,
+        topic_id=topic_id,
+        name=name or scaffold_dir.name,
+        task_description=task_description,
+        fixture_files=fixtures,
+        mutable_entry="main.py",
+        primary_metric=metric,
+        direction=direction,
+        mode=mode,
+        timeout_sec=timeout_sec,
+        budget=ExperimentBudget(
+            max_iterations=max_iterations,
+            max_cost_usd=max_cost_usd,
+            patience=patience,
+        ),
+    )
+
+    click.echo(
+        f"experiment_id={out.experiment_id} "
+        f"iterations={out.total_iterations} "
+        f"best_iter={out.best_iteration} best={out.best_value} "
+        f"stopped={out.stopped_reason} cost=${out.total_cost_usd:.4f}"
+    )
+    for r in out.runs:
+        click.echo(
+            f"  #{r.iteration} {r.status:9s} {r.primary_metric_value} "
+            f"({r.elapsed_sec:.1f}s, ${r.cost_usd:.3f})"
+        )
+
+
+@experiment.command("list")
+@click.option("--topic", required=True)
+@click.pass_context
+def experiment_list(ctx: click.Context, topic: str) -> None:
+    """List autonomous experiments for a topic."""
+    db = get_db(ctx)
+    conn = db.connect()
+    try:
+        topic_id = _topic_id_or_exit(conn, topic)
+        try:
+            rows = conn.execute(
+                "SELECT id, name, primary_metric, direction, status, stopped_reason,"
+                " best_run_id, created_at FROM experiments WHERE topic_id = ?"
+                " ORDER BY created_at DESC",
+                (topic_id,),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            rows = []
+    finally:
+        conn.close()
+
+    if not rows:
+        click.echo(f"No experiments for topic {topic!r}.")
+        return
+
+    for r in rows:
+        click.echo(
+            f"[{r['id']}] {r['name']:<30s} "
+            f"{r['primary_metric']:<12s} {r['direction']:<4s} "
+            f"{r['status']:<10s} stopped={r['stopped_reason']}"
+        )
 
 
 if __name__ == "__main__":

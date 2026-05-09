@@ -112,3 +112,17 @@ def test_cache_overwrite(db):
     cache_put(db, "q", "s2", [{"title": "V2"}])
     got = cache_get(db, "q", "s2")
     assert got[0]["title"] == "V2"
+
+
+def test_cache_key_differs_by_categories():
+    k1 = _cache_key("x", "arxiv", {"categories": ("cs.LG",)})
+    k2 = _cache_key("x", "arxiv", {"categories": ("cs.CV",)})
+    assert k1 != k2
+
+
+def test_cache_key_stable_across_list_vs_tuple():
+    """JSON serialization treats list and tuple identically; callers may
+    pass either without splitting the cache namespace."""
+    k1 = _cache_key("x", "arxiv", {"categories": ["cs.LG", "cs.CV"]})
+    k2 = _cache_key("x", "arxiv", {"categories": ("cs.LG", "cs.CV")})
+    assert k1 == k2

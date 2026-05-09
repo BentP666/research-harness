@@ -1,0 +1,14 @@
+# .rh-agent.toml — Codex / OpenAI Codex CLI consumer profile
+#
+# Codex picks skills up directly from any directory configured as a skill root
+# in its CLI. The conventional location below mirrors Claude Code's, but you
+# can point install_path at any path Codex is configured to scan.
+
+[agent]
+name    = "codex"
+version = ">=0.20"
+
+[skills]
+install_path = "~/.codex/skills"
+format       = "claude-skill-md"   # Codex consumes the same SKILL.md format
+strategy     = "symlink"

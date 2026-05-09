@@ -1,0 +1,751 @@
+{
+  "brand": {
+    "name": "Atlas",
+    "tagline": "Your AI research partner",
+    "poweredBy": "Powered by Research Harness"
+  },
+  "nav": {
+    "dashboard": "Today",
+    "research": "Research",
+    "library": "Library",
+    "discover": "Discover",
+    "reports": "Reports",
+    "agents": "Models",
+    "budgets": "Budget",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "todayGroup": "TODAY",
+    "researchGroup": "RESEARCH",
+    "knowledgeGroup": "KNOWLEDGE",
+    "systemGroup": "SYSTEM"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "activePrompt": "You have {count} topics in progress.",
+    "noProjectsPrompt": "No research projects yet. Start with a demo or create your first.",
+    "cta": {
+      "tryDemo": "Try a demo topic",
+      "createTopic": "Start a new topic",
+      "importBibtex": "Import BibTeX"
+    },
+    "recommendedTitle": "What I'd work on today",
+    "opportunitiesTitle": "New research angles I found for you",
+    "activeTopicsTitle": "In progress",
+    "activeTopicsSubtitle": "Pick up where you left off.",
+    "stageProgress": "Stage {current} of {total}",
+    "stageNotStarted": "Not started",
+    "papersCount": "{count} papers",
+    "daysAgo": "{days}d ago",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "trendsTitle": "Research trends",
+    "trendsSubtitle": "What's heating up, cooling down, and still wide open. Tap any row for the evidence.",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "generating": "Generating…",
+    "generateTrends": "Generate trends",
+    "noTrends": "No trends data yet. Generate clusters from the current paper corpus (or seed data if the library is empty).",
+    "hot": "Hot",
+    "redOcean": "Red ocean",
+    "score": "Score",
+    "seedPapers": "seed papers",
+    "topVenues": "Top venues",
+    "statPapers": "Papers",
+    "statDomains": "Domains",
+    "statTopics": "Topics"
+  },
+  "welcome": {
+    "title": "Welcome to Atlas",
+    "subtitle": "Your AI research partner, from first search to final draft.",
+    "pillars": {
+      "gather": {
+        "title": "Find what matters",
+        "body": "Discover and rank the papers that actually move your thinking, not just what's cited most."
+      },
+      "analyze": {
+        "title": "See the gaps",
+        "body": "Cross-check hundreds of claims, surface contradictions, and spot open problems worth your time."
+      },
+      "write": {
+        "title": "Write with sources",
+        "body": "Every sentence links back to evidence. Share clean drafts with your advisor in minutes."
+      }
+    },
+    "cta": {
+      "startDemo": "Try with a demo topic",
+      "startBlank": "Start from scratch",
+      "configureModel": "I've got an API key — let's set it up"
+    }
+  },
+  "modelStatus": {
+    "demoMode": "Demo mode",
+    "demoModeHint": "You're using a local demo engine. Connect a model to run real research.",
+    "connected": "{count} model(s) connected",
+    "none": "No model connected",
+    "noneHint": "Connect at least one model to run paid operations.",
+    "testing": "Testing…",
+    "healthy": "Healthy",
+    "failing": "Failing",
+    "addModel": "Connect a model",
+    "manage": "Manage models",
+    "personasSection": "Your models",
+    "providersSection": "Detected providers",
+    "tiersSection": "Tier routing"
+  },
+  "tokens": {
+    "todayBudget": "Today: ${spent} / ${cap}",
+    "budgetWarnNearCap": "You're at {percent}% of today's cap. Switch to Economy mode?",
+    "estimate": "~{seconds}s · ~${cost}",
+    "spentToast": "Done — spent ${cost}",
+    "savedToast": "Cached! Reused a previous result (saved ~${cost})",
+    "thisMonth": "Tokens this month",
+    "promptCompletionSplit": "{prompt} prompt · {completion} completion",
+    "byModel": "By model",
+    "byStage": "By stage",
+    "fullBreakdown": "Full breakdown"
+  },
+  "budgets": {
+    "title": "Budgets",
+    "subtitle": "Where your tokens went — by model and by research stage.",
+    "byModelTitle": "Spend by model",
+    "byModelSubtitle": "Each model's share of this month's tokens.",
+    "byStageTitle": "Spend by research stage",
+    "byStageSubtitle": "Which of the 6 pipeline stages consumed which tokens.",
+    "recentTitle": "Recent activity",
+    "trendTitle": "Daily trend",
+    "trendSubtitle": "Token usage per day this month.",
+    "totalTokens": "Total tokens",
+    "promptTokens": "Prompt",
+    "completionTokens": "Completion",
+    "shareLabel": "Share",
+    "tokens": "tokens",
+    "noUsage": "No usage recorded this month yet.",
+    "calls": "calls",
+    "filters": {
+      "allModels": "All models",
+      "allStages": "All stages",
+      "noMatches": "No activity matches the current filter."
+    }
+  },
+  "empty": {
+    "topics": {
+      "title": "No research projects yet",
+      "body": "A topic is one research project — its papers, claims, drafts, and decisions all in one place.",
+      "cta": "Create your first topic"
+    },
+    "papers": {
+      "title": "No papers in this topic",
+      "body": "Start by searching with a few keywords or adding an arXiv ID you already have in mind.",
+      "cta": "Search for papers",
+      "secondaryCta": "Paste arXiv IDs"
+    },
+    "gaps": {
+      "title": "No gaps detected yet",
+      "body": "Once you have 15+ papers, I can scan for genuine open problems in this area.",
+      "cta": "Scan for research gaps",
+      "estimate": "~45s · ~$0.03"
+    },
+    "contradictions": {
+      "title": "No contradictions on record",
+      "body": "This means either your literature agrees or nobody's checked yet. Usually I find 2–5 in a typical pool.",
+      "cta": "Cross-check claims",
+      "estimate": "~30s · ~$0.02"
+    },
+    "drafts": {
+      "title": "No draft yet",
+      "body": "I can draft any section from your papers. Want to start with the Introduction?",
+      "cta": "Draft Introduction",
+      "secondaryCta": "Generate outline first"
+    },
+    "reports": {
+      "title": "No reports generated",
+      "body": "Reports are sharable PDFs for your advisor — you pick which sections to include.",
+      "cta": "Create your first report"
+    }
+  },
+  "reports": {
+    "title": "Advisor Reports",
+    "subtitle": "Generate clean PDFs tailored to what your advisor wants to see.",
+    "searchPlaceholder": "Search by topic or template",
+    "onlyShared": "Shared only",
+    "noMatches": "No reports match the current filter.",
+    "customRequirements": "Custom requirements (optional)",
+    "customPlaceholder": "e.g. Focus on the contrast with the GPT-4 baseline. Tone: concise, no hedging. Audience: my advisor.",
+    "customHint": "Forwarded into every section draft as additional author guidance. Regenerates sections instead of reusing older drafts.",
+    "someBlocked": "Some selections need a later stage — they'll be skipped on generate",
+    "pickAtLeastOne": "Pick at least one template above.",
+    "templates": {
+      "abstract_only": {
+        "name": "Abstract check",
+        "description": "Just the abstract. Perfect for a quick 5-minute review.",
+        "sections": [
+          "abstract"
+        ],
+        "estimate": "~2 min · ~$0.05"
+      },
+      "abstract_intro": {
+        "name": "Pitch package",
+        "description": "Abstract + Introduction. Lets your advisor say yes/no to the angle.",
+        "sections": [
+          "abstract",
+          "introduction"
+        ],
+        "estimate": "~4 min · ~$0.10"
+      },
+      "deep_pitch": {
+        "name": "Deep pitch",
+        "description": "Abstract + Introduction + Related Work + Method outline.",
+        "sections": [
+          "abstract",
+          "introduction",
+          "related_work",
+          "method"
+        ],
+        "estimate": "~8 min · ~$0.18"
+      },
+      "full_review": {
+        "name": "Full review",
+        "description": "Complete draft with self-assessment and risk list.",
+        "sections": [
+          "abstract",
+          "introduction",
+          "related_work",
+          "method",
+          "experiments",
+          "results",
+          "discussion",
+          "conclusion"
+        ],
+        "estimate": "~18 min · ~$0.45"
+      }
+    },
+    "actions": {
+      "generate": "Generate report",
+      "regenerate": "Regenerate",
+      "download": "Download PDF",
+      "share": "Share read-only link",
+      "markdown": "Copy as Markdown",
+      "googleDocs": "Open in Google Docs"
+    },
+    "versionLabel": "v{major}.{minor}",
+    "confidenceNote": "AI-generated paragraphs carry a confidence tag so your advisor sees what's solid vs what needs review.",
+    "emptyLibrary": "Reports you generate will appear here.",
+    "selected": "selected",
+    "needsStage": "Needs {stage}",
+    "blockedHint": "This template needs {stage} stage to be reached. You're currently at {current}.",
+    "unstarted": "not started",
+    "goToTopic": "Go advance stage"
+  },
+  "celebration": {
+    "firstOutline": "🎉 Your first outline is ready",
+    "firstDraft": "✨ First section drafted — {wordCount} words, {citations} citations",
+    "firstVerification": "🔎 Cross-check complete — {contradictions} contradictions to review",
+    "firstGap": "💡 Found {count} research gaps worth thinking about"
+  },
+  "nextStage": {
+    "currentLabel": "Current stage",
+    "heroTitle": "Next: {stage}",
+    "allDoneTitle": "You've reached the final stage",
+    "allDoneBody": "The pipeline is complete. Review artifacts, draft your paper, or start a new topic.",
+    "checkReadiness": "Check readiness",
+    "advanceTo": "Advance to {stage}",
+    "complete": "Mark complete",
+    "advanced": "Stage advanced",
+    "readinessResult": "Readiness: {status}"
+  },
+  "common": {
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "continue": "Continue",
+    "back": "Back",
+    "save": "Save",
+    "delete": "Delete",
+    "close": "Close",
+    "viewAll": "View all",
+    "whyThis": "Why this?",
+    "seeEvidence": "See evidence",
+    "notEnoughData": "Not enough data yet",
+    "previous": "Previous",
+    "next": "Next",
+    "search": "Search",
+    "all": "All",
+    "unassigned": "Unassigned",
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "approve": "Approve",
+    "unlock": "Unlock",
+    "pause": "Pause",
+    "activate": "Activate",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh"
+  },
+  "research": {
+    "title": "Research",
+    "subtitle": "Your research areas (domains) and the topics inside them.",
+    "newDomain": "New domain",
+    "newTopic": "New topic",
+    "searchPlaceholder": "Search topic name, description, or domain...",
+    "emptyTitle": "No research topics yet",
+    "emptyBody": "Start a topic to begin literature discovery, claim extraction, and drafting.",
+    "assignToDomain": "Assign to domain",
+    "reconcileCta": "Reconcile unassigned",
+    "editHint": "Double-click to rename",
+    "renaming": "Renaming..."
+  },
+  "reconcile": {
+    "title": "Reconcile unassigned topics",
+    "subtitle": "Smart suggestions based on topic name and description overlap with your existing domains. Nothing is applied until you confirm — one click per row, or apply-all once you've reviewed.",
+    "applyAll": "Apply all {count}",
+    "apply": "Apply",
+    "applied": "Moved {name}",
+    "undo": "Undo",
+    "undone": "Unassigned again",
+    "pickDomain": "Pick a domain...",
+    "confidence": "Match · {pct}%",
+    "recentAssignments": "Recent assignments",
+    "allCleanTitle": "All topics are assigned",
+    "allCleanBody": "Every topic has a domain — nothing to reconcile.",
+    "noDescription": "No description.",
+    "createNew": "+ Create new domain...",
+    "createAndAssign": "Create & assign",
+    "lowConfidence": "Low match — consider creating a new domain",
+    "suggestedName": "Suggested name"
+  },
+  "library": {
+    "title": "Paper library",
+    "searchPlaceholder": "Search title, authors, venue...",
+    "colTitle": "Title",
+    "colAuthors": "Authors",
+    "colYear": "Year",
+    "colVenue": "Venue",
+    "colCitations": "Citations",
+    "colStatus": "Status",
+    "colRelevance": "Relevance",
+    "colDeepRead": "Deep read",
+    "deepReadYes": "Deep read",
+    "deepReadNo": "Skimmed",
+    "markDeepRead": "Mark as deep read",
+    "unmarkDeepRead": "Remove deep read",
+    "emptyTitle": "Your library is empty",
+    "emptyBody": "Ingest a paper from arXiv or import a BibTeX file to get started.",
+    "noMatch": "Nothing matches those filters",
+    "ctaStartTopic": "Start a topic",
+    "ctaExploreTopics": "Explore existing topics",
+    "relevanceHigh": "High",
+    "relevanceMedium": "Medium",
+    "relevanceLow": "Low",
+    "allTopics": "All topics",
+    "showing": "Showing {start}-{end} of {total}",
+    "enrichMetadata": "Enrich metadata"
+  },
+  "discover": {
+    "intelligence": "Research intelligence",
+    "heroTitle": "What's the field doing?",
+    "heroBody": "Trending clusters, open problems worth your time, and honest direction recommendations — built from your paper pool and the broader literature.",
+    "emptyTitle": "No trend data yet",
+    "emptyBody": "I need a paper pool with some history to surface what the field is doing. Add a topic, ingest papers, then come back here.",
+    "startTopic": "Start a topic",
+    "refreshTrends": "Refresh trends",
+    "hot": "What's hot",
+    "hotSubtitle": "Clusters with the biggest year-over-year jumps in the literature",
+    "volumeTitle": "Publication volume over 5 years",
+    "peak": "peak · {count} papers",
+    "openProblems": "Open problems worth your time",
+    "openProblemsSubtitle": "High-score clusters that the field hasn't flooded yet",
+    "directions": "Directions to explore",
+    "directionsPersonalized": "Directions tailored to your work",
+    "directionsSubtitle": "Three I'd consider — with both upside and honest risks",
+    "coolingOff": "Cooling off — proceed with care",
+    "coolingDetail": "Down {pct}% YoY — field may be shifting attention elsewhere. Not always bad (mature methods stabilize), but factor it in.",
+    "whyConsider": "Why consider it",
+    "honestWarning": "Honest warning: +{pct}% YoY is crowded territory. Differentiation will be harder here than headline numbers suggest.",
+    "turnIntoTopic": "Turn into a topic",
+    "yoy": "YoY",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "whyMatters": "High publishability score with moderate competition — a good window for differentiation.",
+    "pubScore": "Publishability",
+    "papers": "Papers",
+    "recScore": "Score {score}/10",
+    "recVenues": "Published in {venues}",
+    "recSummaryFallback": "Publishability {score}/10 with {velocity}% YoY momentum — strong venue presence and room to differentiate."
+  },
+  "agents": {
+    "title": "Models",
+    "subtitle": "Manage the LLMs that do the work — generators, judges, challengers.",
+    "register": "Register model",
+    "pause": "Pause",
+    "activate": "Activate",
+    "delete": "Delete",
+    "pairings": "Model pairings",
+    "providersTitle": "Detected Providers",
+    "providersSubtitle": "LLM providers detected from your environment variables.",
+    "providersEmpty": "No providers detected. Set API key environment variables (e.g. ANTHROPIC_API_KEY) to enable providers.",
+    "tierRoutingTitle": "Tier Routing",
+    "tierRoutingSubtitle": "How tasks are routed to models by complexity tier.",
+    "tierLight": "Light",
+    "tierMedium": "Medium",
+    "tierHeavy": "Heavy",
+    "tierLightDesc": "Fast, cheap tasks — summaries, formatting, classification",
+    "tierMediumDesc": "Balanced tasks — drafting, analysis, claim extraction",
+    "tierHeavyDesc": "Complex tasks — deep reasoning, adversarial review, gap detection",
+    "sourceEnv": "env",
+    "sourceConfig": "config",
+    "sourceDefault": "default",
+    "family": "Family",
+    "model": "Model",
+    "provider": "Provider",
+    "registeredTitle": "Registered Agents",
+    "registeredSubtitle": "User-registered LLM agents for generation, judging, and challenging.",
+    "noAgents": "No agents registered.",
+    "noAgentsHint": "Complete onboarding or register one manually.",
+    "configLoaded": "Config loaded",
+    "configNotLoaded": "Using defaults"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Preferences, scoring rules, and connected accounts.",
+    "scoring": {
+      "title": "Scoring rules",
+      "description": "Set how strictly each research stage is graded, and choose whether the system can roll back artifacts that fail the bar.",
+      "pageDescription": "Each topic goes through six stages — Init, Build, Analyze, Propose, Experiment, Write — and each one gets graded by an LLM judge. The numbers below are the per-stage pass marks. You can adjust how strict they are, and whether the system is allowed to roll back work that falls short.",
+      "failGateTitle": "When the system fails a gate",
+      "failGateDescription": "Shadow just records the verdict — your work always passes through. Live actually rolls the stage back when an artifact misses the bar. Stay on Shadow until you’ve seen at least two weeks of grading on real topics.",
+      "shadowRecommended": "Shadow (recommended)",
+      "live": "Live",
+      "currently": "Currently:",
+      "liveEnforcing": "Live (enforcing)",
+      "shadowLogging": "Shadow (logging only)",
+      "liveWarning": "Live mode is on. Artifacts below the pass mark will be auto-rolled-back the next time a stage runs. Re-tune the pass marks on real artifacts before relying on this.",
+      "strictnessTitle": "Strictness tiers",
+      "strictnessDescription": "Pick a tier per topic on the topic detail page. Each tier targets a different publication bar.",
+      "tierDescEconomy": "Lightest review. The system passes most artifacts; only the worst are flagged.",
+      "tierDescStandard": "Balanced. Each stage is graded against the typical bar for a B-tier paper. Recommended.",
+      "tierDescPremium": "Strict. Two judges score each gate; threshold targets A-tier venues.",
+      "advancedTitle": "Advanced — per-stage pass marks",
+      "advancedDescription": "The actual numeric thresholds. Recompute them from the bundled anchor papers if you want to recalibrate.",
+      "recomputing": "Recomputing…",
+      "recomputeAll": "Recompute all pass marks",
+      "colStage": "Stage",
+      "colTier": "Tier",
+      "colPassMark": "Pass mark",
+      "colReferencePapers": "Reference papers",
+      "colLastRecomputed": "Last recomputed",
+      "never": "never"
+    },
+    "trends": {
+      "title": "Trend pipeline",
+      "description": "Regenerate the research-trend clusters that drive the dashboard carousel and the trends explorer."
+    },
+    "agentsKeys": {
+      "title": "Agents & API keys",
+      "description": "Add, remove, and pair the LLM agents the system uses for generation, judging, and adversarial review."
+    },
+    "providers": {
+      "title": "Provider configuration",
+      "description": "Manage LLM providers, auto-detect API keys, and configure tier routing.",
+      "detectedTitle": "Detected providers",
+      "detectedSubtitle": "Providers auto-detected from environment variables.",
+      "noProviders": "No providers detected. Set an API key env var (e.g. DEEPSEEK_API_KEY) to enable a provider.",
+      "tierRoutingTitle": "Tier routing",
+      "tierRoutingSubtitle": "How tasks are routed to providers by complexity tier.",
+      "autoSuggest": "Auto-suggest",
+      "testConnection": "Test",
+      "testing": "Testing…",
+      "testOk": "Connected",
+      "testFail": "Failed",
+      "hasKey": "Key set",
+      "noKey": "No key",
+      "lightTier": "Light",
+      "mediumTier": "Medium",
+      "heavyTier": "Heavy"
+    }
+  },
+  "topicPage": {
+    "backLink": "All topics",
+    "rollback": "Rollback",
+    "reviewIssues": "Review issues",
+    "noIssues": "No review issues recorded.",
+    "activity": "Activity",
+    "noEvents": "No events recorded yet.",
+    "autonomyLabels": {
+      "L0": "Step-by-step",
+      "L1": "Stage-by-stage",
+      "L2": "Smart checkpoints",
+      "L3": "Full auto"
+    },
+    "qualityTiers": {
+      "economy": "Economy",
+      "standard": "Standard",
+      "premium": "Premium"
+    }
+  },
+  "panels": {
+    "paperSearch": "Paper search & ingestion",
+    "searchQuery": "Search query",
+    "arxivOrDoi": "arXiv ID or DOI",
+    "selectAll": "Select all",
+    "ingestSelected": "Ingest selected",
+    "noPapersFound": "No papers found",
+    "analysis": "Literature analysis",
+    "tabGaps": "Gaps",
+    "tabDirections": "Directions",
+    "tabClaims": "Claims",
+    "detectGaps": "Detect gaps",
+    "rankDirections": "Rank directions",
+    "extractClaims": "Extract claims",
+    "paperOutline": "Paper outline",
+    "sections": "Sections",
+    "abstract": "Abstract",
+    "introduction": "Introduction",
+    "relatedWork": "Related work",
+    "method": "Method",
+    "experiments": "Experiments",
+    "results": "Results",
+    "discussion": "Discussion",
+    "conclusion": "Conclusion",
+    "evidenceMap": "Evidence map",
+    "draft": "Draft",
+    "redraft": "Redraft",
+    "adversarial": "Adversarial",
+    "adversarialWeaknesses": "Adversarial weaknesses"
+  },
+  "orchestrator": {
+    "title": "Pipeline progress",
+    "completionPct": "{pct}% complete",
+    "checklistTitle": "Stage checklist",
+    "noArtifactsYet": "Not started yet",
+    "artifactCount": "{count} artifact(s)",
+    "stages": {
+      "init": "Init",
+      "build": "Build",
+      "analyze": "Analyze",
+      "propose": "Propose",
+      "experiment": "Experiment",
+      "write": "Write"
+    }
+  },
+  "experiments": {
+    "title": "Experiments",
+    "loading": "Loading experiments…",
+    "loadingRuns": "Loading runs…",
+    "noRuns": "No iterations recorded yet.",
+    "empty": "No experiments yet — click New to start an autonomous loop.",
+    "new": "New",
+    "newTitle": "New experiment loop",
+    "iterationShort": "it",
+    "col": {
+      "iter": "Iter",
+      "metric": "Metric",
+      "time": "Time",
+      "cost": "Cost",
+      "status": "Status"
+    },
+    "form": {
+      "name": "Name",
+      "task": "Task description",
+      "metric": "Primary metric",
+      "direction": "Direction",
+      "maxIter": "Max iterations",
+      "patience": "Patience",
+      "budget": "Max $ (0=∞)",
+      "fixtures": "Fixture files (JSON {filename:content})",
+      "submit": "Launch loop"
+    }
+  },
+  "roadmap": {
+    "graphTitle": "Pipeline",
+    "graphHint": "Click a stage node to inspect every primitive, decision, and invariant that ran there.",
+    "legend": {
+      "completed": "completed",
+      "current": "in progress",
+      "idle": "paused",
+      "failed": "blocked",
+      "rollback": "rollback",
+      "loopback": "loopback"
+    }
+  },
+  "stage": {
+    "drawer": {
+      "description": "Inspect every primitive, decision, and invariant for this stage.",
+      "trace": "Trace",
+      "artifacts": "Artifacts",
+      "emptyTrace": "No activity recorded for this stage yet.",
+      "emptyArtifacts": "No artifacts recorded for this stage yet.",
+      "summary": {
+        "planned": "planned",
+        "ran": "ran",
+        "skipped": "skipped",
+        "failed": "failed",
+        "invariant": "invariants"
+      },
+      "gate": {
+        "loopback": "rolled back"
+      },
+      "rollback": {
+        "prompt": "Rollback reason",
+        "placeholder": "Why are you rolling back?"
+      }
+    }
+  },
+  "costCard": {
+    "title": "Cost & usage",
+    "tokens": "Tokens",
+    "calls": "Calls",
+    "spendByPrimitive": "Token spend by primitive (top 10)",
+    "noActivity": "No recorded activity for this topic yet."
+  },
+  "onboarding": {
+    "title": "Welcome to Research Harness",
+    "subtitle": "Set up your research environment.",
+    "persona": {
+      "stepTitle": "Who are you?",
+      "stepDesc": "Choose the profile that best describes your starting point.",
+      "p1": {
+        "title": "New to AI Research",
+        "scenario": "Show me the AI landscape and help me pick a domain"
+      },
+      "p2": {
+        "title": "I Know My Domain",
+        "scenario": "Help me find a topic worth pursuing"
+      },
+      "p3": {
+        "title": "I Have a Topic",
+        "scenario": "Map the field for me — datasets, SOTA, venues"
+      },
+      "p4": {
+        "title": "Topic + Seeds",
+        "scenario": "Fast track with my prior work"
+      }
+    },
+    "constraints": {
+      "stepTitle": "Research Constraints",
+      "stepDesc": "Define your venue, compute, and timeline constraints.",
+      "venueLabel": "Venue Constraint",
+      "venue": {
+        "locked": "Locked",
+        "preferred": "Preferred",
+        "open": "Open"
+      },
+      "venuePlaceholder": "e.g. EMNLP, NeurIPS, ICML",
+      "computeLabel": "Compute Budget",
+      "compute": {
+        "cpu": "CPU Only",
+        "cpuDesc": "No GPU",
+        "singleGpu": "Single GPU",
+        "singleGpuDesc": "1× A100/V100",
+        "multiGpu": "Multi-GPU",
+        "multiGpuDesc": "2-8× GPUs",
+        "cluster": "Cluster",
+        "clusterDesc": "8+ nodes"
+      },
+      "deadlineLabel": "Time to Deadline",
+      "days": "days"
+    }
+  },
+  "fieldBrief": {
+    "title": "Field Brief",
+    "loading": "Loading field brief...",
+    "error": "Failed to load field brief",
+    "retry": "Retry",
+    "empty": "No field brief yet",
+    "generate": "Generate Field Brief",
+    "building": "Building...",
+    "stale": "Outdated",
+    "refresh": "Refresh",
+    "datasets": "Datasets",
+    "baselines": "Baselines",
+    "narratives": "Narratives",
+    "challenges": "Challenges",
+    "compute": "Compute",
+    "venues": "Venues"
+  },
+  "goalPool": {
+    "title": "Goal Pool",
+    "loading": "Loading goals...",
+    "error": "Failed to load goals",
+    "retry": "Retry",
+    "empty": "No goals yet",
+    "emptyHint": "Generate Field Brief first",
+    "build": "Build Goal Pool",
+    "rebuild": "Rebuild",
+    "building": "Building...",
+    "dataset": "Dataset",
+    "baseline": "Baseline",
+    "delta": "Target Delta",
+    "venue": "Venue",
+    "score": "Score",
+    "actions": "Actions",
+    "skip": "Skip",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
+  },
+  "atoms": {
+    "title": "Method Atoms",
+    "loading": "Loading atoms...",
+    "error": "Failed to load atoms",
+    "empty": "No method atoms yet. Harvest from papers first."
+  },
+  "matrix": {
+    "title": "Experiment Matrix",
+    "loading": "Loading matrix...",
+    "error": "Failed to load matrix",
+    "empty": "No experiment matrix yet",
+    "build": "Build Matrix",
+    "rebuild": "Rebuild",
+    "building": "Building...",
+    "runProxy": "Run Proxy Pass",
+    "running": "Running..."
+  },
+  "venue": {
+    "loading": "Loading venue decision...",
+    "error": "Failed to load venue decision",
+    "noDecision": "No venue decided yet",
+    "decide": "Decide Venue",
+    "deciding": "Deciding...",
+    "risks": "risk(s)"
+  },
+  "styleKit": {
+    "title": "Venue Style Kit",
+    "loading": "Loading style kit...",
+    "error": "Failed to load style kit",
+    "empty": "No style kit yet",
+    "build": "Build Style Kit",
+    "building": "Building...",
+    "introLength": "Intro length",
+    "citationDensity": "Citations/100w",
+    "hedgingTerms": "Hedging terms",
+    "sourcePapers": "Source papers",
+    "sourceVenues": "Source venues"
+  },
+  "retrieval": {
+    "trigger": "Need more papers?",
+    "modalTitle": "Trigger paper retrieval",
+    "reasonLabel": "Why are you searching?",
+    "queryLabel": "Search query",
+    "queryPlaceholder": "e.g. time series forecasting reasoning benchmark",
+    "search": "Search",
+    "searching": "Searching...",
+    "cancel": "Cancel",
+    "results": "Found {count} papers",
+    "noResults": "No papers found. Try a different query.",
+    "error": "Search failed",
+    "ingest": "Ingest selected",
+    "ingesting": "Ingesting...",
+    "logged": "Logged to retrieval timeline",
+    "reasons": {
+      "missing_evidence": "Missing evidence",
+      "weak_baseline": "Weak baseline",
+      "new_atom_idea": "New method idea",
+      "venue_pattern": "Venue-specific pattern",
+      "user_request": "Manual / curiosity"
+    }
+  }
+}

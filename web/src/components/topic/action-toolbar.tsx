@@ -19,53 +19,7 @@ import {
   STAGE_TEXT_COLORS,
   STAGE_BG_COLORS,
 } from "@/lib/types";
-
-// ---------------------------------------------------------------------------
-// API stubs — will be replaced when api.ts adds these functions
-// ---------------------------------------------------------------------------
-
-interface WriteResponse {
-  status: string;
-  summary: string;
-  output: unknown;
-  next_actions: string[];
-  artifacts: unknown[];
-  recovery_hint: string | null;
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-async function advanceTopic(
-  topicId: number,
-  params?: { actor?: string }
-): Promise<WriteResponse> {
-  const res = await fetch(`${API_BASE}/api/topics/${topicId}/advance`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params ?? {}),
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
-
-async function checkTopicGate(topicId: number): Promise<WriteResponse> {
-  const res = await fetch(
-    `${API_BASE}/api/topics/${topicId}/gate-check`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    }
-  );
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`API ${res.status}: ${body}`);
-  }
-  return res.json();
-}
+import { advanceTopic, checkTopicGate } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -204,7 +158,7 @@ export function ActionToolbar({
             ) : (
               <ShieldCheck className="size-3.5" />
             )}
-            Check Gate
+            Check readiness
           </Button>
 
           <Button
@@ -217,7 +171,7 @@ export function ActionToolbar({
             ) : (
               <ChevronRight className="size-3.5" />
             )}
-            Advance Stage
+            Next stage
           </Button>
         </div>
       </div>

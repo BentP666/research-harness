@@ -1,0 +1,21 @@
+{
+  "topic_id": "fixture-loopback",
+  "name": "loopback-evidence-stress",
+  "venue_target": "ACL 2026",
+  "deadline": "2026-12-01",
+  "direction": "Designed to force analyze→build loopback: one seed has stale evidence so coverage_gate must reject and request more papers.",
+  "scope": "5 papers where #5 will be flagged stale during analyze, triggering a backfill run.",
+  "seeds": [
+    "fixture-paper-lb-001",
+    "fixture-paper-lb-002",
+    "fixture-paper-lb-003",
+    "fixture-paper-lb-004",
+    "fixture-paper-lb-005-stale"
+  ],
+  "tier": "pre_merge",
+  "expected_terminal_stage": "propose",
+  "expected_loopbacks": [
+    {"from": "analyze", "to": "build", "count": 1}
+  ],
+  "notes": "Verifies the loopback path of STAGE_GRAPH and that loopback events get reasoned gate decisions."
+}

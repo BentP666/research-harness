@@ -45,10 +45,10 @@
 
 **场景**: 执行 `/literature-search` Phase 1 并行搜索时，5 个 MCP 工具同时报 `No such tool available`
 **根本原因**: 三重问题叠加：
-1. `research-harness` conda 环境不存在（`/workspace/research-harness/.conda` 路径硬编码，但本机无此路径）
+1. `research-harness` conda 环境不存在（路径硬编码，但本机无此路径）
 2. `arxiv_mcp_server`、`refcheck`、`arxiv_latex_mcp`、`semantic-scholar-mcp`、`mcp-dblp` 均未安装在任何环境
 3. `auto-bidding/.mcp.json` 使用 `uvx` 运行 semantic-scholar 和 mcp-dblp，但本机无 `uvx`
-4. `research-harness` 和 `pasa_search` MCP 只配置在 `~/code/research-harness/.mcp.json`，不在 `auto-bidding` 的父目录链中，Claude Code 加载不到
+4. `research-harness` 和 `pasa_search` MCP 只配置在项目根目录的 `.mcp.json`，不在子项目的父目录链中，Claude Code 加载不到
 **修复**: 新建 `research-harness` conda 环境，安装所有包，将 `.mcp.json` 改为使用绝对 python 路径，并将 research-harness MCP 合并到 `auto-bidding/.mcp.json`
 **建议**: README 中应有明确的环境初始化步骤，且 `.mcp.json` 应使用绝对路径而非依赖环境变量或 `uvx`
 **优先级**: P0（完全阻塞 literature-search 流程）
@@ -186,7 +186,7 @@
 
 **问题**: 系统存在两个 pool.db：
 - `~/.research-harness/pool.db`（旧路径，CLAUDE.md 和部分文档写的默认路径）
-- `~/code/research-harness/.research-harness/pool.db`（实际使用的正确路径）
+- `<project-root>/.research-harness/pool.db`（实际使用的正确路径）
 
 两个 DB 内容完全不同：旧路径只有 topic_id=1（24 篇），正确路径有 topic_id=4（310 篇）。agent 和人工调试时反复查错库，浪费大量时间。
 
@@ -419,3 +419,68 @@ Audit found the 1.0 release was actually at RC1 level. Fixed in this session:
 - `pytest packages/` no longer crashes on collection
 - `list_tool_definitions()` → 112 distinct, 0 duplicates
 - `PRIMITIVE_REGISTRY` → 69 registered
+
+---
+
+## [2026-04-24] TFRBench E2E test session — 5 bugs fixed
+
+During end-to-end testing with a real research task (TFRBench time-series
+forecasting benchmark, 100-paper expansion target) we hit five failures.
+All five are now fixed in code; full user-facing workarounds live in
+`docs/TROUBLESHOOTING.md`.
+
+### Fixed
+
+- **#24 route order: `/api/agents/ledger` returns HTTP 422**
+  `/api/agents/{agent_id}` was declared before `/api/agents/ledger`, so
+  FastAPI tried to parse `"ledger"` as an integer. Moved the ledger
+  endpoint above the dynamic route in `http_api.py`. Also fixed a latent
+  `with get_db() as conn:` scope bug in the same handler (queries ran
+  outside the `with` block against a closed connection).
+
+- **#25 `S2_API_KEY` ignored by paper search providers**
+  `paper_source_clients.py::build_provider_suite()` and
+  `available_provider_specs()` only read `SEMANTIC_SCHOLAR_API_KEY`
+  despite the docs and `paper_pool.py` supporting both names. Added
+  `S2_API_KEY` as the primary read in both call sites with
+  `SEMANTIC_SCHOLAR_API_KEY` as legacy fallback.
+
+- **#26 expansion worker calls unregistered primitive**
+  `_deep_read_paper_impl()` dispatched via `api.execute_primitive("deep_read")`,
+  but `DEEP_READ_SPEC`'s implementation is registered on the MCP tool
+  dispatcher, not the primitive registry. Switched to `execute_tool(...)`,
+  matching `toggle_deep_read`. Manifests as `papers_deep_read=0` despite
+  jobs reaching the deep-read phase.
+
+- **#27 deep-read returns `model_used="none"` for abstract-only papers**
+  `_get_paper_text()` returned empty text when a paper had only metadata
+  (no PDF, no annotations), short-circuiting `deep_read()` before any
+  LLM call. Added an abstract fallback at the end of `_get_paper_text()`
+  so meta-only papers still produce a shallow deep-read. This lets the
+  pipeline triage 100+ papers without acquiring every PDF.
+
+- **#28 LLM router blocklist silently breaks Anthropic-proxy users**
+  `_BLOCKED_PROVIDERS_BY_TIER` hard-blocks `anthropic` for light/medium
+  tiers and falls back to `openai:gpt-4o`. Users without `OPENAI_API_KEY`
+  (common when routing through a local Anthropic proxy)
+  get `'str' object has no attribute 'choices'` because the OpenAI SDK
+  returns a string error payload. Added `LLM_ROUTE_ALLOW_ANYTHING=1`
+  escape hatch in `_apply_blocklist()`. `.env.example` now documents
+  this plus how to configure `ANTHROPIC_BASE_URL` / model naming for
+  local proxies.
+
+### Known remaining issues (follow-ups tracked in TROUBLESHOOTING.md)
+
+- Deep-read pass1 sometimes emits unterminated ```json fences when
+  `max_tokens=2048` is tight; `_parse_json()` falls through and returns
+  `{}`, losing `algorithm_walkthrough` / `limitation_analysis` /
+  `reproducibility_assessment`. Pass2 (`critical_assessment`) still
+  produces rich output. Needs either larger max_tokens or a
+  best-effort partial-JSON parser.
+- Expansion jobs run as in-process daemon threads. A backend restart
+  mid-run leaves rows stuck at `status=running` with no watchdog sweep.
+- Settings page logs a `next-themes` hydration mismatch on the theme
+  toggle — cosmetic, no data impact.
+- Some LLM plugin providers may break when the plugin API changes.
+  Users should route to `anthropic` with a local passthrough proxy
+  instead.

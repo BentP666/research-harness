@@ -28,6 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SimilarRunsCard } from "@/components/topic/similar-runs-card";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -315,6 +316,10 @@ function StepTopicDetails({
           />
         </div>
       </div>
+
+      {/* v2 Step 9 — surface comparable past runs so the user can reuse
+       *  decisions and patterns rather than starting from scratch. */}
+      <SimilarRunsCard name={topicName} description={topicDescription} />
     </div>
   );
 }

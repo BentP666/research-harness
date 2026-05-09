@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-bm-004", "title": "Reasoning Tasks for Time Series Forecasters", "abstract": "Introduces a taxonomy of reasoning skills (counterfactual, anomaly, regime-shift) and evaluates 12 LLM forecasters.", "authors": ["R. Rivera"], "venue": "arXiv 2026", "year": 2026, "doi": "10.0000/fixture.bm.004", "topic_match": "fixture-benchmark"}

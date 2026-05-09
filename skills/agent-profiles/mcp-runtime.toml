@@ -1,0 +1,14 @@
+# .rh-agent.toml — runtime-only profile
+#
+# Some agents (typically thin LLM wrappers backed by an MCP client) don't want
+# any filesystem-based install at all — they just call `skill_list` and
+# `skill_get` against the Research Harness MCP server at runtime. Use this
+# profile for that case: `rh skill install` will recognise it and exit
+# without writing anything.
+
+[agent]
+name = "mcp-runtime"
+
+[skills]
+install_path = "/dev/null"           # ignored when strategy=mcp-runtime
+strategy     = "mcp-runtime"

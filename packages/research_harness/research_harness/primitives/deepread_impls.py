@@ -274,13 +274,13 @@ def _get_first_page_text(conn: Any, paper_id: int, paper_row: Any) -> str:
             except Exception:
                 pass
 
-    # Fallback: extract from PDF directly
+    # Fallback: extract from PDF directly via paperindex public API
     pdf_path = paper_row["pdf_path"] if "pdf_path" in paper_row.keys() else None
     if pdf_path and Path(pdf_path).exists():
         try:
-            from paperindex.indexing.page_index import extract_structure_tree
+            from research_harness.paperindex import PaperIndexer
 
-            structure = extract_structure_tree(pdf_path)
+            structure = PaperIndexer().extract_structure(pdf_path)
             pages = structure.raw.get("pages_text", [])
             if pages:
                 return str(pages[0])

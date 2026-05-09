@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-tfr-002", "title": "Transformer-XL for Long-Horizon Forecasting", "abstract": "We adapt Transformer-XL with relative-position encoding for 720-step horizons; report 8.4% sMAPE improvement over Informer on ETT-h2.", "authors": ["C. Chen", "D. Diaz"], "venue": "ICLR 2024", "year": 2024, "doi": "10.0000/fixture.tfr.002", "topic_match": "fixture-tfr-small"}

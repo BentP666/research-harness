@@ -118,12 +118,12 @@
       "note": "INFORMS PubsOnLine PDF via DOI"
     },
     {
-      "type": "pkulib_redirect",
-      "source": "pku-library",
-      "title": "Paper accessed via PKU library portal",
-      "url": "https://www.lib.pku.edu.cn/portal/cn/resourcedb/redirect?target=https://ieeexplore.ieee.org/document/12345678",
+      "type": "institutional_redirect",
+      "source": "institutional-library",
+      "title": "Paper accessed via institutional library portal",
+      "url": "https://lib.example.edu/portal/resourcedb/redirect?target=https://ieeexplore.ieee.org/document/12345678",
       "expected_downloadable": true,
-      "note": "PKU library redirect URL wrapping external database"
+      "note": "Institutional library redirect URL wrapping external database"
     },
     {
       "type": "cnki",

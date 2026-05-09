@@ -1,0 +1,18 @@
+# .rh-agent.toml — Claude Code consumer profile
+#
+# Drop this file into the root of any repo where you want Claude Code to
+# pick up Research Harness skills, then run `rh skill install`. RH does not
+# need to know about Claude Code in advance — this file IS the integration.
+#
+# Two common scopes:
+#   * Project-local skills (committed to the repo): use install_path = ".claude/skills"
+#   * User-global skills (your machine, all repos): use install_path = "~/.claude/skills"
+
+[agent]
+name    = "claude-code"
+version = ">=1.0"
+
+[skills]
+install_path = "~/.claude/skills"
+format       = "claude-skill-md"
+strategy     = "symlink"

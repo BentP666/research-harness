@@ -91,6 +91,9 @@ class PaperIngestOutput:
     merged_fields: list[str] = field(default_factory=list)
     enriched_fields: dict[str, str] = field(default_factory=dict)
     duplicate_candidates: list[dict[str, object]] = field(default_factory=list)
+    # Populated when the caller supplied a URL and we tried to fetch HTML.
+    # Shape: {fetched: bool, chars?: int, http_status?: int, reason?: str}
+    html_ingest: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -116,6 +119,18 @@ class SummaryOutput:
 
 
 @dataclass(frozen=True)
+class EvidenceSpan:
+    """Specific source-text reference backing a claim."""
+
+    paper_id: int
+    section: str = ""
+    snippet: str = ""
+    page: int | None = None
+    start_char: int | None = None
+    end_char: int | None = None
+
+
+@dataclass(frozen=True)
 class Claim:
     """An extracted research claim with evidence linkage."""
 
@@ -125,6 +140,8 @@ class Claim:
     evidence_type: str = ""
     confidence: float = 0.0
     source_section: str = ""
+    modality: str = "text"  # text | figure | table | equation | mixed
+    evidence_spans: list[EvidenceSpan] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.claim_id:
@@ -180,6 +197,7 @@ class Gap:
     gap_type: str = ""
     severity: str = "medium"
     related_paper_ids: list[int] = field(default_factory=list)
+    confidence: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -302,8 +320,25 @@ class SectionDraftInput:
 
 
 @dataclass(frozen=True)
+class EvidenceMapping:
+    """Sidecar: one drafted sentence -> source paper + relation type.
+
+    Emitted by section_draft so readers can audit evidence coverage.
+    See ADR-001 Step 3.3 / v2 plan.
+    """
+
+    sentence_index: int
+    sentence_text: str
+    source_paper_id: int
+    relation_type: str  # quotation | compression | inference
+    source_span: str = ""
+    confidence: float = 0.0
+
+
+@dataclass(frozen=True)
 class SectionDraftOutput:
     draft: DraftText | None = None
+    evidence_map: list[EvidenceMapping] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -542,6 +577,66 @@ class ExperimentRunOutput:
     code_hash: str = ""
     stdout_tail: str = ""  # last N chars of stdout
     stderr_tail: str = ""
+
+
+@dataclass(frozen=True)
+class ExperimentBudget:
+    """Budget limits for an experiment_loop run."""
+
+    max_iterations: int = 10
+    max_cost_usd: float = 0.0  # 0 = unlimited
+    max_tokens: int = 0  # 0 = unlimited
+    patience: int = 3  # iterations without improvement before early stop
+
+
+@dataclass(frozen=True)
+class ExperimentSpec:
+    """Structured experiment specification for the iteration loop.
+
+    Inspired by karpathy/autoresearch's three-file pattern:
+    - ``task_description`` ≈ program.md (what the agent is trying to do)
+    - ``fixture_files`` ≈ prepare.py (fixed scaffold: eval set, scorer)
+    - ``mutable_entry`` ≈ train.py (the file the LLM rewrites each iteration)
+    """
+
+    name: str = ""
+    task_description: str = ""
+    fixture_files: dict[str, str] = field(default_factory=dict)
+    mutable_entry: str = "main.py"
+    primary_metric: str = ""
+    direction: str = "max"  # "max" | "min"
+    mode: str = "agent"  # validator mode: "strict" | "agent"
+    timeout_sec: float = 300.0
+    env_vars: dict[str, str] = field(default_factory=dict)
+    budget: ExperimentBudget = field(default_factory=ExperimentBudget)
+
+
+@dataclass(frozen=True)
+class ExperimentRunSummary:
+    """Compact per-iteration record returned from experiment_loop."""
+
+    iteration: int = 0
+    primary_metric_value: float | None = None
+    status: str = ""  # completed | failed | timeout | invalid
+    elapsed_sec: float = 0.0
+    cost_usd: float = 0.0
+    tokens_used: int = 0
+    code_hash: str = ""
+
+
+@dataclass(frozen=True)
+class ExperimentLoopOutput:
+    """Output of experiment_loop primitive."""
+
+    experiment_id: int = 0
+    total_iterations: int = 0
+    best_iteration: int | None = None
+    best_value: float | None = None
+    best_run_id: int | None = None
+    stopped_reason: str = ""  # budget | patience | error | completed
+    runs: list[ExperimentRunSummary] = field(default_factory=list)
+    total_cost_usd: float = 0.0
+    total_tokens: int = 0
 
 
 @dataclass(frozen=True)

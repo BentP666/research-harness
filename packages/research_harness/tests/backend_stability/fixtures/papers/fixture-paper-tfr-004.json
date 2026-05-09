@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-tfr-004", "title": "Reasoning Augmented Forecasting via Chain-of-Thought", "abstract": "We elicit numerical CoT in LLM forecasters and show it raises calibration of 95% PI from 0.71 to 0.88 on Monash benchmarks.", "authors": ["F. Fontaine", "G. Gao"], "venue": "EMNLP 2024", "year": 2024, "doi": "10.0000/fixture.tfr.004", "topic_match": "fixture-tfr-small"}

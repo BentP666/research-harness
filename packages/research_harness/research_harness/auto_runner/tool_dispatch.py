@@ -14,6 +14,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -70,6 +71,77 @@ def _extract_revise_text(output: dict[str, Any]) -> str:
     Real SectionReviseOutput → {"revised_content": ...}
     """
     return output.get("revised_content", output.get("text", output.get("content", "")))
+
+
+def _run_section_loops(
+    *,
+    db: Database,
+    topic_id: int,
+    context: dict[str, Any],
+    results: list["ToolResult"],
+    errors: list[str],
+) -> None:
+    """Run run_section_loop() for every section in sections_to_draft.
+
+    ADR-001 Decision 1: this is the canonical write-stage loop. Populates
+    context[_output_section_draft_{sec}], _output_section_review_{sec}, and
+    _output_section_revise_{sec} so that existing downstream tools (citation
+    verify, latex compile, etc.) continue to read their inputs as before.
+    """
+    from ..execution.loops import run_section_loop
+
+    sections = context.get("sections_to_draft", []) or []
+    outline = context.get("outline", "")
+    evidence_ids = context.get("evidence_ids", [])
+    max_words = int(context.get("max_words", 2000))
+    # retry_once in stage_policy → max_rounds=2 (initial + 1 retry).
+    max_rounds = int(context.get("section_loop_max_rounds", 2))
+    min_score = float(context.get("section_loop_min_score", 0.7))
+
+    for sec in sections:
+        try:
+            loop = run_section_loop(
+                db=db,
+                section=sec,
+                topic_id=topic_id,
+                outline=outline,
+                max_words=max_words,
+                max_rounds=max_rounds,
+                min_score=min_score,
+                evidence_ids=evidence_ids,
+            )
+            content = loop.final_output if isinstance(loop.final_output, str) else ""
+            normalized = {
+                "text": content,
+                "rounds": loop.total_rounds,
+                "score": loop.final_score,
+                "converged": loop.converged,
+                "decision": loop.decision,
+            }
+            context.setdefault("_drafted_sections", []).append(sec)
+            context[f"_output_section_draft_{sec}"] = {"text": content}
+            # Last iteration feedback seeds the review slot for downstream tools.
+            last_feedback = loop.iterations[-1].feedback if loop.iterations else ""
+            context[f"_output_section_review_{sec}"] = {"feedback": last_feedback}
+            context[f"_output_section_revise_{sec}"] = {"text": content}
+            # Record on "section_draft" so dispatch summaries keep the tool name.
+            results.append(
+                ToolResult(
+                    tool="section_draft",
+                    success=True,
+                    output=normalized,
+                )
+            )
+        except Exception as exc:
+            logger.warning("run_section_loop[%s] failed: %s", sec, exc)
+            errors.append(f"run_section_loop[{sec}]: {exc}")
+            results.append(
+                ToolResult(
+                    tool="section_draft",
+                    success=False,
+                    error=str(exc)[:500],
+                )
+            )
 
 
 @dataclass
@@ -208,7 +280,42 @@ def dispatch_stage_tools(
     if budget_monitor is not None:
         budget_monitor.sync_from_provenance(db, topic_id=topic_id)
 
+    # v2 Step 5 — ADR-001 Decision 1: when RESEARCH_HARNESS_SECTION_LOOP=1 and
+    # the write stage is requesting the draft/review/revise triad, replace them
+    # with run_section_loop() (canonical section loop). We populate context with
+    # the per-section outputs so the legacy tool names become no-ops.
+    section_loop_enabled = (
+        os.environ.get("RESEARCH_HARNESS_SECTION_LOOP", "").strip() == "1"
+    )
+    section_loop_handled = False
+    if (
+        section_loop_enabled
+        and stage == "write"
+        and context.get("sections_to_draft")
+        and "section_draft" in tools
+    ):
+        try:
+            _run_section_loops(
+                db=db,
+                topic_id=topic_id,
+                context=context,
+                results=results,
+                errors=errors,
+            )
+            section_loop_handled = True
+        except Exception as exc:
+            logger.warning("run_section_loop integration failed: %s", exc)
+            errors.append(f"run_section_loop: {exc}")
+
     for tool_name in tools:
+        # When the canonical loop already drafted/reviewed/revised, skip the
+        # individual tool names — their outputs are already in context.
+        if section_loop_handled and tool_name in (
+            "section_draft",
+            "section_review",
+            "section_revise",
+        ):
+            continue
         # Skip gate/status checks that happen elsewhere
         if tool_name in ("orchestrator_gate_check", "orchestrator_status"):
             continue
@@ -1092,8 +1199,13 @@ def _build_primitive_params(
         cg_out = context.get("_output_code_generate", {})
         files = cg_out.get("files", {})
         entry = cg_out.get("entry_point", "main.py")
+        if files:
+            params["files"] = dict(files)
+            params["entry_point"] = entry
         params["code"] = files.get(entry, "") or cg_out.get("code", "")
         params["primary_metric"] = context.get("primary_metric", "")
+        if context.get("experiment_env_vars"):
+            params["env_vars"] = dict(context["experiment_env_vars"])
 
     elif name == "verified_registry_build":
         er_out = context.get("_output_experiment_run", {})

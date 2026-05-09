@@ -77,3 +77,21 @@ export CURSOR_AGENT_ENABLED=1
 - Data management -> `rh` CLI
 - Primitive executions -> auto-tracked in provenance
 - LLM primitives -> auto-route by tier
+
+## Multi-Session Workflow (CRITICAL)
+
+> See `docs/WORKTREES.md` for the full protocol.
+
+**Two Claude sessions sharing one git checkout is unsafe.** When one session
+runs `git checkout`, the other session's uncommitted edits get discarded.
+
+**Rules:**
+
+1. The primary checkout `~/code/research-harness-oss` stays on `main`. **Do
+   not switch branches there.**
+2. Every feature branch lives in its own worktree at `~/code/rh-<feature>`.
+3. Before editing files, run `pwd && git branch --show-current` and confirm
+   the path matches the feature you're working on. If you're in the primary
+   on `main`, use `EnterWorktree(path=~/code/rh-<feature>)` to switch.
+4. New worktree: `scripts/wt-new.sh <feature>` from the primary, then
+   `cd ../rh-<feature>/web && npm install` once.

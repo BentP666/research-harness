@@ -226,26 +226,26 @@ The dashboard surfaces topics, papers, projects, artifacts, and provenance stats
 
 ## Skills for Vibe Coding
 
-In Claude Code or Codex the usual driver is natural language — you describe the task and the agent routes to the right skill, which in turn calls the right MCP tools. Fourteen skills ship in [`codex-skills/`](codex-skills/) as portable Claude Code skill files (standard YAML-frontmatter format); drop the folder into your skills directory and triggers from the table below start working.
+In Claude Code or Codex the usual driver is natural language — you describe the task and the agent routes to the right skill, which in turn calls the right MCP tools. Fourteen skills ship in [`skills/`](skills/) as portable Claude Code skill files (standard YAML-frontmatter format); drop the folder into your skills directory and triggers from the table below start working.
 
 ### Catalog
 
 | Skill | What it does | Example natural-language trigger |
 |-------|--------------|----------------------------------|
-| [`research-harness`](codex-skills/research-harness/SKILL.md) | Router — picks the right sub-skill when intent is broad | "let's start a research workflow" |
-| [`research-init`](codex-skills/research-init/SKILL.md) | Bootstrap a topic and scaffold project files | "initialize a new topic on X" |
-| [`literature-search`](codex-skills/literature-search/SKILL.md) | Broad paper discovery from a query | "find recent work on diffusion bidding" |
-| [`literature-mapping`](codex-skills/literature-mapping/SKILL.md) | Cluster papers, identify baselines, build topic map | "build a literature map of this topic" |
-| [`citation-trace`](codex-skills/citation-trace/SKILL.md) | Expand from seed papers via references and citations | "expand the pool from these three seeds" |
-| [`paper-sync`](codex-skills/paper-sync/SKILL.md) | Health-check the pool: metadata, PDFs, dismissals | "sync my paper pool" |
-| [`paper-verify`](codex-skills/paper-verify/SKILL.md) | Verify a paper exists and matches claimed metadata | "is this DOI real?" |
-| [`claim-extraction`](codex-skills/claim-extraction/SKILL.md) | Extract structured claims from papers | "pull the key claims out of paper 42" |
-| [`gap-analysis`](codex-skills/gap-analysis/SKILL.md) | Surface open questions and missing baselines | "what are the gaps here?" |
-| [`evidence-gating`](codex-skills/evidence-gating/SKILL.md) | Decide whether a stage can advance | "am I ready to move to the propose stage?" |
-| [`section-drafting`](codex-skills/section-drafting/SKILL.md) | Draft paper sections from linked evidence | "draft the related-work section" |
-| [`provenance-review`](codex-skills/provenance-review/SKILL.md) | Audit what was run, recorded, and linked | "review provenance for this project" |
-| [`research-primitives`](codex-skills/research-primitives/SKILL.md) | Reference — every MCP primitive at a glance | "show me the primitive reference" |
-| [`task-taxonomy`](codex-skills/task-taxonomy/SKILL.md) | Reference — model routing and task classification | "which tier should I use for claim extraction?" |
+| [`research-harness`](skills/research-harness/SKILL.md) | Router — picks the right sub-skill when intent is broad | "let's start a research workflow" |
+| [`research-init`](skills/research-init/SKILL.md) | Bootstrap a topic and scaffold project files | "initialize a new topic on X" |
+| [`literature-search`](skills/literature-search/SKILL.md) | Broad paper discovery from a query | "find recent work on diffusion bidding" |
+| [`literature-mapping`](skills/literature-mapping/SKILL.md) | Cluster papers, identify baselines, build topic map | "build a literature map of this topic" |
+| [`citation-trace`](skills/citation-trace/SKILL.md) | Expand from seed papers via references and citations | "expand the pool from these three seeds" |
+| [`paper-sync`](skills/paper-sync/SKILL.md) | Health-check the pool: metadata, PDFs, dismissals | "sync my paper pool" |
+| [`paper-verify`](skills/paper-verify/SKILL.md) | Verify a paper exists and matches claimed metadata | "is this DOI real?" |
+| [`claim-extraction`](skills/claim-extraction/SKILL.md) | Extract structured claims from papers | "pull the key claims out of paper 42" |
+| [`gap-analysis`](skills/gap-analysis/SKILL.md) | Surface open questions and missing baselines | "what are the gaps here?" |
+| [`evidence-gating`](skills/evidence-gating/SKILL.md) | Decide whether a stage can advance | "am I ready to move to the propose stage?" |
+| [`section-drafting`](skills/section-drafting/SKILL.md) | Draft paper sections from linked evidence | "draft the related-work section" |
+| [`provenance-review`](skills/provenance-review/SKILL.md) | Audit what was run, recorded, and linked | "review provenance for this project" |
+| [`research-primitives`](skills/research-primitives/SKILL.md) | Reference — every MCP primitive at a glance | "show me the primitive reference" |
+| [`task-taxonomy`](skills/task-taxonomy/SKILL.md) | Reference — model routing and task classification | "which tier should I use for claim extraction?" |
 
 ### Examples — natural language to skill routing
 
@@ -256,19 +256,33 @@ In Claude Code or Codex the usual driver is natural language — you describe th
 - "Have I recorded enough to advance to the experiment stage?" → `evidence-gating`
 - "Audit what was done on this project last week" → `provenance-review`
 
-### Installing into Claude Code
+### Installing skills
+
+`setup.sh` builds the skill manifest automatically, and the `rh skill`
+CLI installs skills into whatever location your agent expects. RH does not
+need to know about your agent in advance — the agent declares its own
+install path in a `.rh-agent.toml` file. See
+[`docs/skills/`](docs/skills/README.md) for the full design.
 
 ```bash
-# Option A: symlink the shipped skills into your user-global skills directory
-mkdir -p ~/.claude/skills
-ln -s "$(pwd)/codex-skills"/* ~/.claude/skills/
+# A. Auto: drop a .rh-agent.toml in the repo and run install.
+cp skills/agent-profiles/claude-code.toml .rh-agent.toml
+rh skill install
 
-# Option B: project-local
-mkdir -p .claude/skills
-cp -r codex-skills/* .claude/skills/
+# B. One of the shipped agent profiles, no .rh-agent.toml needed.
+rh skill install --agent claude-code
+rh skill install --agent codex
+
+# C. Ad-hoc — just point at a directory.
+rh skill install --target ~/.claude/skills
+
+# D. Pull at runtime via MCP, no filesystem install at all.
+#    Your agent calls skill_list / skill_get on the RH MCP server.
 ```
 
-Codex picks them up from `codex-skills/` directly. Both clients respect the same `SKILL.md` format — the triggers in the catalog above work in either.
+Both Claude Code and Codex consume the same `SKILL.md` format — the
+triggers in the catalog above work in either. New agents add a one-line
+`.rh-agent.toml`; no RH change required.
 
 ## Trust Model
 
@@ -341,10 +355,21 @@ Primitives are registered via `@register_primitive(spec)`; gates subclass `GateE
 | [`docs/python-api.md`](docs/python-api.md) | Using the harness without an MCP client |
 | [`docs/plugin-guide.md`](docs/plugin-guide.md) | Writing custom primitives, gates, backends |
 | [`docs/PAPER_MANAGEMENT.md`](docs/PAPER_MANAGEMENT.md) | Canonical paper-storage protocol |
+| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common errors (LLM routing, ledger 422, deep-read edge cases) and how to fix them |
+| [`docs/DEMO.md`](docs/DEMO.md) | v0.3.0 walk-through: clone → backend → expansion with multi-provider pool |
+| [`docs/RELEASE_NOTES_v0.3.0.md`](docs/RELEASE_NOTES_v0.3.0.md) | What shipped in v0.3.0, known limits, upgrade notes |
 
 ## Recent Updates
 
 A running log of the iterations that shape the public fork. Most recent first.
+
+### 2026-05-09 — v0.3.0 integrated research workflow release
+
+- **Workflow expansion** — CS research workflow v2 adds candidate seeding/upsert, red-ocean scoring, gap cross-verification, ranked recommendations, experiment handoff, and a single workflow-entry primitive for resuming topic work.
+- **Productized web dashboard** — Next.js app now covers agent setup, budgets, discovery, onboarding, paper reading, reports, topic-stage workflow panels, venue decisions, method atoms, goal pools, and retrieval logs.
+- **LLM routing and execution** — LiteLLM-backed providers, tier routing, token accounting, parallel deep-read pools, provider quarantine, and wall-clock timeouts make bulk paper reading more robust.
+- **Paperindex merge** — PDF/card/retrieval functionality now lives under `research_harness.paperindex`; `paperindex` remains as a compatibility shim.
+- **Release polish** — package versions are aligned to `0.3.0`; Python ruff, Python tests, web lint, web tests, and web build all pass locally.
 
 ### 2026-04-22 — HTTP API + Web dashboard, concurrent provider search
 
@@ -361,9 +386,9 @@ A running log of the iterations that shape the public fork. Most recent first.
 
 ## Status
 
-**Version 0.1.0** — first public release. 987+ tests across the three packages, 69 primitives, 112 MCP tools, 6 stages. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
+**Version 0.3.0** — integrated research workflow release. 40 local Python tests pass in the current lightweight gate, 69 primitives remain available, and the web dashboard now covers agents, budgets, discovery, reports, paper reading, and topic workflow operations. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
 
-Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot. Qwen, DeepSeek, and GLM through the tier-routing system are on the near-term roadmap.
+Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot, plus LiteLLM-backed DeepSeek, Qwen/Tongyi, Zhipu/GLM, Doubao, MiniMax, Yi/Baichuan, and SiliconFlow through tier routing.
 
 Known limits:
 

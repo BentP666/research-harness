@@ -97,7 +97,7 @@ def _usage_from_openai_dict(payload: Any) -> tuple[int | None, int | None]:
 # Types
 # ---------------------------------------------------------------------------
 
-Provider = Literal["anthropic", "openai", "kimi", "cursor_agent", "codex"]
+Provider = str  # open-ended: built-in + litellm + plugin providers
 TaskTier = Literal["light", "medium", "heavy"]
 ProviderFn = Callable[..., str]  # (prompt, model, **kwargs) -> response
 
@@ -158,6 +158,13 @@ _TIER_FALLBACKS: dict[TaskTier, tuple[str, str]] = {
 
 def _apply_blocklist(tier: TaskTier, provider_name: str, model: str) -> tuple[str, str]:
     """Replace ``provider_name`` with a safe default when blocked for this tier."""
+    # Escape hatch for local dev / users with proxied Anthropic access.
+    if os.environ.get("LLM_ROUTE_ALLOW_ANYTHING", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        return provider_name, model
     blocked = _BLOCKED_PROVIDERS_BY_TIER.get(tier, frozenset())
     if provider_name in blocked:
         fallback = _TIER_FALLBACKS.get(tier, _DEFAULT_ROUTES["medium"])
@@ -195,7 +202,22 @@ def resolve_route(tier: TaskTier) -> tuple[str, str]:
     if config_route is not None:
         return _apply_blocklist(tier, config_route[0], config_route[1])
 
-    return _DEFAULT_ROUTES.get(tier, _DEFAULT_ROUTES["medium"])
+    default = _DEFAULT_ROUTES.get(tier, _DEFAULT_ROUTES["medium"])
+    if default[0] in _PROVIDER_REGISTRY:
+        return default
+
+    # Default provider not registered — try auto-mapping from litellm providers.
+    try:
+        from .litellm_backend import suggest_tier_mapping
+        from .config import detect_available_providers
+
+        available = detect_available_providers()
+        suggested = suggest_tier_mapping(available)
+        if tier in suggested:
+            return _apply_blocklist(tier, suggested[tier][0], suggested[tier][1])
+    except ImportError:
+        pass
+    return default
 
 
 def set_default_route(tier: TaskTier, provider: str, model: str) -> None:
@@ -313,6 +335,9 @@ def _build_anthropic_client(
     return anthropic.Anthropic(**kwargs)
 
 
+_ANTHROPIC_MAX_TOKENS = 8192
+
+
 def _chat_anthropic(
     prompt: str,
     model: str,
@@ -327,7 +352,10 @@ def _chat_anthropic(
     client = _build_anthropic_client(api_key, base_url)
     response = client.messages.create(
         model=model,
-        max_tokens=2048,
+        # Bumped from 2048 → 4096 to fix silent mid-string JSON truncation on
+        # deep_read pass1 (see docs/TROUBLESHOOTING.md — long structured
+        # outputs used to hit the cap mid-string and return {}).
+        max_tokens=_ANTHROPIC_MAX_TOKENS,
         temperature=temperature,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -337,7 +365,18 @@ def _chat_anthropic(
             _coerce_int(getattr(usage, "input_tokens", None)),
             _coerce_int(getattr(usage, "output_tokens", None)),
         )
-    return "\n".join(b.text for b in response.content if hasattr(b, "text"))
+    content_blocks = response.content
+    if content_blocks is None:
+        err = None
+        try:
+            err = response.model_dump().get("error")
+        except Exception:
+            pass
+        raise RuntimeError(
+            f"Anthropic returned empty content (model={model}). "
+            f"The proxy may have rejected the model name. error={err}"
+        )
+    return "\n".join(b.text for b in content_blocks if hasattr(b, "text"))
 
 
 _KIMI_DEFAULT_BASE_URL = "https://api.kimi.com/coding/"
@@ -440,6 +479,78 @@ register_provider("codex", _chat_codex)
 register_provider("anthropic", _chat_anthropic)
 register_provider("openai", _chat_openai)
 register_provider("kimi", _chat_kimi)
+
+
+_BUILTIN_PROVIDERS = {"anthropic", "openai", "kimi", "cursor_agent", "codex"}
+
+# Register LiteLLM-backed providers (optional: graceful no-op if litellm is absent).
+try:
+    from .litellm_backend import register_litellm_providers
+
+    register_litellm_providers()
+except ImportError:
+    pass
+
+
+def available_providers() -> list[str]:
+    """Return the list of currently-usable LLM providers, ordered by preference.
+
+    Used by parallel workers (e.g. the deep-read expansion pool) to fan out
+    work across every available agent rather than hammering a single
+    tier-routed default.
+
+    Order (rough throughput / cost preference for background batch work):
+      1. Plugin-registered providers (`list_providers()` minus built-ins) —
+         these are almost always local corporate gateways the user explicitly
+         installed, so we trust registration as an availability signal.
+         Example: plugin-registered providers from
+         ``~/.config/llm_router/plugins/``.
+      2. ``cursor_agent`` — local CLI, no API quota (auto-detected via
+         ``which agent`` even if ``CURSOR_AGENT_ENABLED`` is not set).
+      3. ``anthropic`` — proxy or direct API key.
+      4. ``openai`` — direct API key.
+      5. ``kimi`` — direct API key.
+
+    ``codex`` is intentionally excluded — it targets code generation, not
+    paper reading. Use ``RESEARCH_HARNESS_DEEP_READ_PROVIDERS`` (a
+    comma-separated list) if you want to override the default pool
+    (e.g. to drop a provider that's temporarily broken upstream).
+    """
+    out: list[str] = []
+
+    # Plugin providers first: if the user installed a plugin, they want it used.
+    try:
+        registered = list_providers()
+    except Exception:
+        registered = []
+    for name in registered:
+        if name in _BUILTIN_PROVIDERS:
+            continue
+        # Skip plugin-tagged aliases so the pool doesn't run the same
+        # backend twice under two names. Convention: plugins mark aliased
+        # chat fns with ``fn.__llm_router_alias__ = "<canonical-name>"``.
+        try:
+            fn = get_provider(name)
+        except Exception:
+            fn = None
+        if fn is not None and getattr(fn, "__llm_router_alias__", None):
+            continue
+        out.append(name)
+
+    # Delegate built-in detection to the richer config-layer probe, which
+    # also handles CLI-on-PATH for cursor_agent / codex.
+    try:
+        from .config import detect_available_providers
+
+        builtin = detect_available_providers()
+    except Exception:
+        builtin = []
+    for name in builtin:
+        if name == "codex":
+            continue  # code-gen CLI, wrong shape for paper reading
+        if name not in out:
+            out.append(name)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -602,16 +713,42 @@ def resolve_llm_config(overrides: dict[str, Any] | None = None) -> ResolvedLLMCo
             or ""
         )
     else:
-        # Custom plugin provider: convention is {PROVIDER}_MODEL / {PROVIDER}_API_KEY /
-        # {PROVIDER}_BASE_URL env vars. Plugin authors are free to ignore these.
-        upper = provider.upper()
-        model = str(overrides.get("model") or os.environ.get(f"{upper}_MODEL") or "")
-        api_key = str(
-            overrides.get("api_key") or os.environ.get(f"{upper}_API_KEY") or ""
-        )
-        base_url = str(
-            overrides.get("base_url") or os.environ.get(f"{upper}_BASE_URL") or ""
-        )
+        # Check if this is a LiteLLM-backed provider first.
+        _litellm_meta = None
+        try:
+            from .litellm_backend import (
+                get_litellm_provider_meta,
+                resolve_provider_api_key,
+            )
+
+            _litellm_meta = get_litellm_provider_meta(provider)
+        except ImportError:
+            pass
+
+        if _litellm_meta is not None:
+            upper = provider.upper()
+            model = str(
+                overrides.get("model")
+                or os.environ.get(f"{upper}_MODEL")
+                or _litellm_meta.tier_suggestions.get("medium", "")
+            )
+            api_key = str(
+                overrides.get("api_key") or resolve_provider_api_key(_litellm_meta)
+            )
+            base_url = str(overrides.get("base_url") or _litellm_meta.base_url)
+        else:
+            # Custom plugin provider: convention is {PROVIDER}_MODEL / {PROVIDER}_API_KEY /
+            # {PROVIDER}_BASE_URL env vars. Plugin authors are free to ignore these.
+            upper = provider.upper()
+            model = str(
+                overrides.get("model") or os.environ.get(f"{upper}_MODEL") or ""
+            )
+            api_key = str(
+                overrides.get("api_key") or os.environ.get(f"{upper}_API_KEY") or ""
+            )
+            base_url = str(
+                overrides.get("base_url") or os.environ.get(f"{upper}_BASE_URL") or ""
+            )
 
     return ResolvedLLMConfig(
         provider=provider, model=model, api_key=api_key, base_url=base_url

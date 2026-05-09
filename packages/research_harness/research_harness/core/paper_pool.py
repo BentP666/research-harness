@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sqlite3
+from typing import Any
 
 from ..storage.models import Paper, PaperAnnotation, TopicPaperNote
 
@@ -240,44 +241,72 @@ class PaperPool:
         return [self._row_to_topic_note(row) for row in rows]
 
     def enrich_metadata(self, paper_id: int) -> dict[str, str]:
-        """Enrich a paper's metadata (title, authors, year, venue, abstract) via Semantic Scholar API.
+        """Enrich paper metadata: OpenAlex first (fast, free), S2 fallback.
 
-        Resolves by arxiv_id, doi, or s2_id. Returns dict of fields updated.
+        Returns dict of fields updated.
         """
-        import urllib.request
-        import urllib.error
-
         row = self._conn.execute(
             "SELECT * FROM papers WHERE id = ?", (paper_id,)
         ).fetchone()
         if row is None:
             raise ValueError(f"Paper {paper_id} not found")
 
-        # Determine lookup identifier
-        lookup_id = None
+        # --- Phase 1: OpenAlex (free, no rate limit) --------------------------
+        updates = self._enrich_from_openalex(paper_id, row)
+
+        # --- Phase 2: S2 for remaining gaps -----------------------------------
+        refreshed = self._conn.execute(
+            "SELECT * FROM papers WHERE id = ?", (paper_id,)
+        ).fetchone()
+        if refreshed is None:
+            return updates
+
+        still_needs = (
+            not (refreshed["title"] or "").strip()
+            or (refreshed["title"] or "").startswith(("doi:", "s2:", "pdf:"))
+            or not (refreshed["abstract"] or "").strip()
+            or (refreshed["venue"] or "").strip().lower()
+            in ("", "arxiv", "arxiv.org", "arxiv preprint")
+            or refreshed["citation_count"] is None
+            or refreshed["citation_count"] == 0
+            or not (refreshed["s2_id"] or "").strip()
+        )
+        if not still_needs:
+            return updates
+
+        s2_updates = self._enrich_from_s2(paper_id, refreshed)
+        updates.update(s2_updates)
+        return updates
+
+    def _enrich_from_s2(self, paper_id: int, row: Any) -> dict[str, str]:
+        """Enrich via Semantic Scholar API. Rate-limited (~1 req/sec externally)."""
+        import urllib.request
+        import urllib.error
+
         arxiv_id = (row["arxiv_id"] or "").strip()
         doi = (row["doi"] or "").strip()
         s2_id = (row["s2_id"] or "").strip()
         title_raw = (row["title"] or "").strip()
 
+        lookup_id = None
         if arxiv_id:
-            clean = arxiv_id.removeprefix("arxiv:").removeprefix("arXiv:")
+            import re
+
+            clean = re.sub(
+                r"v\d+$", "", arxiv_id.removeprefix("arxiv:").removeprefix("arXiv:")
+            )
             lookup_id = f"ARXIV:{clean}"
         elif doi:
-            clean = doi.removeprefix("doi:").removeprefix("DOI:")
-            lookup_id = f"DOI:{clean}"
+            lookup_id = f"DOI:{doi.removeprefix('doi:').removeprefix('DOI:')}"
         elif s2_id:
-            clean = s2_id.removeprefix("s2:").removeprefix("S2:")
-            lookup_id = clean
-        elif title_raw.startswith("doi:") or title_raw.startswith("DOI:"):
-            clean = title_raw.removeprefix("doi:").removeprefix("DOI:")
-            lookup_id = f"DOI:{clean}"
-        elif title_raw.startswith("s2:") or title_raw.startswith("S2:"):
-            clean = title_raw.removeprefix("s2:").removeprefix("S2:")
-            lookup_id = clean
+            lookup_id = s2_id.removeprefix("s2:").removeprefix("S2:")
+        elif title_raw.startswith(("doi:", "DOI:")):
+            lookup_id = f"DOI:{title_raw.removeprefix('doi:').removeprefix('DOI:')}"
+        elif title_raw.startswith(("s2:", "S2:")):
+            lookup_id = title_raw.removeprefix("s2:").removeprefix("S2:")
 
         if not lookup_id:
-            return {"error": "no identifier to resolve"}
+            return {}
 
         url = f"https://api.semanticscholar.org/graph/v1/paper/{lookup_id}?fields=title,authors.name,authors.affiliations,year,venue,abstract,externalIds,citationCount,openAccessPdf"
         api_key = (
@@ -292,20 +321,36 @@ class PaperPool:
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode())
-        except urllib.error.HTTPError as e:
-            return {"error": f"S2 API {e.code}: {e.reason}"}
-        except Exception as e:
-            return {"error": str(e)}
+        except Exception:
+            return {}
 
         updates: dict[str, str] = {}
+        set_clauses: list[str] = []
+        params: list[object] = []
+
         new_title = (data.get("title") or "").strip()
+        old_title = (row["title"] or "").strip()
+        if new_title and (
+            not old_title or old_title.startswith(("doi:", "s2:", "pdf:"))
+        ):
+            set_clauses.append("title = ?")
+            params.append(new_title)
+            updates["title"] = new_title
+
         new_abstract = (data.get("abstract") or "").strip()
-        new_year = data.get("year")
-        new_venue = (data.get("venue") or "").strip()
+        if new_abstract and not (row["abstract"] or "").strip():
+            set_clauses.append("abstract = ?")
+            params.append(new_abstract)
+            updates["abstract"] = new_abstract[:80] + "..."
+
         new_authors = [
             a.get("name", "") for a in (data.get("authors") or []) if a.get("name")
         ]
-        # Extract affiliations from S2 author data
+        if new_authors and not _parse_authors_for_enrich(row["authors"] or ""):
+            set_clauses.append("authors = ?")
+            params.append(json.dumps(new_authors, ensure_ascii=False))
+            updates["authors"] = str(len(new_authors))
+
         new_affiliations: list[str] = []
         _aff_seen: set[str] = set()
         for a in data.get("authors") or []:
@@ -314,83 +359,54 @@ class PaperPool:
                 if name and name not in _aff_seen:
                     _aff_seen.add(name)
                     new_affiliations.append(name)
-        ext_ids = data.get("externalIds") or {}
-        new_doi = ext_ids.get("DOI", "")
-        new_arxiv = ext_ids.get("ArXiv", "")
-        new_s2 = data.get("paperId", "")
-
-        set_clauses = []
-        params: list[object] = []
-
-        old_title = (row["title"] or "").strip()
-        if new_title and (
-            not old_title
-            or old_title.startswith("doi:")
-            or old_title.startswith("s2:")
-            or old_title.startswith("pdf:")
-        ):
-            set_clauses.append("title = ?")
-            params.append(new_title)
-            updates["title"] = new_title
-
-        if new_abstract and not (row["abstract"] or "").strip():
-            set_clauses.append("abstract = ?")
-            params.append(new_abstract)
-            updates["abstract"] = new_abstract[:80] + "..."
-
-        old_authors = row["authors"] or ""
-        old_authors_empty = not _parse_authors_for_enrich(old_authors)
-        if new_authors and old_authors_empty:
-            authors_json = json.dumps(new_authors, ensure_ascii=False)
-            set_clauses.append("authors = ?")
-            params.append(authors_json)
-            updates["authors"] = str(len(new_authors))
-
         old_affiliations = row["affiliations"] if "affiliations" in row.keys() else "[]"
         if new_affiliations and (old_affiliations or "[]") in ("", "[]"):
-            affiliations_json = json.dumps(new_affiliations, ensure_ascii=False)
             set_clauses.append("affiliations = ?")
-            params.append(affiliations_json)
+            params.append(json.dumps(new_affiliations, ensure_ascii=False))
             updates["affiliations"] = str(len(new_affiliations))
 
+        new_year = data.get("year")
         if new_year and row["year"] is None:
             set_clauses.append("year = ?")
             params.append(new_year)
             updates["year"] = str(new_year)
 
+        new_venue = (data.get("venue") or "").strip()
         old_venue = (row["venue"] or "").strip().lower()
-        venue_is_placeholder = not old_venue or old_venue in (
-            "arxiv",
-            "arxiv.org",
-            "arxiv preprint",
-        )
-        if new_venue and (
-            venue_is_placeholder
-            or (
-                new_venue.lower() != old_venue
-                and old_venue in ("arxiv", "arxiv.org", "arxiv preprint")
-            )
-        ):
+        if new_venue and old_venue in ("", "arxiv", "arxiv.org", "arxiv preprint"):
             set_clauses.append("venue = ?")
             params.append(new_venue)
             updates["venue"] = new_venue
 
+        ext_ids = data.get("externalIds") or {}
+        new_doi = ext_ids.get("DOI", "")
         if new_doi and not (row["doi"] or "").strip():
-            set_clauses.append("doi = ?")
-            params.append(new_doi)
-            updates["doi"] = new_doi
+            if not self._conn.execute(
+                "SELECT id FROM papers WHERE doi = ? AND id != ?", (new_doi, paper_id)
+            ).fetchone():
+                set_clauses.append("doi = ?")
+                params.append(new_doi)
+                updates["doi"] = new_doi
 
+        new_arxiv = ext_ids.get("ArXiv", "")
         if new_arxiv and not (row["arxiv_id"] or "").strip():
-            set_clauses.append("arxiv_id = ?")
-            params.append(new_arxiv)
-            updates["arxiv_id"] = new_arxiv
+            if not self._conn.execute(
+                "SELECT id FROM papers WHERE arxiv_id = ? AND id != ?",
+                (new_arxiv, paper_id),
+            ).fetchone():
+                set_clauses.append("arxiv_id = ?")
+                params.append(new_arxiv)
+                updates["arxiv_id"] = new_arxiv
 
+        new_s2 = data.get("paperId", "")
         if new_s2 and not (row["s2_id"] or "").strip():
-            set_clauses.append("s2_id = ?")
-            params.append(new_s2)
-            updates["s2_id"] = new_s2
+            if not self._conn.execute(
+                "SELECT id FROM papers WHERE s2_id = ? AND id != ?", (new_s2, paper_id)
+            ).fetchone():
+                set_clauses.append("s2_id = ?")
+                params.append(new_s2)
+                updates["s2_id"] = new_s2
 
-        # Always update citation_count from S2 (Bug: citation_count not populated)
         new_citation_count = data.get("citationCount")
         if new_citation_count is not None:
             old_count = (
@@ -401,7 +417,6 @@ class PaperPool:
                 params.append(int(new_citation_count))
                 updates["citation_count"] = str(new_citation_count)
 
-        # Store S2 openAccessPdf URL if paper has no URL yet
         oa_pdf = data.get("openAccessPdf") or {}
         if isinstance(oa_pdf, dict):
             oa_url = (oa_pdf.get("url") or "").strip()
@@ -414,12 +429,161 @@ class PaperPool:
         if set_clauses:
             params.append(paper_id)
             self._conn.execute(
+                f"UPDATE papers SET {', '.join(set_clauses)} WHERE id = ?", params
+            )
+            self._conn.commit()
+
+        return updates
+
+    def _enrich_from_openalex(self, paper_id: int, row: Any) -> dict[str, str]:
+        """Fallback enrichment via OpenAlex by DOI (preferred) or title search.
+
+        OpenAlex is free, unmetered, and especially strong for venue normalization
+        and citation counts on DOI-bearing papers.
+        """
+        import urllib.parse
+        import urllib.request
+
+        doi = (row["doi"] or "").strip()
+        title = (row["title"] or "").strip()
+        item: dict[str, Any] | None = None
+        api_key = os.environ.get("OPENALEX_API_KEY", "").strip()
+        mailto = os.environ.get("OPENALEX_MAILTO", "").strip()
+
+        def _fetch(url: str) -> dict[str, Any] | None:
+            params = []
+            if api_key:
+                params.append(f"api_key={api_key}")
+            if mailto:
+                params.append(f"mailto={urllib.parse.quote(mailto)}")
+            sep = "&" if "?" in url else "?"
+            full_url = url + (sep + "&".join(params) if params else "")
+            try:
+                req = urllib.request.Request(
+                    full_url,
+                    headers={
+                        "Accept": "application/json",
+                        "User-Agent": "research-harness/1.0",
+                    },
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    return json.loads(resp.read().decode())
+            except Exception:
+                return None
+
+        if doi:
+            clean = (
+                doi.removeprefix("https://doi.org/")
+                .removeprefix("http://doi.org/")
+                .removeprefix("doi:")
+                .removeprefix("DOI:")
+            )
+            item = _fetch(f"https://api.openalex.org/works/doi:{clean}")
+
+        if (
+            item is None
+            and title
+            and len(title) > 15
+            and not title.startswith(("doi:", "s2:", "pdf:"))
+        ):
+            search = _fetch(
+                f"https://api.openalex.org/works?search={urllib.parse.quote(title)}&per-page=1"
+            )
+            if isinstance(search, dict):
+                results = search.get("results") or []
+                if results and isinstance(results[0], dict):
+                    candidate = results[0]
+                    cand_title = (candidate.get("title") or "").strip().lower()
+                    if cand_title and self._title_matches(title.lower(), cand_title):
+                        item = candidate
+
+        if not isinstance(item, dict):
+            return {}
+
+        set_clauses: list[str] = []
+        params: list[Any] = []
+        updates: dict[str, str] = {}
+
+        # venue
+        old_venue = (row["venue"] or "").strip().lower()
+        venue_placeholder = old_venue in ("", "arxiv", "arxiv.org", "arxiv preprint")
+        primary = item.get("primary_location") or {}
+        source = primary.get("source") or {}
+        new_venue = (source.get("display_name") or "").strip()
+        if new_venue and venue_placeholder:
+            set_clauses.append("venue = ?")
+            params.append(new_venue)
+            updates["venue"] = f"{new_venue} (OA)"
+
+        # citation_count
+        new_cite = item.get("cited_by_count")
+        old_cite = row["citation_count"] if "citation_count" in row.keys() else None
+        if isinstance(new_cite, int) and (old_cite is None or old_cite == 0):
+            set_clauses.append("citation_count = ?")
+            params.append(int(new_cite))
+            updates["citation_count"] = f"{new_cite} (OA)"
+
+        # year
+        new_year = item.get("publication_year")
+        if new_year and row["year"] is None:
+            set_clauses.append("year = ?")
+            params.append(int(new_year))
+            updates["year"] = str(new_year)
+
+        # abstract from inverted_index
+        if not (row["abstract"] or "").strip():
+            inv = item.get("abstract_inverted_index")
+            if isinstance(inv, dict) and inv:
+                positions: dict[int, str] = {}
+                for word, idxs in inv.items():
+                    if isinstance(idxs, list):
+                        for i in idxs:
+                            if isinstance(i, int):
+                                positions[i] = word
+                if positions:
+                    abstract = " ".join(positions[i] for i in sorted(positions))
+                    if abstract:
+                        set_clauses.append("abstract = ?")
+                        params.append(abstract)
+                        updates["abstract"] = abstract[:80] + "..."
+
+        # doi (if missing)
+        new_doi = (item.get("doi") or "").strip()
+        if new_doi:
+            new_doi = new_doi.removeprefix("https://doi.org/").removeprefix(
+                "http://doi.org/"
+            )
+        if new_doi and not (row["doi"] or "").strip():
+            dup = self._conn.execute(
+                "SELECT id FROM papers WHERE doi = ? AND id != ?", (new_doi, paper_id)
+            ).fetchone()
+            if not dup:
+                set_clauses.append("doi = ?")
+                params.append(new_doi)
+                updates["doi"] = new_doi
+
+        if set_clauses:
+            params.append(paper_id)
+            self._conn.execute(
                 f"UPDATE papers SET {', '.join(set_clauses)} WHERE id = ?",
                 params,
             )
             self._conn.commit()
 
         return updates
+
+    @staticmethod
+    def _title_matches(a: str, b: str) -> bool:
+        """Loose title match: normalized identical, or one is prefix of the other."""
+        import re
+
+        def norm(s: str) -> str:
+            return re.sub(r"[^a-z0-9]+", "", s)[:80]
+
+        na, nb = norm(a), norm(b)
+        if not na or not nb:
+            return False
+        return na == nb or na.startswith(nb[:60]) or nb.startswith(na[:60])
 
     def _find_existing(self, paper: Paper) -> dict[str, int] | None:
         for field_name, value in (

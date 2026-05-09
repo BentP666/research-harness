@@ -1,0 +1,1 @@
+{"arxiv_id": "fixture-lb-001", "title": "Coverage Gates in Multi-Stage NLP Pipelines", "abstract": "Survey of coverage-gate designs across QA, claim verification, and literature mining. Argues that loopback frequency >2 indicates retrieval pathology.", "authors": ["J. Jung"], "venue": "TACL 2024", "year": 2024, "doi": "10.0000/fixture.lb.001", "topic_match": "fixture-loopback"}

@@ -26,7 +26,7 @@ DEFAULT_HEADERS = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Download missing PDFs using stored URLs, identifier heuristics, and optional PKU cookies.")
+    parser = argparse.ArgumentParser(description="Download missing PDFs using stored URLs, identifier heuristics, and optional cookies.")
     parser.add_argument("--paper-id", type=int, action="append", help="Restrict to one or more paper IDs.")
     parser.add_argument("--cookies", help="Path to a Netscape/Mozilla cookie jar exported from the logged-in browser.")
     parser.add_argument("--manifest", help="Optional JSON file mapping paper_id to manual candidate URLs.")

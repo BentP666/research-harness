@@ -1,0 +1,23 @@
+{
+  "topic_id": "fixture-benchmark",
+  "name": "tabular-forecasting-bench",
+  "venue_target": "ICML 2026",
+  "deadline": "2026-01-30",
+  "direction": "Reach write stage: synthetic benchmark with deterministic experiment results so the full chain (init→build→analyze→propose→experiment→write) is reachable in nightly.",
+  "scope": "5 baseline papers + 1 synthetic study spec with stub experiment_code that always succeeds.",
+  "seeds": [
+    "fixture-paper-bm-001",
+    "fixture-paper-bm-002",
+    "fixture-paper-bm-003",
+    "fixture-paper-bm-004",
+    "fixture-paper-bm-005"
+  ],
+  "tier": "nightly",
+  "expected_terminal_stage": "write",
+  "stub_experiment": {
+    "primary_metric_name": "smape",
+    "primary_metric_value": 0.142,
+    "improved": true
+  },
+  "notes": "Drives the full E2E chain. Experiment artifact is deterministic so write stage has a verified registry to cite."
+}
