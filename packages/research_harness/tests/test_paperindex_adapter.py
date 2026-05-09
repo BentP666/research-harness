@@ -215,4 +215,5 @@ def test_paper_annotate_incremental_reuses_cached_sections(
         item["artifact_type"]: json.loads(item["metadata"]) for item in artifact_payload
     }
     assert metadata_by_type["paperindex_structure"]["source"] == "cache"
+    assert metadata_by_type["paperindex_structure"]["parser"] == "pymupdf"
     assert metadata_by_type["paperindex_card"]["section_count"] == 2

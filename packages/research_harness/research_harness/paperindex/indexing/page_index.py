@@ -5,40 +5,39 @@ import re
 from pathlib import Path
 from typing import Any
 
-import fitz
-
 from llm_router.client import LLMClient, resolve_llm_config
+from ..parsing import ParserInput, resolve_document_parser
 from ..types import SectionNode
 from ..utils import assign_node_ids, first_nonempty_line
 
 
 def extract_structure_tree(
-    pdf_path: str | Path, llm_config: dict[str, Any] | None = None
+    pdf_path: str | Path,
+    llm_config: dict[str, Any] | None = None,
+    parser: ParserInput = None,
 ) -> tuple[list[SectionNode], dict]:
     pdf_path = Path(pdf_path)
-    doc = fitz.open(pdf_path)
-    try:
-        page_count = doc.page_count
-        pages_text = [page.get_text("text") or "" for page in doc]
-        toc = doc.get_toc(simple=True)
-        if toc:
-            tree = _build_tree_from_toc(toc, page_count)
-            source = "toc"
-        else:
-            tree = _build_tree_with_llm(pdf_path, pages_text, page_count, llm_config)
-            source = "llm"
-        assign_node_ids(tree)
-        title = first_nonempty_line(pages_text[0]) if pages_text else pdf_path.stem
-        raw = {
-            "source": source,
-            "page_count": page_count,
-            "title": title or pdf_path.stem,
-            "pages_text": pages_text,
-            "toc": toc,
-        }
-        return tree, raw
-    finally:
-        doc.close()
+    parsed = resolve_document_parser(parser).parse(pdf_path)
+    page_count = max(1, int(parsed.page_count or 0))
+    pages_text = list(parsed.pages_text)
+    toc = [[level, title, page] for level, title, page in parsed.toc]
+    if toc:
+        tree = _build_tree_from_toc(toc, page_count)
+        source = str(parsed.raw.get("structure_source") or "toc")
+    else:
+        tree = _build_tree_with_llm(pdf_path, pages_text, page_count, llm_config)
+        source = "llm"
+    assign_node_ids(tree)
+    title = parsed.title or (first_nonempty_line(pages_text[0]) if pages_text else "")
+    raw = {
+        **parsed.to_raw_dict(),
+        "source": source,
+        "page_count": page_count,
+        "title": title or pdf_path.stem,
+        "pages_text": pages_text,
+        "toc": toc,
+    }
+    return tree, raw
 
 
 def _build_tree_from_toc(toc: list[list], page_count: int) -> list[SectionNode]:

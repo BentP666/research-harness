@@ -75,6 +75,22 @@ python -m pytest packages/ -q --ignore=packages/research_harness_eval
 
 完整安装说明（含 Conda、GPU、离线环境）见 [`docs/quickstart.md`](docs/quickstart.md)。
 
+
+## PDF 解析质量模式
+
+Research Harness 默认保留轻量 PDF 路径：`pymupdf` 快速抽取文本和 PDF
+内置目录，不需要下载模型。对于需要更高质量精读的论文，可以按需安装
+Docling 后端，用于生成更好的 Markdown、表格和 layout-aware headings：
+
+```bash
+pip install -e "packages/research_harness[docling]"
+PAPERINDEX_PARSER=docling rh paper annotate <paper_id>
+```
+
+Docling 在本地运行，不调用 LLM API。首次运行会从 HuggingFace 下载
+Docling 的 layout/table 模型资产，之后复用本地缓存。OCR 默认关闭，适合
+born-digital 学术 PDF；扫描件 OCR 后续可以作为单独 parser profile 增加。
+
 ## 一次完整的端到端全自动运行
 
 同一条自主流水线，三种入口 —— 按手头的 session 挑一种即可。三种方式都会驱动项目走完六个阶段，都在同一套人工 checkpoint（方向选择、实验设计审批、finalize）停下来，并且都写入同一个 `pool.db`：在一种方式里起步，可以换另一种方式接着往下跑。

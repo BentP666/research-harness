@@ -48,11 +48,15 @@ class PaperIndexAdapter:
         artifact_dir.mkdir(parents=True, exist_ok=True)
         structure_path = artifact_dir / "structure.json"
         card_path = artifact_dir / "card.json"
+        indexer = PaperIndexer()
+        parser_name = indexer.parser_name
 
-        structure = self._load_cached_structure(structure_path, current_pdf_hash)
+        structure = self._load_cached_structure(
+            structure_path, current_pdf_hash, parser_name
+        )
         structure_source = "cache"
         if structure is None:
-            structure = PaperIndexer().extract_structure(pdf_path)
+            structure = indexer.extract_structure(pdf_path)
             structure_source = "fresh"
             structure_path.write_text(
                 json.dumps(structure.to_dict(), ensure_ascii=False, indent=2)
@@ -73,7 +77,6 @@ class PaperIndexAdapter:
             if section not in cached_annotations
         ]
 
-        indexer = PaperIndexer()
         extracted_results: dict[str, SectionResult] = {}
         for section_name in extracted_sections:
             result = indexer.extract_section(structure, section_name)
@@ -138,6 +141,7 @@ class PaperIndexAdapter:
                         "pdf_hash": structure.pdf_hash,
                         "page_count": structure.page_count,
                         "source": structure_source,
+                        "parser": structure.raw.get("parser", parser_name),
                     }
                 ),
             ),
@@ -181,7 +185,7 @@ class PaperIndexAdapter:
 
     @staticmethod
     def _load_cached_structure(
-        structure_path: Path, expected_pdf_hash: str
+        structure_path: Path, expected_pdf_hash: str, expected_parser: str
     ) -> StructureResult | None:
         if not structure_path.exists():
             return None
@@ -190,6 +194,12 @@ class PaperIndexAdapter:
         except json.JSONDecodeError:
             return None
         if payload.get("pdf_hash") != expected_pdf_hash:
+            return None
+        raw = payload.get("raw", {})
+        parser = raw.get("parser") if isinstance(raw, dict) else None
+        if parser is not None and parser != expected_parser:
+            return None
+        if parser is None and expected_parser != "pymupdf":
             return None
         return StructureResult(
             doc_name=payload.get("doc_name", structure_path.stem),

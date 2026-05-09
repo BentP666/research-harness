@@ -116,6 +116,31 @@
    → 本地 paperindex 处理                ← Kimi-backed card extraction
 ```
 
+本地 PDF 解析后端：
+
+```bash
+# 默认轻量路径：PyMuPDF，保留原有 TOC/text 抽取行为
+python -m research_harness.paperindex.cli parse paper.pdf --parser pymupdf
+
+# 高质量可选路径：Docling，输出 Markdown/JSON，需额外安装
+pip install -e "packages/research_harness[docling]"
+python -m research_harness.paperindex.cli parse paper.pdf --parser docling --format markdown
+python -m research_harness.paperindex.cli structure paper.pdf --parser docling --json-output
+```
+
+当前 Docling 后端默认关闭 OCR，适合 born-digital 学术 PDF；首次运行仍会从
+HuggingFace 下载 layout/table 模型，之后会走本地缓存。扫描件 OCR 可后续做成单独
+`docling-ocr` profile。
+
+也可以用环境变量让现有 `paper annotate` / `paper acquire` 链路走指定解析器：
+
+```bash
+PAPERINDEX_PARSER=docling rh paper annotate <paper_id>
+```
+
+实现约束：PDF parser 是 `research_harness.paperindex` 的内部能力；
+`packages/paperindex` 只保留 compatibility shim，不再作为独立产品线扩展。
+
 ---
 
 ## 稳定性保障策略
