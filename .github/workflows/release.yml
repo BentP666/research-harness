@@ -1,0 +1,47 @@
+name: Publish releases
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish missing GitHub releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Publish missing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          for tag in $(git tag --list 'v[0-9]*' --sort=version:refname); do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "Release $tag already exists; skipping."
+              continue
+            fi
+
+            notes_file="docs/RELEASE_NOTES_${tag}.md"
+            title="Research Harness $tag"
+
+            if [ ! -f "$notes_file" ]; then
+              notes_file="$(mktemp)"
+              version="${tag#v}"
+              sed -n "/^## \\[$version\\]/,/^## \\[/p" CHANGELOG.md | sed '$d' > "$notes_file"
+            fi
+
+            echo "Creating release $tag"
+            gh release create "$tag" \
+              --title "$title" \
+              --notes-file "$notes_file"
+          done
