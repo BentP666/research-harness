@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/hero.png" alt="Research Harness" width="720"/>
+</p>
+
 # Research Harness
 
 **A harness for long-running AI research agents.**

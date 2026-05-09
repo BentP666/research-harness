@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/hero.png" alt="Research Harness" width="720"/>
+</p>
+
 # Research Harness
 
 **面向长周期 AI 科研 agent 的 harness。**
