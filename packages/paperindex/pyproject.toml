@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paperindex"
-version = "0.3.0"
+version = "0.4.0"
 description = "Thin compatibility shim — the real engine lives in research_harness.paperindex"
 requires-python = ">=3.11"
 license = "MIT"
@@ -12,7 +12,7 @@ dependencies = [
   # The shim re-exports research_harness.paperindex. The [paperindex] extra
   # on research-harness pulls the PDF runtime deps (pymupdf, PyPDF2, pyyaml,
   # tiktoken) — standalone `pip install paperindex` gets them automatically.
-  "research-harness[paperindex]>=0.3.0",
+  "research-harness[paperindex]>=0.4.0",
 ]
 
 [project.optional-dependencies]

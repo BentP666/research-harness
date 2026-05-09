@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [0.4.0] — 2026-05-10
+
+### Added
+
+- **Optional Docling parser backend** for `research_harness.paperindex`.
+  Users can opt into the higher-fidelity parser with the new
+  `research-harness[docling]` extra while the default PyMuPDF backend remains
+  lightweight and dependency-stable.
+- **Parser abstraction layer** for Paperindex. `DocumentParser` implementations
+  now return structured `ParsedDocument` objects with markdown, page text, and
+  parser metadata; CLI and adapter paths resolve parsers through a single
+  `resolve_document_parser()` entrypoint.
+- **Cursor Agent workflow surface** under `.cursor/`, including a
+  Research Harness MCP config, project rule, deep-reading subagent, and matching
+  paper deep-reading skill.
+- **Frontend workbench release docs**, including product-positioning guidance,
+  a GitHub release checklist, and Chinese README coverage for the web workbench.
+
+### Changed
+
+- Refreshed the public workbench experience and no-key demo copy so the first
+  run emphasizes the core research loop: workbench, workflow, library, reports,
+  and agent handoff.
+- Updated README, quickstart, demo docs, and canned demo data for the public
+  release flow.
+- Bumped package and web metadata to `0.4.0`.
+
+### Fixed
+
+- Normalized Ruff formatting for the new Paperindex parser files so
+  `ruff format --check packages/` passes in CI.
+
 ## [0.3.0] — 2026-05-09
 
 ### Added — CS Research Workflow v2 (Phases 3–4)
@@ -281,7 +313,8 @@ Release stabilization: tightens three spec deviations found during the v0.3.0 au
 - `environment.yml` for conda setup
 - `setup.sh` one-command bootstrap
 
-[Unreleased]: https://github.com/your-org/research-harness/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/your-org/research-harness/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/your-org/research-harness/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/your-org/research-harness/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Biajin-PKU/research-harness/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Biajin-PKU/research-harness/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Biajin-PKU/research-harness/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Biajin-PKU/research-harness/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Biajin-PKU/research-harness/releases/tag/v0.1.0

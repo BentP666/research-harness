@@ -17,7 +17,7 @@ across sessions instead of losing progress in chat history.
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-red.svg" alt="License"/></a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"/>
-  <img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version"/>
+  <img src="https://img.shields.io/badge/version-0.4.0-green.svg" alt="Version"/>
   <img src="https://img.shields.io/badge/MCP-compatible-orange.svg" alt="MCP"/>
 </p>
 
@@ -446,12 +446,19 @@ Primitives are registered via `@register_primitive(spec)`; gates subclass `GateE
 | [`docs/plugin-guide.md`](docs/plugin-guide.md) | Writing custom primitives, gates, backends |
 | [`docs/PAPER_MANAGEMENT.md`](docs/PAPER_MANAGEMENT.md) | Canonical paper-storage protocol |
 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common errors (LLM routing, ledger 422, deep-read edge cases) and how to fix them |
-| [`docs/DEMO.md`](docs/DEMO.md) | v0.3.0 walk-through: clone → backend → expansion with multi-provider pool |
-| [`docs/RELEASE_NOTES_v0.3.0.md`](docs/RELEASE_NOTES_v0.3.0.md) | What shipped in v0.3.0, known limits, upgrade notes |
+| [`docs/DEMO.md`](docs/DEMO.md) | v0.4.0 no-key and live workbench walkthrough |
+| [`docs/RELEASE_NOTES_v0.4.0.md`](docs/RELEASE_NOTES_v0.4.0.md) | What shipped in v0.4.0, known limits, upgrade notes |
 
 ## Recent Updates
 
 A running log of the iterations that shape the public fork. Most recent first.
+
+### 2026-05-10 — v0.4.0 workbench and parser release
+
+- **Optional Docling parser** — Paperindex now has a parser abstraction with the default PyMuPDF backend and an opt-in `research-harness[docling]` path for higher-fidelity extraction.
+- **Workbench release surface** — the home, demo, README, quickstart, and release docs now emphasize the core research loop and agent handoff.
+- **Cursor Agent setup** — project-local Cursor MCP config, rules, subagent, and deep-reading skill make RH provenance rules available in Cursor workflows.
+- **Release hygiene** — package/web metadata are aligned to `0.4.0`; Ruff format, targeted Ruff check, parser tests, web lint/tests/build all pass locally.
 
 ### 2026-05-09 — v0.3.0 integrated research workflow release
 
@@ -476,7 +483,7 @@ A running log of the iterations that shape the public fork. Most recent first.
 
 ## Status
 
-**Version 0.3.0** — integrated research workflow release. 40 local Python tests pass in the current lightweight gate, 69 primitives remain available, and the web dashboard now covers agents, budgets, discovery, reports, paper reading, and topic workflow operations. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
+**Version 0.4.0** — workbench and parser release. Paperindex now supports an optional Docling backend, the public workbench/docs are aligned around the core research loop, and local release checks cover Ruff format, parser tests, web lint/tests/build. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
 
 Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot, plus LiteLLM-backed DeepSeek, Qwen/Tongyi, Zhipu/GLM, Doubao, MiniMax, Yi/Baichuan, and SiliconFlow through tier routing.
 
@@ -495,8 +502,8 @@ If you use Research Harness in academic work, please cite:
   title        = {Research Harness: an agent harness for scientific literature},
   author       = {Research Harness Contributors},
   year         = {2026},
-  version      = {0.1.0},
-  url          = {https://github.com/your-org/research-harness},
+  version      = {0.4.0},
+  url          = {https://github.com/Biajin-PKU/research-harness},
   license      = {PolyForm-Noncommercial-1.0.0}
 }
 ```

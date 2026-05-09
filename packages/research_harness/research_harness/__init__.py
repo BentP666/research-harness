@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.4.0"
 
 # Convenience re-exports so callers can do `from research_harness import ResearchAPI`
 # instead of remembering `from research_harness.api import ResearchAPI`.

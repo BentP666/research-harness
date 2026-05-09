@@ -39,5 +39,5 @@ Run from repo root when Python changes are included:
 
 - [ ] Review `git diff --stat`.
 - [ ] Confirm whether `.cursor/` and `docs/cursor-agent.md` should be committed.
-- [ ] Confirm release tag strategy (`v0.3.0`, `v1.0.0-preview`, or no tag yet).
+- [ ] Confirm release tag strategy (`v0.4.0`, `v1.0.0-preview`, or no tag yet).
 - [ ] Do not push, publish, or tag without explicit approval.
