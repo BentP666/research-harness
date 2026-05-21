@@ -41,6 +41,12 @@ import { cn } from "@/lib/utils";
  * the gear menu so the first-run experience stays lightweight.
  */
 export function TopBar() {
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/discovery")) {
+    return null;
+  }
+
   return (
     <header className="sticky top-0 z-30 border-b-2 border-slate-200/70 bg-white/85 backdrop-blur-xl shadow-sm dark:border-slate-800/80 dark:bg-slate-950/85">
       <div className="flex h-14 items-center gap-3 px-3 sm:px-5">

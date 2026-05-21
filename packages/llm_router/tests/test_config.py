@@ -30,6 +30,9 @@ def _isolate_env(monkeypatch, tmp_path):
     ):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("LLM_ROUTER_CONFIG", str(tmp_path / "config.toml"))
+    # Keep provider auto-detection deterministic. Individual tests can add a
+    # fake CLI binary to this PATH when they need to exercise CLI detection.
+    monkeypatch.setenv("PATH", str(tmp_path))
 
 
 def _write_config(path_env: str, body: str) -> None:
@@ -140,6 +143,58 @@ def test_provider_order_falls_through_when_none_available(monkeypatch):
 
     cfg = resolve_llm_config()
     assert cfg.provider == "anthropic"
+
+
+def test_resolve_llm_config_detects_cursor_agent_on_path(monkeypatch, tmp_path):
+    agent = tmp_path / "agent"
+    agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    agent.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+
+    from llm_router.client import resolve_llm_config
+
+    cfg = resolve_llm_config()
+    assert cfg.provider == "cursor_agent"
+    assert cfg.model == "composer-2-fast"
+
+
+def test_provider_order_can_pick_cursor_agent_on_path(monkeypatch, tmp_path):
+    import os
+
+    agent = tmp_path / "agent"
+    agent.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    agent.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    _write_config(
+        os.environ["LLM_ROUTER_CONFIG"],
+        '[routing]\nprovider_order = ["cursor_agent", "openai"]\n',
+    )
+
+    from llm_router.client import resolve_llm_config
+
+    cfg = resolve_llm_config()
+    assert cfg.provider == "cursor_agent"
+
+
+def test_cursor_agent_strips_null_bytes_before_subprocess(monkeypatch):
+    from llm_router import client as client_mod
+
+    captured = {}
+
+    class Result:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return Result()
+
+    monkeypatch.setattr(client_mod.subprocess, "run", fake_run)
+
+    assert client_mod._chat_cursor_agent("hello\x00world", "composer-2-fast") == "ok"
+    assert "\x00" not in captured["cmd"][-1]
+    assert captured["cmd"][-1] == "helloworld"
 
 
 def test_provider_order_respects_plugin_providers(monkeypatch):

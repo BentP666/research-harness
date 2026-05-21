@@ -1,0 +1,90 @@
+{
+  "issue_id": "demo-weekly",
+  "cadence": "weekly",
+  "status": "published",
+  "product": "RH Discover",
+  "title": "RH Discover Demo Weekly",
+  "subtitle": "Synthetic demo issue for validating the public workflow without publishing private research content.",
+  "generated_at": "2026-05-21T00:00:00+00:00",
+  "briefs": [
+    {
+      "title": "Synthetic workflow reliability opportunity",
+      "summary": "A placeholder opportunity used to exercise the RH Discover contract in the public repository.",
+      "why_now": "The demo issue exists so the API, archive, and handoff flow can be tested without exposing unpublished research details.",
+      "signals": [
+        {
+          "type": "blog",
+          "title": "Synthetic product signal",
+          "url": "https://example.com/synthetic-product-signal",
+          "published_at": "2026-05-21",
+          "importance": "watch",
+          "reason": "Placeholder signal for public CI and demo validation."
+        },
+        {
+          "type": "paper",
+          "title": "Synthetic literature signal",
+          "url": "https://example.com/synthetic-literature-signal",
+          "published_at": "2026-05-21",
+          "importance": "watch",
+          "reason": "Placeholder paper-like signal; not a real unpublished paper or private research result."
+        }
+      ],
+      "trend_context": {
+        "window": "7d",
+        "growth_summary": "Synthetic trend context for demo validation only.",
+        "saturation": "medium"
+      },
+      "seed_papers": [],
+      "fit_score": {
+        "trend": 0.5,
+        "novelty": 0.5,
+        "feasibility": 0.7,
+        "user_fit": 0.5,
+        "risk": 0.3
+      },
+      "goal_previews": [
+        {
+          "id": "synthetic-workflow-goal",
+          "title": "Validate a synthetic workflow handoff",
+          "dataset": "Synthetic fixture data",
+          "baseline": "Manual checklist",
+          "metric_name": "fixture_pass_rate",
+          "target_metric_delta": 0.1,
+          "time_window_days": 7,
+          "compute_need": "low",
+          "feasibility": 0.8,
+          "evidence_strength": 0.7,
+          "risk": 0.2,
+          "first_steps": [
+            "Run the public demo fixture.",
+            "Confirm the handoff payload contains no private research content."
+          ]
+        }
+      ],
+      "readiness": {
+        "evidence": 0.7,
+        "novelty": 0.5,
+        "feasibility": 0.8,
+        "goalability": 0.8,
+        "handoff_readiness": 0.8
+      },
+      "risks": [
+        "This fixture is synthetic and must not be interpreted as research advice."
+      ],
+      "recommended_next_steps": [
+        "Replace with a private issue file outside the public repository for real research operations."
+      ],
+      "rh_handoff": {
+        "topic_name": "synthetic-workflow-reliability-opportunity",
+        "initial_queries": [
+          "synthetic workflow reliability fixture"
+        ],
+        "suggested_primitives": [
+          "paper_search",
+          "paper_ingest",
+          "gap_detect"
+        ]
+      }
+    }
+  ]
+}

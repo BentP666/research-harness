@@ -1106,6 +1106,15 @@ EVIDENCE_MATRIX_SPEC = PrimitiveSpec(
         "properties": {
             "topic_id": {"type": "integer"},
             "focus": {"type": "string"},
+            "paper_ids": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": "Optional scoped paper IDs to normalize; useful for core-paper batches.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of compiled-summary papers to include when paper_ids is omitted.",
+            },
         },
         "required": ["topic_id"],
     },

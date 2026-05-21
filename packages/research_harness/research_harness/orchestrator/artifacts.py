@@ -60,7 +60,7 @@ class ArtifactManager:
                 VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    topic_id,
+                    None,
                     topic_id,
                     stage,
                     artifact_type,

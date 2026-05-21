@@ -195,8 +195,14 @@ def _get_client(
     client = LLMClient(resolve_llm_config(overrides or None))
     client._default_tier = tier  # type: ignore[attr-defined]
     # Stash the provider override on the client so _client_chat can bypass
-    # tier routing (which would otherwise read LLM_ROUTE_* and ignore us).
-    client._override_provider = provider_hint  # type: ignore[attr-defined]
+    # tier routing (which would otherwise read LLM_ROUTE_* / built-in default
+    # routes and can silently route a Cursor-Agent-backed RH run back to
+    # OpenAI/Anthropic). CLI providers authenticate out-of-band and should be
+    # honoured as the concrete provider for RH primitives.
+    cli_provider = (
+        client.provider if client.provider in {"cursor_agent", "codex"} else ""
+    )
+    client._override_provider = provider_hint or cli_provider  # type: ignore[attr-defined]
     return client
 
 
@@ -312,13 +318,74 @@ def _client_chat(client: LLMClient, prompt: str | tuple[str, str]) -> str:
 
 
 def _parse_json(text: str, *, primitive: str = "", context: str = "") -> dict[str, Any]:
+    def _loads_with_repairs(raw: str) -> dict[str, Any] | None:
+        stripped = raw.strip()
+        attempts = [stripped]
+
+        # Cursor Agent / other CLI models sometimes put literal line breaks
+        # inside quoted JSON strings. That is invalid JSON even though the
+        # intended object is usually recoverable, so escape those control
+        # characters before giving up.
+        repaired_chars: list[str] = []
+        in_string = False
+        escaped = False
+        changed = False
+        for ch in stripped:
+            if escaped:
+                if in_string and ch not in {
+                    '"',
+                    "\\",
+                    "/",
+                    "b",
+                    "f",
+                    "n",
+                    "r",
+                    "t",
+                    "u",
+                }:
+                    # LLMs often emit LaTeX-ish sequences such as \( or \tau
+                    # inside JSON strings. Preserve the literal backslash by
+                    # escaping it, then process the current character normally.
+                    repaired_chars.append("\\")
+                    changed = True
+                else:
+                    repaired_chars.append(ch)
+                    escaped = False
+                    continue
+            if escaped:
+                repaired_chars.append(ch)
+                escaped = False
+                continue
+            if ch == "\\":
+                repaired_chars.append(ch)
+                escaped = True
+                continue
+            if ch == '"':
+                repaired_chars.append(ch)
+                in_string = not in_string
+                continue
+            if in_string and ch in {"\n", "\r", "\t"}:
+                repaired_chars.append({"\n": "\\n", "\r": "\\r", "\t": "\\t"}[ch])
+                changed = True
+                continue
+            repaired_chars.append(ch)
+        if changed:
+            attempts.append("".join(repaired_chars))
+
+        for candidate_text in attempts:
+            try:
+                parsed = json.loads(candidate_text)
+                return parsed if isinstance(parsed, dict) else {}
+            except json.JSONDecodeError:
+                continue
+        return None
+
     candidate = text.strip()
     if not candidate:
         return {}
-    try:
-        return json.loads(candidate)
-    except json.JSONDecodeError:
-        pass
+    repaired = _loads_with_repairs(candidate)
+    if repaired is not None:
+        return repaired
 
     fenced_markers = ("```json", "```")
     for marker in fenced_markers:
@@ -328,20 +395,19 @@ def _parse_json(text: str, *, primitive: str = "", context: str = "") -> dict[st
         start += len(marker)
         end = candidate.find("```", start)
         block = candidate[start:] if end < 0 else candidate[start:end]
-        try:
-            return json.loads(block.strip())
-        except json.JSONDecodeError:
-            # Some models emit truncated / unterminated JSON when hitting
-            # max_tokens. Try a best-effort recovery by scanning backward
-            # for the last closing brace and trimming there.
-            stripped = block.strip()
-            last_brace = stripped.rfind("}")
-            if last_brace > 0:
-                try:
-                    return json.loads(stripped[: last_brace + 1])
-                except json.JSONDecodeError:
-                    pass
-            continue
+        repaired = _loads_with_repairs(block)
+        if repaired is not None:
+            return repaired
+        # Some models emit truncated / unterminated JSON when hitting
+        # max_tokens. Try a best-effort recovery by scanning backward
+        # for the last closing brace and trimming there.
+        stripped = block.strip()
+        last_brace = stripped.rfind("}")
+        if last_brace > 0:
+            repaired = _loads_with_repairs(stripped[: last_brace + 1])
+            if repaired is not None:
+                return repaired
+        continue
     logger.warning(
         "JSON parse failed for %s [%s]: %.200s",
         primitive or "unknown",
@@ -555,6 +621,63 @@ def _get_topic_literature_summary(
     Uses top-K sampling + contradiction candidates instead of iterating all
     papers. Falls back to per-paper annotation joining for uncached papers.
     """
+    # Deep-read pass2 only needs coarse cross-paper context. Do not trigger
+    # lazy compilation of 20+ paper summaries here: in a 100-paper deep-read
+    # batch that makes the first read fan out into dozens of extra Cursor/API
+    # calls before the target paper is even stored. Use a lightweight
+    # metadata/existing-cache context instead.
+    if task_type == "deep_read":
+        conn = db.connect()
+        try:
+            rows = conn.execute(
+                """
+                SELECT p.id, p.title, p.year, p.venue, p.compiled_summary,
+                       p.citation_count, pt.relevance
+                FROM papers p
+                JOIN paper_topics pt ON pt.paper_id = p.id
+                WHERE pt.topic_id = ?
+                  AND NOT EXISTS (
+                      SELECT 1 FROM topic_paper_notes tpn
+                      WHERE tpn.paper_id = p.id AND tpn.topic_id = pt.topic_id
+                        AND tpn.note_type = 'user_dismissed'
+                  )
+                ORDER BY
+                    CASE pt.relevance WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+                    COALESCE(p.citation_count, 0) DESC,
+                    p.year DESC,
+                    p.id DESC
+                LIMIT 30
+                """,
+                (topic_id,),
+            ).fetchall()
+        finally:
+            conn.close()
+
+        entries: list[str] = []
+        paper_ids: list[int] = []
+        for row in rows:
+            pid = int(row["id"])
+            paper_ids.append(pid)
+            header = f"- [{pid}] {row['title'] or f'Paper #{pid}'}"
+            if row["year"]:
+                header += f" ({row['year']})"
+            if row["venue"]:
+                header += f" [{row['venue']}]"
+            if row["relevance"]:
+                header += f" relevance={row['relevance']}"
+            snippet = ""
+            compiled_raw = row["compiled_summary"] or ""
+            if compiled_raw:
+                try:
+                    compiled = json.loads(compiled_raw)
+                    overview = compiled.get("overview", "")
+                    if overview:
+                        snippet = f"\n  {str(overview)[:300]}"
+                except Exception:
+                    snippet = ""
+            entries.append(header + snippet)
+        return ("\n".join(entries) if entries else "(no papers in topic)", paper_ids)
+
     from .compiled_summary import get_topic_summary_cached
 
     try:
@@ -2555,6 +2678,8 @@ def deep_read(
                 extractor_version="v1",
             )
         )
+        conn.execute("UPDATE papers SET deep_read = 1 WHERE id = ?", (paper_id,))
+        conn.commit()
     finally:
         conn.close()
 
@@ -2765,6 +2890,8 @@ def evidence_matrix(
     db: Database,
     topic_id: int,
     focus: str = "",
+    paper_ids: list[int] | None = None,
+    limit: int = 50,
     **_: Any,
 ) -> "EvidenceMatrixOutput":
     """Build evidence matrix: query existing claims, normalize via LLM, store."""
@@ -2773,17 +2900,40 @@ def evidence_matrix(
     conn = db.connect()
     try:
         # Step 1: Gather claims from compiled summaries
-        rows = conn.execute(
-            """
-            SELECT p.id, p.title, p.compiled_summary FROM papers p
-            JOIN paper_topics pt ON pt.paper_id = p.id
-            WHERE pt.topic_id = ?
-              AND p.compiled_summary IS NOT NULL AND p.compiled_summary != ''
-            ORDER BY COALESCE(p.citation_count, 0) DESC
-            LIMIT 50
-            """,
-            (topic_id,),
-        ).fetchall()
+        scoped_ids: list[int] = []
+        for raw_pid in paper_ids or []:
+            try:
+                pid = int(raw_pid)
+            except (TypeError, ValueError):
+                continue
+            if pid > 0:
+                scoped_ids.append(pid)
+        if scoped_ids:
+            placeholders = ",".join("?" for _ in scoped_ids)
+            rows = conn.execute(
+                f"""
+                SELECT p.id, p.title, p.compiled_summary FROM papers p
+                JOIN paper_topics pt ON pt.paper_id = p.id
+                WHERE pt.topic_id = ?
+                  AND p.id IN ({placeholders})
+                  AND p.compiled_summary IS NOT NULL AND p.compiled_summary != ''
+                ORDER BY COALESCE(p.citation_count, 0) DESC, p.id
+                """,
+                (topic_id, *scoped_ids),
+            ).fetchall()
+        else:
+            safe_limit = max(1, min(int(limit or 50), 200))
+            rows = conn.execute(
+                """
+                SELECT p.id, p.title, p.compiled_summary FROM papers p
+                JOIN paper_topics pt ON pt.paper_id = p.id
+                WHERE pt.topic_id = ?
+                  AND p.compiled_summary IS NOT NULL AND p.compiled_summary != ''
+                ORDER BY COALESCE(p.citation_count, 0) DESC, p.id
+                LIMIT ?
+                """,
+                (topic_id, safe_limit),
+            ).fetchall()
     finally:
         conn.close()
 

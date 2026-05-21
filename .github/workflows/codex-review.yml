@@ -1,0 +1,77 @@
+name: Codex Review (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to review"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  codex-review:
+    name: Generate Codex review
+    runs-on: ubuntu-latest
+    outputs:
+      final_message: ${{ steps.run_codex.outputs.final-message }}
+    steps:
+      - name: Checkout PR merge commit
+        uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ inputs.pr_number }}/merge
+          persist-credentials: false
+
+      - name: Fetch PR refs
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          git fetch --no-tags origin \
+            "+refs/pull/${PR_NUMBER}/head:refs/remotes/origin/pr/${PR_NUMBER}/head" \
+            "+refs/pull/${PR_NUMBER}/merge:refs/remotes/origin/pr/${PR_NUMBER}/merge"
+
+      - name: Run Codex review
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          sandbox: read-only
+          safety-strategy: read-only
+          prompt: |
+            Review PR #${{ inputs.pr_number }} for ${{ github.repository }}.
+
+            Focus on Research Harness project invariants:
+            - research primitives should use MCP/provenance-aware paths
+            - papers must be ingested into the RH database, not scattered in files
+            - durable outputs should be recorded as artifacts
+            - no secrets or credentials in code/config/docs
+            - tests or validation should cover changed behavior
+
+            Be concise. Return only actionable findings grouped by severity,
+            plus a short test-plan assessment. Do not modify files.
+
+  post-feedback:
+    name: Post Codex review comment
+    runs-on: ubuntu-latest
+    needs: codex-review
+    if: needs.codex-review.outputs.final_message != ''
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          CODEX_FINAL_MESSAGE: ${{ needs.codex-review.outputs.final_message }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.PR_NUMBER),
+              body: process.env.CODEX_FINAL_MESSAGE,
+            });

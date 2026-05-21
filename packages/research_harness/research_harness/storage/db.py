@@ -23,6 +23,11 @@ class Database:
         self.db_path = Path(db_path)
         self._ensure_dir()
 
+    @property
+    def path(self) -> Path:
+        """Backward-compatible alias for callers that expect ``db.path``."""
+        return self.db_path
+
     def connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA journal_mode=WAL")

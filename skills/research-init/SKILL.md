@@ -46,3 +46,8 @@ Do not block on optional metadata.
 - Prefer using existing Research Harness conventions from `docs/research-bootstrap.md`.
 - Do not invent seed papers.
 - If topic metadata is missing, make the minimum safe assumptions and state them clearly.
+- For any topic intended for a paper, survey, or serious research direction,
+  create or request a `frontier_attention_evidence` artifact: latest top
+  academic signals plus official industry signals proving the direction is
+  actively important. If either side is weak, report it as a scope risk rather
+  than overstating the topic.

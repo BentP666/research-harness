@@ -21,6 +21,16 @@ def test_arxiv_abs_url_expands_to_pdf() -> None:
     assert "https://arxiv.org/pdf/2302.01523.pdf" in urls
 
 
+def test_openreview_forum_url_expands_to_pdf() -> None:
+    candidate = PaperDownloadCandidate(
+        paper_id=1,
+        title="Test",
+        url="https://openreview.net/forum?id=abc123",
+    )
+    urls = build_candidate_urls(candidate)
+    assert "https://openreview.net/pdf?id=abc123" in urls
+
+
 def test_ieee_doi_generates_stamp_url() -> None:
     candidate = PaperDownloadCandidate(
         paper_id=20,

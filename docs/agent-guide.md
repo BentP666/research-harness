@@ -200,6 +200,32 @@ mcp__research-harness__orchestrator_record_artifact(
 **优先级**: P0/P1/P2
 ```
 
+### 4.4 前沿关注度证明规范
+
+在启动新研究方向、撰写综述、准备论文 Introduction / Motivation，或判断一个方向是否值得推进时，必须先用**最新的顶级学术成果和产业资料**证明该方向在学术界和工业界都受到高度关注。不能只凭直觉写“这是一个热门/重要方向”。
+
+**必须收集并入库/记录的证据信号：**
+
+| 信号 | 最低要求 | 示例 |
+|------|----------|------|
+| 顶级学术成果 | 近 2-3 年顶会/顶刊论文、oral/spotlight/best paper、benchmark 或 survey | NeurIPS/ICML/ICLR/ACL/KDD/SIGIR/WWW/ICSE/FSE/ASE/CHI 等 |
+| 高影响基础工作 | 高引用 anchor papers 或被多个后续系统采用的 seminal work | 领域奠基论文、主流 benchmark 原始论文 |
+| 产业投入 | 国际大厂官方技术报告、产品发布、工程博客、开源框架、标准协议 | OpenAI、Anthropic、Google/DeepMind、Microsoft、Meta、NVIDIA、Amazon 等官方资料 |
+| 社区采用 | 开源项目、leaderboard、标准化协议、工具生态、开发者平台 | MCP、A2A、Agents SDK、ADK、LangGraph、AutoGen、CrewAI、LangSmith 等 |
+| 趋势证据 | 论文数量增长、会议 workshop/tutorial、benchmark 扩张、近年综述缺口 | 近年发表趋势、专题 workshop、survey 更新窗口 |
+
+**执行要求：**
+
+1. 相关论文必须通过 `paper_ingest` 或 CLI 入库，并关联 `topic_id`。
+2. 非论文资料（官方博客、技术文档、标准协议、产品发布）必须在 artifact 中记录 URL、发布日期、来源类型和支撑的 claim。
+3. 产出一个 `frontier_attention_evidence` artifact，至少包含：
+   - academic_signals：顶会/顶刊/benchmark/survey 证据；
+   - industry_signals：大厂官方资料、开源工具、标准协议；
+   - trend_summary：为什么“现在”需要研究/综述；
+   - scope_boundary：这些证据支持的研究范围，以及不支持的范围。
+4. Introduction / Motivation 中关于“重要、热门、迫切、产业关注”的句子必须能追溯到上述 artifact。
+5. 如果学术或产业任一侧证据不足，必须明确标记为风险，不得强行包装成“双高关注”方向。
+
 ---
 
 ## 5. 快速开始

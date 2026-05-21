@@ -1,0 +1,20 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+# Project-scoped Codex baseline for research-harness-oss.
+# Keep credentials in the user environment/keychain; this file is safe to commit.
+
+[features]
+multi_agent = true
+
+[mcp_servers.research-harness]
+command = "bash"
+args = [
+  "-lc",
+  "export RESEARCH_HARNESS_ROOT=\"${PWD}\"; export RESEARCH_HARNESS_DB_PATH=\"${PWD}/.research-harness/pool.db\"; exec scripts/rh-mcp-keychain.sh",
+]
+startup_timeout_sec = 30
+tool_timeout_sec = 300
+
+# Serena is intentionally documented, not enabled here: it must be installed
+# in the user's environment first (`serena setup codex` or the manual block in
+# docs/codex-workflow.md). Keeping it out of project config avoids breaking
+# Codex startup on machines without Serena.

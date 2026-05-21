@@ -16,6 +16,16 @@
 cat docs/agent-guide.md
 ```
 
+### Codex 上下文压缩规则
+
+为避免 Codex 在接近上下文上限时自动压缩失败（例如 `Error running remote compact task: stream disconnected before completion`），必须采用主动压缩策略：
+
+1. **40% 软阈值**：当可见 context 剩余不足 40%（或没有可见仪表但会话已经完成一个主要阶段/读取了大量文件/进行了大量工具调用）时，不要继续开启新的大型检索、批量读取或多文件改动，先进行一次 checkpoint。
+2. **Checkpoint 内容**：压缩前先输出或保存简短状态摘要，包含当前目标、已完成事项、关键发现、未完成步骤、相关文件、需要保留的用户偏好/约束。
+3. **主动压缩**：checkpoint 后主动建议/执行 Codex `/compact`；如果当前环境不能由 agent 直接执行 `/compact`，则明确提示用户执行 `/compact` 并附上 checkpoint 摘要。
+4. **30% 硬阈值**：当 context 剩余不足 30% 时，只允许做收尾、记录状态或请求压缩；禁止继续启动长任务。
+5. **失败兜底**：如果 `/compact` 或远程 compact 仍失败，立即把 checkpoint 摘要写入可持久位置（memory 或项目文档中已有合适位置），然后建议开启新会话并粘贴该摘要恢复。
+
 ### 三条铁律
 
 1. 论文必须入库：通过 research-harness MCP 的 `paper_ingest` 或 `rh paper ingest` CLI 入库，不要把论文散放在项目目录

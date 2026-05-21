@@ -39,6 +39,47 @@
 2. 或者在 agent-guide.md 中明确说明：orchestrator 工具只能通过 MCP 调用，Skill 中应使用 `mcp__research-harness__orchestrator_record_artifact(...)` 而非直接 Python import
 **优先级**: P1
 
+## [2026-05-17] orchestrator init on existing RH topic fails with FOREIGN KEY constraint
+
+**场景**: 某个已有大规模 literature-survey topic 已有大量论文与多个 project artifacts，但此前没有 orchestrator run。尝试执行 `.venv/bin/rh orchestrator init --topic <existing-topic> --mode standard` 以便正式 gate tracking。
+
+**问题/发现**: CLI 抛出 `sqlite3.IntegrityError: FOREIGN KEY constraint failed`，因此无法为已有 topic 补建 orchestrator run。此前 MCP `orchestrator_gate_check(topic_id=<id>, stage=\"build\")` 也只能返回 fail，`orchestrator_status(topic_id=<id>)` 返回 `No orchestrator run found for this topic`。
+
+**建议改进**:
+1. `orchestrator init` 应支持已有 topic 的安全补建/接管；若依赖 project/run 外键，应自动创建缺失父记录或给出明确修复命令。
+2. `orchestrator_resume` 应成为 CLI/MCP 的默认入口：当 topic 已有 artifacts 但无 run 时，从 artifacts 推断阶段并补齐 run。
+3. gate check 在无 run 时应返回 `missing_orchestrator_run`，而不是泛化为 fail。
+
+**优先级**: P1
+
+## [2026-05-17] arXiv CLI ingest leaves blank metadata and rapid updates can lock DB
+
+**场景**: 为 某个大规模 literature-survey topic 批量执行 `.venv/bin/rh paper ingest --arxiv-id ... --topic ...`，新增一批扩展论文。
+
+**问题/发现**:
+1. `paper ingest --arxiv-id` 成功创建记录，但 title/year/url 为空，需要额外调用 arXiv API 后通过 `rh paper update` 回填。
+2. 连续快速执行 `rh paper update` 时偶发 `sqlite3.OperationalError: database is locked`；放慢重试后可恢复。
+
+**建议改进**:
+1. arXiv ingest 应默认拉取 arXiv Atom 元数据并填充 title/year/authors/url/abstract，避免 meta-only 空标题进入 topic queue。
+2. CLI 写操作应统一配置 SQLite busy timeout / retry backoff，并在批处理命令中串行复用连接，降低短事务锁冲突。
+3. 批量 ingest/update 应输出结构化 partial failure report，便于 agent 自动重试失败项。
+
+**优先级**: P1
+
+## [2026-05-17] paper acquire 批量处理已下载 PDF 后长时间停滞且无进度输出
+
+**场景**: 对某个大规模 literature-survey topic 执行 `.venv/bin/rh paper acquire <topic-id> --download-dir .research-harness/downloads --artifacts-root .research-harness/artifacts`，处理一批新增论文。
+
+**问题/发现**: 命令已下载 17 个 PDF，并成功将 前半批论文 变为 ready，但随后进程长时间 0% CPU/sleeping、无 stdout 进度，未继续把 尾部论文 标注入库。人工终止后，`rh paper resolve-pdfs --topic ...` 可发现并链接 尾部论文 的 PDF，再逐篇 `rh paper annotate` 可恢复。
+
+**建议改进**:
+1. `paper acquire` 需要逐 paper 输出进度和当前阶段（download/link/annotate/summary），并为单篇处理设置 timeout。
+2. 如果 PDF 已下载但 annotation 失败/中断，应自动进入 recoverable 状态，而不是继续显示 `missing_pdf`。
+3. 增加 `paper acquire --paper-ids ...` 或 `--resume`，方便只处理失败尾部。
+
+**优先级**: P1
+
 ---
 
 ## [2026-04-08] 所有 academic MCP 服务在 literature-search 时全部不可用
@@ -484,3 +525,60 @@ All five are now fixed in code; full user-facing workarounds live in
 - Some LLM plugin providers may break when the plugin API changes.
   Users should route to `anthropic` with a local passthrough proxy
   instead.
+
+## [2026-05-17] paper_acquire compiled_summary JSON parse failure on STORM paper
+
+**场景**: 为某个 literature-survey topic 执行 `.venv/bin/rh --json paper acquire <topic-id>`，一批种子论文 PDF 下载和 paperindex annotation 均成功。
+
+**问题/发现**: 其中一篇公开种子论文在 compiled summary 阶段出现：`JSON parse failed for compiled_summary ... Compiled summary LLM returned invalid output for one paper`。命令最终仍返回 success/annotated=true，因此该错误不会阻断 acquisition，但会导致 compiled summary 缺失或不可靠。
+
+**建议改进**:
+1. compiled_summary 需要复用 deep-read 的 robust JSON repair / partial parser。
+2. 对 LLM 输出设置更强 JSON-only schema 和超长内容截断策略。
+3. acquisition report 中应显式暴露 `compiled_summary_failed`，否则用户只看到 annotated=true，容易误判所有下游摘要都可用。
+
+**优先级**: P1
+
+## 2026-05-17 orchestrator_advance misreports finalize for analysis stage
+
+**场景**: 某个 resumed topic 先用 `orchestrator_resume(topic_id=<id>, force_stage="analysis", stop_before="write")` 恢复 run，再用 `orchestrator_status` 确认 analysis gate pass，随后调用 `orchestrator_advance`。
+**问题/发现**: `orchestrator_status` 返回 `current_stage: analysis`, `gate: pass`, `can_advance: true`，但 `orchestrator_advance` 返回错误：`No next stage (already at finalize)`，同时输出里仍显示 `stage: analysis`。这说明 stage-order/next-stage 判定存在不一致。
+**建议改进**: 修复 orchestrator 的 stage transition 表或 `advance()` 的 next-stage 解析逻辑；当 `current_stage=analysis` 时应能推进到 propose（或给出明确 stop_before/write 的阻止原因），不能误报 finalize。增加回归测试：resume existing topic at analysis → status can_advance true → advance succeeds or returns deterministic stop_before message。
+**优先级**: P1
+
+## 2026-05-17 claim_extract/orchestrator_record_artifact timeout after corpus completion
+
+**场景**: 在某个大规模 literature-survey topic 补齐 keep-pool 尾部论文后，尝试提取 claims 并记录 acquisition artifact。
+**问题/发现**: `paper_acquire(topic_id=<id>)` 首先在 300s 超时且没有完成最后 7 篇下载；改用本地 `scripts/fetch_pdfs.py` 后成功。随后 `claim_extract` 对一个小批次在 300s 超时；缩小批次仍在 300s 超时。随后 `orchestrator_record_artifact` 对 acquisition_report 也连续两次在 300s 超时，导致产出只能先写入本地报告文件，未能通过 MCP artifact 正常入库。
+**建议改进**: 为长任务提供 async job id / progress heartbeat / partial commit；`orchestrator_record_artifact` 应保持轻量并避免受长时间 claim extraction worker 或 DB lock 影响；超时应返回明确状态（running/locked/failed）而不是仅 client timeout。
+**优先级**: P1
+
+## [2026-05-20] MCP paper_acquire / gap_detect timeout and transport close during long autonomous analysis
+
+**场景**: 某个大规模 literature-survey topic 自主补库与精读。先调用 MCP `paper_acquire(topic_id=<id>)` 试图补齐少量 `text_only/meta_only` 论文；随后调用 MCP `gap_detect(topic_id=<id>, focus=...)`；最后尝试 `decision_log_record`。
+
+**问题/发现**:
+1. `paper_acquire(topic_id=<id>)` 在约 300 秒后 tool call timeout，且无 per-paper 进度；检查 DB 后发现没有完成状态变化。
+2. `gap_detect(topic_id=<id>, focus=...)` 同样在约 300 秒后 MCP timeout；改用 `rhub --json --backend research_harness primitive exec gap_detect ...` 可在本地继续等待并成功保存 JSON。
+3. 在成功记录 一个 artifact 后，MCP `decision_log_record` 报 `Transport closed`，随后 `topic_show` 也报 `Transport closed`，说明长任务/多工具调用后 MCP server 连接可能崩溃或被关闭。
+
+**建议改进**:
+1. 为长耗时 MCP primitive 增加 server-side progress events、per-paper/per-stage heartbeat，并允许客户端传入更长 timeout 或异步 job id。
+2. `paper_acquire` 增加 `paper_ids` / `limit` / `resume` 参数，避免 topic-level 扫描因单篇阻塞导致整批 timeout。
+3. `gap_detect` 等 LLM primitive 增加 async artifact-first 模式：先返回 job id，后台完成后写入 report/artifact。
+4. MCP server 应在 tool timeout 后保持可用，或提供自动重连/清晰 recover hint。
+
+**优先级**: P1
+
+## [2026-05-20] orchestrator_record_artifact MCP transport closed on small expansion artifact
+
+**场景**: 某个 literature-survey topic 靶向引用/文档扩充完成后，尝试用 MCP `orchestrator_record_artifact(topic_id=<id>, artifact_type="targeted_citation_expansion_selected", ...)` 记录一个较小 JSON payload，并声明依赖 前序 artifact。
+
+**问题/发现**: `orchestrator_record_artifact` 连续两次立即返回 `Transport closed`，不是长任务 timeout。改用本地 `ResearchAPI.record_artifact(...)` 成功记录 fallback artifact，再用 `ResearchAPI.add_artifact_dependency(from_artifact_id=<source>, to_artifact_id=<target>)` 成功补依赖。这说明 MCP server 连接在前序任务后可能处于不可用状态，即使轻量 artifact 写入也会失败。
+
+**建议改进**:
+1. MCP server 对轻量 artifact 写入应具备自动重连或明确 recover hint。
+2. 客户端侧可在 `Transport closed` 时自动 fallback 到新 MCP session 或返回“请重启 MCP server”的可操作提示。
+3. 在 `orchestrator_record_artifact` 增加 payload 大小和 DB lock 前置诊断，避免用户无法区分 server 崩溃、DB lock、payload schema 错误。
+
+**优先级**: P1

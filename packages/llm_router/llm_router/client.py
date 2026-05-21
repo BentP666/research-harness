@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import subprocess
 import threading
 import time
@@ -234,6 +235,10 @@ _CLI_TIMEOUT = 300  # 5-minute hard ceiling
 
 def _chat_cursor_agent(prompt: str, model: str, **_: Any) -> str:
     """Call Cursor Agent CLI in headless print mode."""
+    # PDF/text extraction can occasionally contain embedded NUL bytes. Python's
+    # subprocess layer rejects argv entries with NULs, so strip them before
+    # passing the prompt as a CLI argument.
+    prompt = prompt.replace("\x00", "")
     cmd = ["agent", "--print", "--trust", "--model", model, prompt]
     try:
         result = subprocess.run(
@@ -590,16 +595,27 @@ def resolve_llm_config(overrides: dict[str, Any] | None = None) -> ResolvedLLMCo
     overrides = overrides or {}
     provider_override = str(overrides.get("provider", "")).strip().lower()
 
-    # Env detection
-    cursor_enabled = os.environ.get("CURSOR_AGENT_ENABLED", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
+    # Env/CLI detection. Cursor Agent is authenticated out-of-band by the
+    # local CLI, so the CLI being on PATH is a sufficient availability signal
+    # even when CURSOR_AGENT_ENABLED is not explicitly exported. This keeps
+    # resolve_llm_config consistent with detect_available_providers().
+    cursor_enabled = (
+        os.environ.get("CURSOR_AGENT_ENABLED", "").strip().lower()
+        in (
+            "1",
+            "true",
+            "yes",
+        )
+        or shutil.which("agent") is not None
     )
-    codex_enabled = os.environ.get("CODEX_ENABLED", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
+    codex_enabled = (
+        os.environ.get("CODEX_ENABLED", "").strip().lower()
+        in (
+            "1",
+            "true",
+            "yes",
+        )
+        or shutil.which("codex") is not None
     )
     anthropic_key = (
         os.environ.get("ANTHROPIC_API_KEY")

@@ -4,6 +4,25 @@
 
 ---
 
+## [2026-05-20] ResearchFlowBench Pilot-5 暴露的 RH governance / eval 闭环改进
+
+**场景**: 用 ResearchFlowBench Pilot-5 的 clean full-5 actual snapshot 比较 B1（no governance）与 B5（full RH）时，outcome-only 评测显示两者均 5/5 pass，但过程评测显示 B1 combined 0/5、B5 combined 5/5。B5 的 `object_graph.json`、`gate_log.json`、`verification_report.json` 已整理为本地验证 bundle；对应 RH 缺陷 backlog 已记录为私有 artifact。
+
+**问题/发现**:
+- B5 governance 产物目前仍是本地 JSON 文件，只能通过 bundle/hash 追踪，尚不是 RH 可查询、可版本化、可失效传播的 typed provenance 对象。
+- outcome-only 会掩盖过程治理差异，必须把 outcome、process reliability、combined verdict 分轴记录。
+- actual agent snapshot 仍是 smoke 级，需要重复运行方差、人类校准 judge、泄漏审计和工具契约 preflight。
+- `local_static_corpus` 这类 allowed tool 必须有真实 runner 支持和 retrieval provenance，否则 benchmark 结果会混入工具不可用噪音。
+
+**建议改进**:
+1. 增加 governance provenance schema / primitive：`research_object`、`object_edge`、`gate_decision`、`verification_check`、`rollback_event`、`invalidation_link`。
+2. 将 eval schema 固化为 outcome / process / combined 三轴，并明确 combined 是 gating policy，不替代单轴报告。
+3. 增加 release-grade judge calibration packet、人类 adjudication、重复运行 variance summary。
+4. 增加 allowed_tools preflight、local_static_corpus retrieval trace、gold/judge leakage audit。
+5. 为 runner、judge、process scorer、bundle builder 加 fixture regression tests。
+
+**优先级**: P0
+
 ## [2026-04-08] research-init 不应收集 research question，而应收集 research direction [DRAFT]
 
 **问题**：`research-init` 在项目初期要求用户提供 research question，但此时上下文不足（无文献综述、无 gap 分析），导致写入 CLAUDE.md 的 research question 要么是伪精确，要么是强迫用户过早承诺。新 session 进来直接调用 skill 时，系统拿到的是一个不准确的"研究问题"。
