@@ -1467,6 +1467,248 @@ export interface TrendEntry {
   seed_papers: Array<{ id: number; title: string; year: number }>;
 }
 
+export type DiscoverSignalType =
+  | "paper"
+  | "blog"
+  | "product"
+  | "repo"
+  | "model"
+  | "benchmark"
+  | "news";
+
+export type DiscoverSignalImportance = "act_now" | "watch" | "horizon";
+
+export interface DiscoverSignal {
+  type: DiscoverSignalType;
+  title: string;
+  url: string;
+  published_at: string;
+  importance: DiscoverSignalImportance;
+  reason: string;
+}
+
+export interface DiscoverOpportunityBrief {
+  title: string;
+  summary: string;
+  why_now: string;
+  signals: DiscoverSignal[];
+  trend_context: {
+    window: "24h" | "7d" | "1y" | "3y" | "5y";
+    growth_summary: string;
+    saturation: "low" | "medium" | "high";
+  };
+  seed_papers: Array<{
+    title: string;
+    doi: string | null;
+    arxiv_id: string | null;
+    url: string;
+    year: number | null;
+  }>;
+  fit_score: {
+    trend: number;
+    novelty: number;
+    feasibility: number;
+    user_fit: number;
+    risk: number;
+  };
+  goal_previews: Array<{
+    id: string;
+    title: string;
+    dataset: string | null;
+    baseline: string | null;
+    metric_name: string | null;
+    target_metric_delta: number | null;
+    time_window_days: number | null;
+    compute_need: "low" | "medium" | "high";
+    feasibility: number;
+    evidence_strength: number;
+    risk: number;
+    first_steps: string[];
+    goalability: number;
+  }>;
+  readiness: {
+    evidence: number;
+    novelty: number;
+    feasibility: number;
+    goalability: number;
+    handoff_readiness: number;
+  };
+  risks: string[];
+  recommended_next_steps: string[];
+  rh_handoff: {
+    topic_name: string;
+    initial_queries: string[];
+    suggested_primitives: string[];
+  };
+}
+
+export interface DiscoverOpportunityCard extends DiscoverOpportunityBrief {
+  slug: string;
+}
+
+export interface DiscoverOpportunitiesResponse {
+  issue_id: string;
+  cadence: "daily" | "weekly" | "special" | string;
+  generated_at: string;
+  opportunities: DiscoverOpportunityCard[];
+}
+
+export interface DiscoverOpportunityDetailResponse {
+  issue_id: string;
+  slug: string;
+  brief: DiscoverOpportunityBrief;
+}
+
+export interface DiscoverHandoffResponse {
+  topic_id: number;
+  topic_name: string;
+  created: boolean;
+  seed_queries: string[];
+  goal_seeds: DiscoverOpportunityBrief["goal_previews"];
+  next_url: string;
+}
+
+export interface DiscoverWeeklyReport {
+  issue_id: string;
+  cadence: "daily" | "weekly" | "special" | string;
+  status: "draft" | "published" | "archived" | string;
+  product: "RH Discover" | string;
+  title: string;
+  subtitle: string;
+  generated_at: string;
+  brief_count: number;
+  briefs: DiscoverOpportunityBrief[];
+}
+
+export interface DiscoverIssueSummary {
+  issue_id: string;
+  title: string;
+  subtitle: string;
+  generated_at: string;
+  cadence: "daily" | "weekly" | "special" | string;
+  status: "draft" | "published" | "archived" | string;
+  brief_count: number;
+}
+
+export interface DiscoverSourceDefinition {
+  id: string;
+  name: string;
+  family: "papers" | "blogs" | "product" | "repos_models" | "social";
+  region: "global" | "cn";
+  usage: "connector" | "sidecar" | "manual";
+  url: string;
+  signal_types: string[];
+  note: string;
+}
+
+export function fetchDiscoverWeekly(params?: {
+  sample?: boolean;
+  generated_at?: string;
+}): Promise<DiscoverWeeklyReport> {
+  const sp = new URLSearchParams();
+  if (params?.sample != null) sp.set("sample", String(params.sample));
+  if (params?.generated_at) sp.set("generated_at", params.generated_at);
+  const qs = sp.toString();
+  return apiFetch<DiscoverWeeklyReport>(
+    `/api/discover/weekly${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function fetchDiscoverIssues(params?: {
+  cadence?: DiscoverIssueSummary["cadence"];
+  include_drafts?: boolean;
+}): Promise<DiscoverIssueSummary[]> {
+  const sp = new URLSearchParams();
+  if (params?.cadence) sp.set("cadence", params.cadence);
+  if (params?.include_drafts != null)
+    sp.set("include_drafts", String(params.include_drafts));
+  const qs = sp.toString();
+  return apiFetch<DiscoverIssueSummary[]>(
+    `/api/discover/issues${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function fetchDiscoverIssue(
+  issueId: string,
+  params?: {
+    cadence?: DiscoverIssueSummary["cadence"];
+    include_drafts?: boolean;
+  }
+): Promise<DiscoverWeeklyReport> {
+  const sp = new URLSearchParams();
+  if (params?.cadence) sp.set("cadence", params.cadence);
+  if (params?.include_drafts != null)
+    sp.set("include_drafts", String(params.include_drafts));
+  const qs = sp.toString();
+  return apiFetch<DiscoverWeeklyReport>(
+    `/api/discover/issues/${encodeURIComponent(issueId)}${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function fetchDiscoverSources(params?: {
+  family?: DiscoverSourceDefinition["family"];
+}): Promise<DiscoverSourceDefinition[]> {
+  const sp = new URLSearchParams();
+  if (params?.family) sp.set("family", params.family);
+  const qs = sp.toString();
+  return apiFetch<DiscoverSourceDefinition[]>(
+    `/api/discover/sources${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function fetchDiscoverOpportunities(params?: {
+  sample?: boolean;
+  cadence?: DiscoverIssueSummary["cadence"];
+}): Promise<DiscoverOpportunitiesResponse> {
+  const sp = new URLSearchParams();
+  if (params?.sample != null) sp.set("sample", String(params.sample));
+  if (params?.cadence) sp.set("cadence", params.cadence);
+  const qs = sp.toString();
+  return apiFetch<DiscoverOpportunitiesResponse>(
+    `/api/discover/opportunities${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function fetchDiscoverOpportunity(
+  slug: string,
+  params?: {
+    sample?: boolean;
+    cadence?: DiscoverIssueSummary["cadence"];
+  }
+): Promise<DiscoverOpportunityDetailResponse> {
+  const sp = new URLSearchParams();
+  if (params?.sample != null) sp.set("sample", String(params.sample));
+  if (params?.cadence) sp.set("cadence", params.cadence);
+  const qs = sp.toString();
+  return apiFetch<DiscoverOpportunityDetailResponse>(
+    `/api/discover/opportunities/${encodeURIComponent(slug)}${qs ? `?${qs}` : ""}`
+  );
+}
+
+export function handoffDiscoverOpportunity(
+  slug: string,
+  body: {
+    user_profile?: Record<string, unknown>;
+    selected_goal_preview_ids?: string[];
+  },
+  params?: {
+    sample?: boolean;
+    cadence?: DiscoverIssueSummary["cadence"];
+  }
+): Promise<DiscoverHandoffResponse> {
+  const sp = new URLSearchParams();
+  if (params?.sample != null) sp.set("sample", String(params.sample));
+  if (params?.cadence) sp.set("cadence", params.cadence);
+  const qs = sp.toString();
+  return apiFetch<DiscoverHandoffResponse>(
+    `/api/discover/opportunities/${encodeURIComponent(slug)}/handoff${qs ? `?${qs}` : ""}`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 export function fetchDomainTrends(params?: {
   tier?: string;
   scope?: string;

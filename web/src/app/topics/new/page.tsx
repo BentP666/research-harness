@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -16,6 +16,7 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { fetchDomains, createDomain, createTopic, ingestPaper } from "@/lib/api";
+import { parseNewTopicPrefillSearch } from "@/lib/topic-prefill";
 import type { Domain } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -452,6 +453,7 @@ export default function NewTopicPage() {
 
   // Step state
   const [step, setStep] = useState(0);
+  const [prefillSource, setPrefillSource] = useState<string | null>(null);
 
   // Step 1: Domain
   const [useExistingDomain, setUseExistingDomain] = useState(false);
@@ -478,6 +480,23 @@ export default function NewTopicPage() {
     queryKey: ["domains"],
     queryFn: fetchDomains,
   });
+
+  useEffect(() => {
+    const prefill = parseNewTopicPrefillSearch(window.location.search);
+    if (!prefill.source) return;
+
+    const timer = window.setTimeout(() => {
+      setPrefillSource(prefill.source);
+      setStep(1);
+      setTopicName(prefill.name);
+      setTopicDescription(prefill.description);
+      setTargetVenue(prefill.targetVenue);
+      setDeadline(prefill.deadline);
+      setSeedPapersRaw(prefill.seedPapersRaw);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Derived values
   const seedPapers = useMemo(() => parseSeedIds(seedPapersRaw), [seedPapersRaw]);
@@ -606,6 +625,20 @@ export default function NewTopicPage() {
           </p>
         </div>
       </div>
+
+      {prefillSource === "discover" && (
+        <Card className="border-indigo-200 bg-indigo-50/60 dark:border-indigo-900/50 dark:bg-indigo-950/20">
+          <CardContent className="p-4 text-sm">
+            <div className="font-medium text-indigo-900 dark:text-indigo-100">
+              Prefilled from RH Discover
+            </div>
+            <p className="mt-1 text-indigo-900/70 dark:text-indigo-100/70">
+              Review the OpportunityBrief handoff query, risks, and seed-paper
+              list before creating the RH Core topic.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Step indicator */}
       <StepIndicator current={step} />

@@ -1,0 +1,70 @@
+{
+  "issue_id": "YYYY-MM-DD-weekly",
+  "cadence": "weekly",
+  "status": "draft",
+  "product": "RH Discover",
+  "title": "RH Discover Weekly · YYYY-MM-DD",
+  "subtitle": "把研究与技术信号转化为可以立刻推进的研究机会。",
+  "generated_at": "YYYY-MM-DD",
+  "briefs": [
+    {
+      "title": "Candidate research opportunity title",
+      "summary": "What happened, framed as a research opportunity rather than generic news.",
+      "why_now": "Why this direction matters now and why a researcher should act this week.",
+      "signals": [
+        {
+          "type": "paper",
+          "title": "Primary source title",
+          "url": "https://example.com/source",
+          "published_at": "",
+          "importance": "watch",
+          "reason": "Why this source supports the opportunity."
+        }
+      ],
+      "trend_context": {
+        "window": "7d",
+        "growth_summary": "Short trend summary.",
+        "saturation": "medium"
+      },
+      "seed_papers": [],
+      "fit_score": {
+        "trend": 0.0,
+        "novelty": 0.0,
+        "feasibility": 0.0,
+        "user_fit": 0.0,
+        "risk": 0.0
+      },
+      "goal_previews": [
+        {
+          "id": "first-measurable-goal",
+          "title": "First measurable research goal",
+          "dataset": "Scoped dataset or evidence pool",
+          "baseline": "Initial comparison baseline",
+          "metric_name": "Metric to improve or audit",
+          "target_metric_delta": 0.1,
+          "time_window_days": 30,
+          "compute_need": "low",
+          "feasibility": 0.0,
+          "evidence_strength": 0.0,
+          "risk": 0.0,
+          "first_steps": ["Concrete first step", "Second concrete first step"],
+          "goalability": 1.0
+        }
+      ],
+      "readiness": {
+        "evidence": 0.0,
+        "novelty": 0.0,
+        "feasibility": 0.0,
+        "goalability": 0.0,
+        "handoff_readiness": 0.0
+      },
+      "risks": ["Main caveat before this becomes a research topic."],
+      "recommended_next_steps": ["Concrete next action inside RH."],
+      "rh_handoff": {
+        "topic_name": "candidate-topic-slug",
+        "initial_queries": ["initial literature search query"],
+        "suggested_primitives": ["paper_search", "paper_ingest", "gap_detect"]
+      }
+    }
+  ]
+}

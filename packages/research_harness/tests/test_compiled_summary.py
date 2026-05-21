@@ -370,3 +370,14 @@ class TestGetPaperTextIntegration:
 
         title, text = _get_paper_text(db, 1)
         assert "Annotation-based summary" in text
+
+
+class TestParseJson:
+    def test_repairs_literal_newlines_inside_fenced_json_strings(self):
+        from research_harness.execution.llm_primitives import _parse_json
+
+        raw = '```json\n{"algorithm_walkthrough": "line one\n\nline two with \\(x\\)"}\n```'
+
+        parsed = _parse_json(raw, primitive="deep_read", context="pass1")
+
+        assert parsed == {"algorithm_walkthrough": "line one\n\nline two with \\(x\\)"}

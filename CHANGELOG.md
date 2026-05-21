@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [1.0.0] — 2026-05-21
+
+### Added
+
+- **RH Discover 1.0**: file-backed issue publishing, opportunity briefs,
+  product API endpoints, and a dedicated Discovery workbench surface in the
+  web app.
+- **ResearchFlowBench diagnostics**: deterministic preflight helpers for task
+  pack validation, leakage checks, retrieval trace integrity, and cost caps.
+- **Semantic governance utilities** for B5-style object graph validation,
+  normalization, trace checking, rollback payloads, and contract hardening.
+- **Codex workflow surface**: project `.codex/config.toml`, repo skill bridge,
+  verification scripts, manual Codex review workflow, and RH-specific Codex
+  skills for resume, checkpointing, verification, and artifact recording.
+
+### Changed
+
+- Bumped Python packages and web metadata from `0.4.0` to `1.0.0`.
+- Reworked `/discover` to redirect to the richer `/discovery` product surface
+  while preserving published issue archive routes.
+- Expanded paper acquisition, source search configuration, compiled-summary
+  handling, LLM primitive parsing, and MCP HTTP routes with tests.
+- Documented RH frontier-attention evidence requirements, Codex checkpoint
+  rules, Discovery incubation/roadmap plans, and workflow feedback.
+
+### Fixed
+
+- Added regression coverage for SQLite timeout behavior, compiled summaries,
+  PDF download fallback handling, source-provider toggles, and MCP route
+  validation.
+
 ## [0.4.0] — 2026-05-10
 
 ### Added

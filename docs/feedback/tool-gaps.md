@@ -37,3 +37,28 @@
 **优先级**: ~~P0（数据正确性）~~ ✅ 已修复
 
 
+
+
+## 2026-05-11 metadata-incomplete paper update/merge 工具缺口
+
+**场景**: 多篇 URL-only / DOI-only / OpenReview-only 论文以 DOI、PDF URL 或 OpenReview URL 入库后 metadata incomplete。
+**问题/发现**: 找到正式标题和来源后，当前可见 MCP 只有 `paper_ingest`，没有安全的 `paper_update_metadata` / `paper_merge_duplicate`；直接 SQL 写入又违反论文管理规范，导致只能新入库或在 artifact 中备注。
+**建议改进**: 增加 `paper_update_metadata(paper_id, fields, source_evidence)` 与 `paper_merge_duplicates(canonical_id, duplicate_ids)`，并要求记录外部核对来源。
+**优先级**: P1
+
+## 2026-05-17 literature-search 多源检索遇到 429/timeout 时缺少快速降级
+
+**场景**: 初始化某个大规模 literature-survey topic 后，用 `rh search papers --topic ... --year-from 2023 --log-run` 执行多源检索，准备为科研 agent 综述记录系统检索日志。
+
+**问题/发现**:
+- Semantic Scholar 免费接口连续返回 HTTP 429，arXiv API 多次 read timeout，单个 query 需要很久才能完成。
+- CLI 当前会逐 provider 重试，适合完整采集，但不适合交互式 session 中的“先建立种子池/检索式”的快速推进。
+- 执行到第 3 个 query 时需要人工 kill，最终只成功记录前 2 个 search_runs。
+
+**建议改进**:
+1. 增加 `--provider` / `--exclude-provider` 参数，允许交互式检索临时跳过 rate-limited provider。
+2. 增加 `--timeout-seconds` / `--fast-fail` 参数，超时后保留已返回 provider 的结果并记录 partial status。
+3. 在 search_runs 中记录 provider_errors，而不是只在 JSON 文件里保存，便于 provenance 追踪检索不完整的原因。
+4. 为新 topic 初始化提供 `seed-search-fast` 模式：优先 OpenAlex/CrossRef/PASA + web-derived seeds，稍后后台补 S2/arXiv。
+
+**优先级**: P1

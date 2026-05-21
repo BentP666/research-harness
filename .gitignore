@@ -41,3 +41,18 @@ experiments/*/data/
 experiments/*/runs/
 /*.png
 /e2e-*.png
+
+# Private/local research scratch artifacts — do not publish before paper release
+.tmp_*.json
+.tmp_*.txt
+/01-literature/
+/02-evidence-map/
+/03-proposals/
+/discovery-snapshots/
+/discovery-*-snapshot.md
+/scripts/generate_*_evidence_matrix.py
+/docs/discover/evidence/latest.json
+/docs/discover/published/*.html
+/docs/discover/published/*.md
+/docs/discover/issues/*.json
+!/docs/discover/issues/demo-weekly.json

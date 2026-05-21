@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -221,6 +223,73 @@ class GoogleScholarProvider(HTTPProvider):
                         item.get("cited_by_count")
                         or item.get("inline_links", {}).get("cited_by", {}).get("total")
                     ),
+                    pdf_candidates=pdf_candidates,
+                )
+            )
+        return records
+
+
+class CrossrefProvider(HTTPProvider):
+    name = "crossref"
+
+    def __init__(
+        self,
+        email: str | None = None,
+        fetcher: JsonFetcher | None = None,
+    ):
+        super().__init__(fetcher=fetcher)
+        self.email = email or ""
+
+    def search(self, query: SearchQuery) -> list[PaperRecord]:
+        params = {
+            "query": query.query,
+            "rows": str(query.per_provider_limit or query.limit),
+            "sort": "relevance",
+        }
+        filters: list[str] = []
+        if query.year_from is not None:
+            filters.append(f"from-pub-date:{query.year_from}-01-01")
+        if query.year_to is not None:
+            filters.append(f"until-pub-date:{query.year_to}-12-31")
+        if filters:
+            params["filter"] = ",".join(filters)
+        if self.email:
+            params["mailto"] = self.email
+        url = f"https://api.crossref.org/works?{urllib.parse.urlencode(params)}"
+        payload = self._fetch_json(url, {"Accept": "application/json"})
+        items = (payload.get("message") or {}).get("items") or []
+        records: list[PaperRecord] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            title = _crossref_first(item.get("title"))
+            if not title:
+                continue
+            pdf_candidates: list[PDFCandidate] = []
+            for link in item.get("link") or []:
+                if not isinstance(link, dict) or not link.get("URL"):
+                    continue
+                content_type = str(link.get("content-type") or "").lower()
+                if "pdf" in content_type or str(link["URL"]).endswith(".pdf"):
+                    pdf_candidates.append(
+                        PDFCandidate(
+                            url=str(link["URL"]),
+                            source_type="publisher_pdf",
+                            provider=self.name,
+                            confidence=0.65,
+                        )
+                    )
+            records.append(
+                PaperRecord(
+                    title=title,
+                    authors=_crossref_authors(item.get("author") or []),
+                    year=_coerce_year(_crossref_year(item)),
+                    venue=_crossref_first(item.get("container-title")),
+                    abstract=_strip_crossref_abstract(str(item.get("abstract") or "")),
+                    doi=str(item.get("DOI") or ""),
+                    url=str(item.get("URL") or ""),
+                    provider=self.name,
+                    citation_count=_coerce_int(item.get("is-referenced-by-count")),
                     pdf_candidates=pdf_candidates,
                 )
             )
@@ -707,9 +776,12 @@ class OpenReviewProvider(HTTPProvider):
 
 class ArxivProvider:
     name = "arxiv"
+    _last_request_time: float = 0.0
+    _rate_lock = threading.Lock()
 
     def __init__(self, fetcher: TextFetcher | None = None):
         self._fetcher = fetcher or default_text_fetcher
+        self._min_interval = float(os.environ.get("ARXIV_MIN_INTERVAL_SEC", "3.1"))
 
     def search(self, query: SearchQuery) -> list[PaperRecord]:
         if query.subject_categories:
@@ -726,6 +798,7 @@ class ArxivProvider:
         }
         url = f"https://export.arxiv.org/api/query?{urllib.parse.urlencode(params)}"
         breaker = get_breaker(self.name)
+        self._wait_for_rate_limit()
         payload = breaker.call(self._fetcher, url, {"Accept": "application/atom+xml"})
         root = ET.fromstring(payload)
         ns = {
@@ -778,6 +851,14 @@ class ArxivProvider:
                 )
             )
         return records
+
+    def _wait_for_rate_limit(self) -> None:
+        with self._rate_lock:
+            now = time.monotonic()
+            elapsed = now - ArxivProvider._last_request_time
+            if elapsed < self._min_interval:
+                time.sleep(self._min_interval - elapsed)
+            ArxivProvider._last_request_time = time.monotonic()
 
 
 class PASAProvider:
@@ -979,13 +1060,35 @@ class PASAProvider:
 
 
 def build_provider_suite(fetcher: JsonFetcher | None = None) -> list[SearchProvider]:
-    providers: list[SearchProvider] = [ArxivProvider()]
+    arxiv_disabled = os.environ.get("ARXIV_ENABLE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+    }
+    providers: list[SearchProvider] = [] if arxiv_disabled else [ArxivProvider()]
     google_url = os.environ.get("GOOGLE_SCHOLAR_API_URL", "").strip()
     openalex_key = os.environ.get("OPENALEX_API_KEY", "").strip()
+    openalex_disabled = os.environ.get("OPENALEX_ENABLE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+    }
+    crossref_disabled = os.environ.get("CROSSREF_ENABLE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+    }
     semantic_key = (
         os.environ.get("S2_API_KEY", "").strip()
         or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip()
     )
+    semantic_disabled = os.environ.get(
+        "SEMANTIC_SCHOLAR_ENABLE", ""
+    ).strip().lower() in {
+        "0",
+        "false",
+        "no",
+    } or os.environ.get("S2_ENABLE", "").strip().lower() in {"0", "false", "no"}
 
     if google_url:
         providers.append(
@@ -995,7 +1098,14 @@ def build_provider_suite(fetcher: JsonFetcher | None = None) -> list[SearchProvi
                 fetcher=fetcher,
             )
         )
-    if openalex_key:
+    if not crossref_disabled:
+        providers.append(
+            CrossrefProvider(
+                email=os.environ.get("CROSSREF_MAILTO", ""),
+                fetcher=fetcher,
+            )
+        )
+    if not openalex_disabled:
         providers.append(
             OpenAlexProvider(
                 api_key=openalex_key,
@@ -1003,8 +1113,10 @@ def build_provider_suite(fetcher: JsonFetcher | None = None) -> list[SearchProvi
                 fetcher=fetcher,
             )
         )
-    # S2 is always enabled (free tier works without key, just rate-limited to ~1 req/s)
-    providers.append(SemanticScholarProvider(api_key=semantic_key, fetcher=fetcher))
+    # S2 is enabled by default (free tier works without key, but is rate-limited).
+    # Long-running batch jobs can disable it with SEMANTIC_SCHOLAR_ENABLE=0.
+    if not semantic_disabled:
+        providers.append(SemanticScholarProvider(api_key=semantic_key, fetcher=fetcher))
     if os.environ.get("OPENREVIEW_ENABLE", "").strip().lower() in {"1", "true", "yes"}:
         providers.append(
             OpenReviewProvider(
@@ -1026,12 +1138,34 @@ def build_provider_suite(fetcher: JsonFetcher | None = None) -> list[SearchProvi
 
 
 def available_provider_specs() -> list[ProviderSpec]:
+    arxiv_disabled = os.environ.get("ARXIV_ENABLE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+    }
     google_url = os.environ.get("GOOGLE_SCHOLAR_API_URL", "").strip()
     openalex_key = os.environ.get("OPENALEX_API_KEY", "").strip()
+    openalex_disabled = os.environ.get("OPENALEX_ENABLE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+    }
+    crossref_disabled = os.environ.get("CROSSREF_ENABLE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+    }
     semantic_key = (
         os.environ.get("S2_API_KEY", "").strip()
         or os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "").strip()
     )
+    semantic_disabled = os.environ.get(
+        "SEMANTIC_SCHOLAR_ENABLE", ""
+    ).strip().lower() in {
+        "0",
+        "false",
+        "no",
+    } or os.environ.get("S2_ENABLE", "").strip().lower() in {"0", "false", "no"}
     openreview_enabled = os.environ.get("OPENREVIEW_ENABLE", "").strip().lower() in {
         "1",
         "true",
@@ -1043,23 +1177,44 @@ def available_provider_specs() -> list[ProviderSpec]:
         "no",
     }
     return [
-        ProviderSpec("arxiv", True, "built-in"),
+        ProviderSpec(
+            "arxiv",
+            not arxiv_disabled,
+            "built-in" if not arxiv_disabled else "disabled via ARXIV_ENABLE=0",
+        ),
         ProviderSpec(
             "google_scholar",
             bool(google_url),
             "configured" if google_url else "set GOOGLE_SCHOLAR_API_URL",
         ),
         ProviderSpec(
+            "crossref",
+            not crossref_disabled,
+            "enabled (public API)"
+            if not crossref_disabled
+            else "disabled via CROSSREF_ENABLE=0",
+        ),
+        ProviderSpec(
             "openalex",
-            bool(openalex_key),
-            "configured" if openalex_key else "set OPENALEX_API_KEY",
+            not openalex_disabled,
+            "configured (keyed)"
+            if openalex_key
+            else (
+                "disabled via OPENALEX_ENABLE=0"
+                if openalex_disabled
+                else "enabled (public API)"
+            ),
         ),
         ProviderSpec(
             "semantic_scholar",
-            True,
+            not semantic_disabled,
             "configured (keyed)"
             if semantic_key
-            else "enabled (free tier, rate-limited)",
+            else (
+                "disabled via SEMANTIC_SCHOLAR_ENABLE=0"
+                if semantic_disabled
+                else "enabled (free tier, rate-limited)"
+            ),
         ),
         ProviderSpec(
             "openreview",
@@ -1239,6 +1394,47 @@ def _coerce_authors(value: Any) -> list[str]:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
     return []
+
+
+def _crossref_first(value: Any) -> str:
+    if isinstance(value, list) and value:
+        return str(value[0] or "")
+    return str(value or "")
+
+
+def _crossref_authors(value: list[Any]) -> list[str]:
+    authors: list[str] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        name = " ".join(
+            part
+            for part in (
+                str(item.get("given") or "").strip(),
+                str(item.get("family") or "").strip(),
+            )
+            if part
+        )
+        if name:
+            authors.append(name)
+    return authors
+
+
+def _crossref_year(item: dict[str, Any]) -> int | None:
+    for key in ("published-print", "published-online", "published", "issued"):
+        raw_date = item.get(key)
+        date_parts = raw_date.get("date-parts") if isinstance(raw_date, dict) else None
+        if (
+            isinstance(date_parts, list)
+            and date_parts
+            and isinstance(date_parts[0], list)
+        ):
+            return _coerce_year(date_parts[0][0] if date_parts[0] else None)
+    return None
+
+
+def _strip_crossref_abstract(value: str) -> str:
+    return re.sub(r"<[^>]+>", " ", value).strip()
 
 
 def _coerce_year(value: Any) -> int | None:

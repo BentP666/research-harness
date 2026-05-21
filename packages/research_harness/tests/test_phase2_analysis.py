@@ -373,6 +373,78 @@ class TestEvidenceMatrix:
         assert result.papers_processed == 0
         assert len(result.claims) == 0
 
+    def test_scopes_to_paper_ids(self, db, conn):
+        conn.execute("INSERT INTO topics (id, name) VALUES (1, 'test')")
+        compiled_1 = json.dumps(
+            {
+                "claims": ["Core paper claim"],
+                "metrics": [],
+            }
+        )
+        compiled_2 = json.dumps(
+            {
+                "claims": ["Out-of-scope paper claim"],
+                "metrics": [],
+            }
+        )
+        _insert_paper(conn, 1, "Core Paper", compiled_summary=compiled_1, year=2024)
+        _insert_paper(
+            conn, 2, "Out-of-Scope Paper", compiled_summary=compiled_2, year=2024
+        )
+        conn.execute(
+            "INSERT INTO paper_topics (paper_id, topic_id, relevance) VALUES (1, 1, 'high')"
+        )
+        conn.execute(
+            "INSERT INTO paper_topics (paper_id, topic_id, relevance) VALUES (2, 1, 'high')"
+        )
+        conn.commit()
+
+        mock_response = json.dumps(
+            {
+                "normalized_claims": [
+                    {
+                        "paper_id": 1,
+                        "claim_text": "Core paper claim",
+                        "method": "core-method",
+                        "dataset": "core-data",
+                        "metric": "core-metric",
+                        "task": "core-task",
+                        "value": "qualitative",
+                        "direction": "qualitative",
+                        "confidence": 0.7,
+                    },
+                ]
+            }
+        )
+
+        with (
+            patch(
+                "research_harness.execution.llm_primitives._get_client"
+            ) as mock_client,
+            patch(
+                "research_harness.execution.llm_primitives._client_chat",
+                return_value=mock_response,
+            ) as mock_chat,
+        ):
+            mock_client.return_value = MagicMock()
+            from research_harness.execution.llm_primitives import evidence_matrix
+
+            result = evidence_matrix(db=db, topic_id=1, paper_ids=[1])
+
+        assert result.papers_processed == 1
+        prompt = mock_chat.call_args.args[1]
+        assert "Core paper claim" in prompt
+        assert "Out-of-scope paper claim" not in prompt
+
+        conn2 = db.connect()
+        rows = conn2.execute(
+            "SELECT paper_id, claim_text FROM normalized_claims WHERE topic_id = 1"
+        ).fetchall()
+        conn2.close()
+        assert [(row["paper_id"], row["claim_text"]) for row in rows] == [
+            (1, "Core paper claim")
+        ]
+
 
 # ---------------------------------------------------------------------------
 # contradiction_detect (LLM-backed, requires mock)

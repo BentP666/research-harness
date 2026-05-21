@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -93,6 +94,29 @@ def _build_candidates(db: Database, topic_id: int) -> list[PaperDownloadCandidat
             )
         )
     return candidates
+
+
+def _run_download_batch(
+    candidates: list[PaperDownloadCandidate], download_path: Path
+) -> list[DownloadResult]:
+    """Run async PDF downloads from both sync and already-async callers.
+
+    MCP tool dispatch may execute primitives while an event loop is already
+    running. Calling ``asyncio.run`` in that environment raises
+    ``RuntimeError: asyncio.run() cannot be called from a running event loop``.
+    The CLI path remains the common no-running-loop case, while MCP dispatch is
+    handled by running the coroutine in a short-lived worker thread.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(download_batch(candidates, download_path))
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(
+            lambda: asyncio.run(download_batch(candidates, download_path))
+        )
+        return future.result()
 
 
 def _annotate_paper(
@@ -224,7 +248,7 @@ def acquire_papers(
     logger.info("Downloading %d papers for topic %d", len(candidates), topic_id)
     for c in candidates:
         _record_event(db, c.paper_id, "download_start")
-    results = asyncio.run(download_batch(candidates, download_path))
+    results = _run_download_batch(candidates, download_path)
 
     report = _process_results(db, results, candidates, artifacts_path)
     report.topic_id = topic_id

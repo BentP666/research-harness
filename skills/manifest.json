@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-05-08T14:52:23Z",
+  "generated_at": "2026-05-20T09:31:45Z",
   "skills_dir": "skills",
   "skills": [
     {
@@ -100,6 +100,30 @@
       "allowed_tools": [
         "Read"
       ]
+    },
+    {
+      "name": "rh-artifact-record",
+      "path": "skills/rh-artifact-record",
+      "skill_md": "skills/rh-artifact-record/SKILL.md",
+      "description": "Record durable Research Harness outputs as orchestrator artifacts with provenance. Trigger on phrases like \"rh-artifact-record\", \"/rh-artifact-record\", \"记录 artifact\", \"产出入库\", \"save RH artifact\", or when a research output should not remain only in chat/files."
+    },
+    {
+      "name": "rh-codex-checkpoint",
+      "path": "skills/rh-codex-checkpoint",
+      "skill_md": "skills/rh-codex-checkpoint/SKILL.md",
+      "description": "Create a compact Codex checkpoint before context pressure, compaction, handoff, or a new large Research Harness phase. Trigger on phrases like \"rh-codex-checkpoint\", \"/compact\", \"checkpoint\", \"上下文压缩\", \"handoff\", or when visible context is low."
+    },
+    {
+      "name": "rh-codex-verify",
+      "path": "skills/rh-codex-verify",
+      "skill_md": "skills/rh-codex-verify/SKILL.md",
+      "description": "Verify Codex workflow/config/skill changes in research-harness-oss. Trigger on phrases like \"rh-codex-verify\", \"/rh-codex-verify\", \"run codex-check\", \"验证 Codex 配置\", or before handing off Codex-authored changes."
+    },
+    {
+      "name": "rh-session-resume",
+      "path": "skills/rh-session-resume",
+      "skill_md": "skills/rh-session-resume/SKILL.md",
+      "description": "Resume an existing Research Harness topic/session in Codex without restarting work. Trigger on phrases like \"rh-session-resume\", \"/rh-session-resume\", \"接手已有 topic\", \"继续上次 Research Harness\", \"resume RH topic\", or equivalent requests to recover current state before acting."
     },
     {
       "name": "section-drafting",

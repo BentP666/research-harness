@@ -483,6 +483,11 @@ from .skill.cli import register as _register_skill_cli  # noqa: E402
 
 _register_skill_cli(main)
 
+# RH Discover is an incubation surface with a deliberately small CLI module.
+from .discover.cli import register as _register_discover_cli  # noqa: E402
+
+_register_discover_cli(main)
+
 
 @main.group()
 def config() -> None:

@@ -217,6 +217,11 @@ def _expand_url(url: str) -> list[str]:
         if path.startswith("/pdf/") and not path.endswith(".pdf"):
             return [f"https://{host}{path}.pdf"]
 
+    if host.endswith("openreview.net"):
+        paper_id = query.get("id", [None])[0]
+        if paper_id and path.rstrip("/") == "/forum":
+            return [f"https://openreview.net/pdf?id={paper_id}", url]
+
     if "ieeexplore.ieee.org" in host:
         arnumber = query.get("arnumber", [None])[0]
         if "/document/" in path:
