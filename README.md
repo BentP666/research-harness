@@ -20,8 +20,8 @@ across sessions instead of losing progress in chat history.
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-red.svg" alt="License"/></a>
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python"/>
-  <img src="https://img.shields.io/badge/version-0.4.0-green.svg" alt="Version"/>
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python"/>
+  <img src="https://img.shields.io/badge/version-1.0.0-green.svg" alt="Version"/>
   <img src="https://img.shields.io/badge/MCP-compatible-orange.svg" alt="MCP"/>
 </p>
 
@@ -35,6 +35,7 @@ across sessions instead of losing progress in chat history.
 - Draft related work, proposals, reports, and paper sections from recorded
   evidence.
 - Resume the same research state across agents, models, machines, and sessions.
+- Maintain public-safe Discovery issues and opportunity briefs from sanitized or synthetic evidence.
 
 ## The easiest way to start
 
@@ -96,6 +97,19 @@ Draft a related-work section from the recorded claims and evidence.
 Keep the citations and claims traceable to the source papers.
 ```
 
+## Public repository privacy boundary
+
+This GitHub repository is for public code, documentation, and sanitized or
+synthetic fixtures only. Do **not** commit unpublished paper drafts, research
+novelty notes, real project artifacts, private topic names or IDs, local
+databases/reports, credentials, or generated Discovery issues derived from
+non-public research.
+
+Keep private research state in a local or private database/repo. Before pushing,
+review `git diff`, and use synthetic fixtures such as
+[`docs/discover/issues/demo-weekly.json`](docs/discover/issues/demo-weekly.json)
+when an example is needed.
+
 ---
 
 ## What It Is
@@ -105,7 +119,7 @@ Research Harness is the execution and state layer underneath an agent that does 
 Concretely, it is:
 
 - a **state layer** — one SQLite `pool.db` holding papers, cards, deep-reading notes, claims, artifacts, and provenance records;
-- a **primitive layer** — 69 typed research operations (`paper_search`, `claim_extract`, `gap_detect`, `adversarial_review`, `section_draft`, `paper_verify_numbers`, …) registered once and exposed as 112 MCP tools, a Python API, and a `rh` CLI;
+- a **primitive layer** — 81 typed research operations (`paper_search`, `claim_extract`, `gap_detect`, `adversarial_review`, `section_draft`, `paper_verify_numbers`, …) registered once and exposed as 134 MCP tools, a Python API, a `rh` CLI, and HTTP/web surfaces;
 - a **control layer** — six stages (`init → build → analyze → propose → experiment → write`), each advancing only when the previous stage has produced typed artifacts that satisfy the gate at the boundary.
 
 The word *harness* follows Anthropic's engineering framing[^1]: it is the system that turns a model into an agent by orchestrating tool calls, preserving state across turns, and recording what happened. Research Harness applies that framing to research work.
@@ -132,12 +146,12 @@ Best fit when a human reviews artifacts at stage boundaries — that is where th
 
 ## Quickstart
 
-Requires Python 3.10+. One LLM API key (OpenAI, Anthropic, or Kimi) is enough to start.
+Requires Python 3.11+. One LLM API key (OpenAI, Anthropic, or Kimi) is enough to start.
 
 ```bash
 git clone https://github.com/Biajin-PKU/research-harness.git
 cd research-harness
-./setup.sh                    # creates venv, installs the three packages
+./setup.sh                    # creates venv, installs the four packages
 cp .env.example .env          # add one API key
 rh topic init "my-topic"      # registers a research topic
 ```
@@ -146,7 +160,7 @@ Verify the install:
 
 ```bash
 python -m pytest packages/ -q --ignore=packages/research_harness_eval
-# 987+ passed
+# package tests should pass
 ```
 
 See [`docs/quickstart.md`](docs/quickstart.md) for the full setup walkthrough, including Conda, GPU, and offline notes.
@@ -305,7 +319,7 @@ Or via CLI: `codex mcp add research-harness -- /abs/path/python -m research_harn
 
 ### HTTP API + Web dashboard
 
-For operators who prefer a browser over a chat prompt, the repo ships a FastAPI backend (28 REST endpoints, paginated reads + action endpoints) and a Next.js 16 / React 19 dashboard under [`web/`](web/). Start both:
+For operators who prefer a browser over a chat prompt, the repo ships a FastAPI backend (130+ REST routes, paginated reads + action endpoints) and a Next.js 16 / React 19 dashboard under [`web/`](web/). Start both:
 
 ```bash
 # Backend — installs FastAPI + uvicorn extras
@@ -320,7 +334,7 @@ The dashboard surfaces topics, papers, projects, artifacts, and provenance stats
 
 ## Skills for Vibe Coding
 
-In Claude Code or Codex the usual driver is natural language — you describe the task and the agent routes to the right skill, which in turn calls the right MCP tools. Fourteen skills ship in [`skills/`](skills/) as portable Claude Code skill files (standard YAML-frontmatter format); drop the folder into your skills directory and triggers from the table below start working.
+In Claude Code or Codex the usual driver is natural language — you describe the task and the agent routes to the right skill, which in turn calls the right MCP tools. Nineteen skills ship in [`skills/`](skills/) as portable Claude Code skill files (standard YAML-frontmatter format); drop the folder into your skills directory and triggers from the table below start working.
 
 ### Catalog
 
@@ -337,7 +351,12 @@ In Claude Code or Codex the usual driver is natural language — you describe th
 | [`gap-analysis`](skills/gap-analysis/SKILL.md) | Surface open questions and missing baselines | "what are the gaps here?" |
 | [`evidence-gating`](skills/evidence-gating/SKILL.md) | Decide whether a stage can advance | "am I ready to move to the propose stage?" |
 | [`section-drafting`](skills/section-drafting/SKILL.md) | Draft paper sections from linked evidence | "draft the related-work section" |
+| [`paper-writing`](skills/paper-writing/SKILL.md) | Structure paper/report drafts from RH evidence | "turn this evidence into a workshop paper outline" |
 | [`provenance-review`](skills/provenance-review/SKILL.md) | Audit what was run, recorded, and linked | "review provenance for this project" |
+| [`rh-session-resume`](skills/rh-session-resume/SKILL.md) | Resume an existing RH topic/session without restarting | "resume the current RH topic" |
+| [`rh-codex-checkpoint`](skills/rh-codex-checkpoint/SKILL.md) | Save a compact checkpoint before context handoff or compaction | "create an RH checkpoint before compacting" |
+| [`rh-codex-verify`](skills/rh-codex-verify/SKILL.md) | Verify Codex workflow, config, and skill changes | "run the RH Codex verification" |
+| [`rh-artifact-record`](skills/rh-artifact-record/SKILL.md) | Record durable outputs as orchestrator artifacts | "record this report as an RH artifact" |
 | [`research-primitives`](skills/research-primitives/SKILL.md) | Reference — every MCP primitive at a glance | "show me the primitive reference" |
 | [`task-taxonomy`](skills/task-taxonomy/SKILL.md) | Reference — model routing and task classification | "which tier should I use for claim extraction?" |
 
@@ -392,7 +411,7 @@ Three mechanisms, each specified in more detail in [`docs/architecture.md`](docs
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│   MCP server (112 tools, stdio transport)                    │
+│   MCP server (134 tools, stdio transport)                    │
 ├──────────────────────────────────────────────────────────────┤
 │   Orchestrator                                               │
 │     init → build → analyze → propose → experiment → write    │
@@ -449,13 +468,29 @@ Primitives are registered via `@register_primitive(spec)`; gates subclass `GateE
 | [`docs/python-api.md`](docs/python-api.md) | Using the harness without an MCP client |
 | [`docs/plugin-guide.md`](docs/plugin-guide.md) | Writing custom primitives, gates, backends |
 | [`docs/PAPER_MANAGEMENT.md`](docs/PAPER_MANAGEMENT.md) | Canonical paper-storage protocol |
+| [`docs/codex-workflow.md`](docs/codex-workflow.md) | Codex setup, checkpointing, and verification workflow |
+| [`docs/discover/README.md`](docs/discover/README.md) | RH Discover issue publishing and editorial workflow |
 | [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common errors (LLM routing, ledger 422, deep-read edge cases) and how to fix them |
-| [`docs/DEMO.md`](docs/DEMO.md) | v0.4.0 no-key and live workbench walkthrough |
-| [`docs/RELEASE_NOTES_v0.4.0.md`](docs/RELEASE_NOTES_v0.4.0.md) | What shipped in v0.4.0, known limits, upgrade notes |
+| [`docs/DEMO.md`](docs/DEMO.md) | No-key and live workbench walkthrough |
+| [`CHANGELOG.md`](CHANGELOG.md) | 1.0.0 and earlier release notes |
 
 ## Recent Updates
 
 A running log of the iterations that shape the public fork. Most recent first.
+
+### 2026-05-21 — v1.0.0 public-safe Discovery and governance release
+
+- **RH Discover 1.0** — file-backed issue publishing, opportunity briefs,
+  product API routes, and a dedicated Discovery workbench surface. Public
+  examples use sanitized or synthetic fixtures only.
+- **ResearchFlowBench diagnostics** — deterministic preflight, task-pack
+  validation, leakage, retrieval-trace integrity, and cost-cap helpers.
+- **Semantic governance utilities** — object graph validation, normalization,
+  trace checking, rollback payloads, and contract hardening.
+- **Codex workflow surface** — project Codex config, RH-specific skills,
+  checkpointing guidance, verification scripts, and review workflow docs.
+- **Release hygiene** — core package and web metadata are aligned to `1.0.0`;
+  Ruff, targeted pytest, Codex checks, web build, and GitHub PR checks pass.
 
 ### 2026-05-10 — v0.4.0 workbench and parser release
 
@@ -487,7 +522,7 @@ A running log of the iterations that shape the public fork. Most recent first.
 
 ## Status
 
-**Version 0.4.0** — workbench and parser release. Paperindex now supports an optional Docling backend, the public workbench/docs are aligned around the core research loop, and local release checks cover Ruff format, parser tests, web lint/tests/build. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
+**Version 1.0.0** — public-safe Discovery and governance release. RH Discover 1.0 adds issue publishing and a Discovery workbench, ResearchFlowBench adds deterministic diagnostics, semantic governance utilities harden graph validation/rollback flows, and Codex workflows are documented and checked. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
 
 Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot, plus LiteLLM-backed DeepSeek, Qwen/Tongyi, Zhipu/GLM, Doubao, MiniMax, Yi/Baichuan, and SiliconFlow through tier routing.
 
@@ -506,7 +541,7 @@ If you use Research Harness in academic work, please cite:
   title        = {Research Harness: an agent harness for scientific literature},
   author       = {Research Harness Contributors},
   year         = {2026},
-  version      = {0.4.0},
+  version      = {1.0.0},
   url          = {https://github.com/Biajin-PKU/research-harness},
   license      = {PolyForm-Noncommercial-1.0.0}
 }
