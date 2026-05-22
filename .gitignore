@@ -56,3 +56,5 @@ experiments/*/runs/
 /docs/discover/published/*.md
 /docs/discover/issues/*.json
 !/docs/discover/issues/demo-weekly.json
+# MkDocs local build output
+/site/
