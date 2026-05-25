@@ -23,7 +23,9 @@ The Zotero plugin remains intentionally thin. RH owns paper/topic matching, sync
 
 ## Local service startup
 
-Normal Zotero use no longer requires manually starting the local Research Harness service. When the panel loads or when the first question is sent, the plugin:
+Normal Zotero use can either connect to an already-running local RH API or opt in to auto-start. Public builds do **not** ship a machine-specific repo path. To enable auto-start, set `repoRoot` to your local checkout and set `autoStart=true`.
+
+When auto-start is enabled, the plugin:
 
 1. checks `http://127.0.0.1:8000/api/health`;
 2. if nothing is listening and the URL is loopback-only (`127.*`, `localhost`, or `::1`), starts the local Python service from Zotero via Mozilla/Zotero `Subprocess`;
@@ -33,13 +35,13 @@ Default Zotero preferences:
 
 ```text
 extensions.researchharness.zotero.apiURL    = http://127.0.0.1:8000
-extensions.researchharness.zotero.autoStart = true
-extensions.researchharness.zotero.repoRoot  = /Users/biajin/code/research-harness-oss
-extensions.researchharness.zotero.pythonBin = /Users/biajin/code/research-harness-oss/.venv/bin/python
+extensions.researchharness.zotero.autoStart = false
+extensions.researchharness.zotero.repoRoot  = <empty>
+extensions.researchharness.zotero.pythonBin = <empty>
 extensions.researchharness.zotero.model     = gpt-5.3-codex-spark
 ```
 
-Security boundary: auto-start is disabled automatically for non-loopback URLs and for non-HTTP URLs. The plugin uses fixed preference paths for `repoRoot`/`pythonBin`, passes arguments as an argv array rather than through a shell, and sends the optional local token via environment variable rather than command-line text.
+Security boundary: auto-start is opt-in, requires an explicit local `repoRoot`, is disabled automatically for non-loopback URLs and for non-HTTP URLs, passes arguments as an argv array rather than through a shell, and sends the optional local token via environment variable rather than command-line text.
 
 Manual fallback from the repository root is still:
 

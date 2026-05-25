@@ -460,61 +460,25 @@ extension_points:
 
 ## 文档
 
+建议从下面这组精简公共文档开始；历史设计笔记、一次性验收/调试报告不放在公共仓库中。
+
 | 文档 | 内容 |
 |------|------|
 | [`docs/quickstart.md`](docs/quickstart.md) | 安装、API key 配置、第一个主题 |
-| [`docs/architecture.md`](docs/architecture.md) | 阶段、门禁、artifact 类型、存储模型 |
-| [`docs/agent-guide.md`](docs/agent-guide.md) | Claude Code / Codex 如何驾驭 Harness |
+| [`docs/agent-guide.md`](docs/agent-guide.md) | Codex / Claude Code / Cursor 的使用规则 |
+| [`docs/mcp-tools.zh.md`](docs/mcp-tools.zh.md) | MCP 工具与工作流入口 |
+| [`docs/architecture.md`](docs/architecture.md) | 精简架构总览 |
 | [`docs/python-api.md`](docs/python-api.md) | 不依赖 MCP 客户端的 Python 用法 |
 | [`docs/plugin-guide.md`](docs/plugin-guide.md) | 自定义原语 / 门禁 / 后端开发 |
 | [`docs/PAPER_MANAGEMENT.md`](docs/PAPER_MANAGEMENT.md) | 论文存储的规范协议 |
-| [`docs/codex-workflow.md`](docs/codex-workflow.md) | Codex 配置、checkpoint 与验证流程 |
-| [`docs/discover/README.md`](docs/discover/README.md) | RH Discover issue 发布与编辑流程 |
+| [`docs/zotero-rh-panel.md`](docs/zotero-rh-panel.md) | Zotero 侧边栏安装与安全模型 |
 | [`docs/DEMO.md`](docs/DEMO.md) | 无 key demo 和真实模型 demo 路径 |
-| [`CHANGELOG.md`](CHANGELOG.md) | 1.0.0 及更早版本发布说明 |
-
-## 迭代记录
-
-公共仓库每轮迭代的核心工作，最新在上。
-
-### 2026-05-21 — v1.0.0 公共安全的 Discovery 与治理版本
-
-- **RH Discover 1.0**：增加 file-backed issue publishing、opportunity brief、
-  product API routes 和独立的 Discovery workbench；公共示例只使用脱敏或合成 fixture。
-- **ResearchFlowBench diagnostics**：增加确定性的 preflight、task-pack 校验、
-  leakage 检查、retrieval trace 完整性检查和 cost cap helper。
-- **Semantic governance utilities**：增加对象图校验、normalization、trace checking、
-  rollback payload 和 contract hardening。
-- **Codex workflow surface**：加入项目级 Codex 配置、RH 专用 skills、checkpoint 指南、
-  verification scripts 和 review workflow 文档。
-- **发布卫生**：核心 package 与 web 元数据统一到 `1.0.0`；Ruff、targeted pytest、
-  Codex checks、web build 和 GitHub PR checks 均通过。
-
-### 2026-05-10 — v0.4.0 Workbench 与解析器发布
-
-- **可选 Docling 解析器**：Paperindex 增加 parser 抽象，默认继续使用轻量 PyMuPDF，也可以通过 `research-harness[docling]` 启用更高保真解析。
-- **Workbench 发布面整理**：首页、demo、README、quickstart 和 release docs 聚焦核心科研循环与 agent handoff。
-- **Cursor Agent 接入**：新增项目级 Cursor MCP 配置、规则、论文精读 subagent 和 skill，让 Cursor 精读也遵守 RH 的入库与溯源规则。
-- **发布卫生**：package/web 元数据统一到 `0.4.0`；Ruff format、targeted Ruff check、parser tests、web lint/tests/build 均通过。
-
-### 2026-05-09 — v0.3.0 一体化科研工作流发布
-
-- **科研工作流扩展**：CS Research Workflow v2 增加 candidate seed/upsert、red-ocean 评分、gap 交叉验证、推荐排序、experiment handoff，以及单入口 workflow resume 能力。
-- **Web 产品化**：Next.js 控制台覆盖 agent 配置、预算、发现、onboarding、论文阅读、报告、topic 阶段面板、venue decision、method atoms、goal pool、retrieval log 等核心路径。
-- **LLM 路由增强**：支持 LiteLLM 生态 provider、tier routing、token accounting、并行 deep-read provider pool、provider 自隔离和单篇超时。
-- **Paperindex 内嵌**：PDF/card/retrieval 能力迁入 `research_harness.paperindex`，`paperindex` package 保留为兼容 shim。
-- **发布整理**：系统版本统一到 `0.3.0`；本地 Python ruff、Python tests、web lint、web tests、web build 均通过。
-
-### 2026-04-22 — 公共仓库 CI 修复
-
-- CI matrix 移除 Python 3.10：`research_harness_mcp` 已声明 `>=3.11`，不再假装兼容。
-- 修复 212 个 ruff 报错（`F401` / `F541` / `E402` / `F821` / `F841` / `E741`），覆盖 `llm_primitives.py`、`orchestrator/service.py`、`auto_runner/*`、`paper_source_clients.py` 以及多处测试文件；全量 `ruff format` 通过。
-- 补齐缺失的 re-export：`writing_checks.REVIEW_DIMENSIONS`、`orchestrator.review.REVIEW_DIMENSIONS` 现都指向统一的 dimension 源。
-- 让测试在无 LLM key 时也能跑：给 paperindex LLM 测试、`TestE2ELiteratureReview` 打上模块级 `skipif`；在 conftest 加了一个自动生效的 fixture，在无 provider 时 stub 掉 `PaperIndexer.build_card`。CI 从原先 22 个用例报 `401` / `No LLM provider`，恢复到 987+ 全绿。
+| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | 常见运行 / provider 问题 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 发布历史 |
 
 ## 项目状态
 
-**1.0.0** —— 公共安全的 Discovery 与治理版本。RH Discover 1.0 提供 issue publishing 与 Discovery workbench；ResearchFlowBench 增加确定性诊断；semantic governance utilities 强化对象图校验 / 回滚流程；Codex workflow 已文档化并纳入检查。版本说明见 [`CHANGELOG.md`](CHANGELOG.md)。
+**1.0.0** —— 公共安全的 Discovery 与治理版本。RH Discover 1.0 提供 issue publishing 与 Discovery workbench；ResearchFlowBench 增加确定性诊断；semantic governance utilities 强化对象图校验 / 回滚流程；公共文档面已收敛到安装、使用、架构、API 与故障排查。发布历史见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 已支持的 LLM Provider：OpenAI、Anthropic、Kimi / Moonshot，并通过 LiteLLM / tier routing 接入 DeepSeek、Qwen / 通义、Zhipu / GLM、Doubao、MiniMax、Yi / Baichuan、SiliconFlow 等 provider。
 

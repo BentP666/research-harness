@@ -1,11 +1,11 @@
 """Regression tests — one per historical P0/P1 bug.
 
-Every test here references the source entry in docs/feedback/bugs.md by date
+Every test here references the historical source issue by date
 and short title. The pattern is::
 
     @pytest.mark.regression
     def test_<short_id>_<short_desc>(db, runner):
-        '''Source: docs/feedback/bugs.md [2026-04-08] <title>
+        '''Source: historical backend-stability issue [2026-04-08] <title>
 
         Failure mode: ...
         Fix landed in: <commit | "open">

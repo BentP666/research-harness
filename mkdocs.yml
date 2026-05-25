@@ -22,21 +22,11 @@ nav:
       - 概览: skills/README.md
       - 编写技能: skills/authoring.md
       - 使用技能: skills/consuming.md
-  - 架构设计:
-      - 架构总览: architecture/README.md
-      - Research Primitives: architecture/01_research_primitives.md
-      - 执行后端: architecture/02_execution_backend.md
-      - Provenance: architecture/03_provenance.md
-      - Orchestrator: architecture/06_orchestrator.md
-  - 运维与开发:
-      - 故障排查: TROUBLESHOOTING.md
-      - 插件开发: plugin-guide.md
-      - Codex 工作流: codex-workflow.md
-      - 本地 Agent 工作流: local-agent-workflow.md
-  - 发布与路线图:
-      - Roadmap: roadmap.md
-      - Release Notes v0.4.0: RELEASE_NOTES_v0.4.0.md
-      - GitHub Release Checklist: GITHUB_RELEASE_CHECKLIST.md
+  - 架构总览: architecture.md
+  - Python API: python-api.md
+  - 插件开发: plugin-guide.md
+  - 故障排查: TROUBLESHOOTING.md
+  - Demo: DEMO.md
 
 theme:
   name: material
@@ -72,12 +62,6 @@ theme:
 
 plugins:
   - search
-
-# Some historical design notes contain raw HTML snippets that Python 3.9
-# html.parser cannot handle during MkDocs rendering. Keep them in the repo,
-# but exclude them from the first public Chinese docs build.
-exclude_docs: |
-  v3_design/RELEASE_NOTES.md
 
 markdown_extensions:
   - admonition

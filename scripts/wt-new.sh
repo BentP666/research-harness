@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create a new git worktree at ../rh-<feature> on a fresh feat/<feature> branch.
-# Run this from the primary repo (research-harness-oss/). See docs/WORKTREES.md.
+# Run this from the repository checkout you want to branch from.
 
 set -euo pipefail
 
@@ -14,13 +14,8 @@ feature="$1"
 branch="feat/${feature}"
 target="../rh-${feature}"
 
-# Sanity: must run from the primary repo
+# Sanity: must run inside a git checkout.
 toplevel="$(git rev-parse --show-toplevel)"
-if [[ "$(basename "$toplevel")" != "research-harness-oss" ]]; then
-  echo "ERROR: run this from the primary checkout (research-harness-oss/), not a worktree." >&2
-  echo "  current top-level: $toplevel" >&2
-  exit 2
-fi
 
 # Sanity: refuse to clobber existing path
 if [[ -e "$target" ]]; then
@@ -43,4 +38,4 @@ echo "Worktree ready. Next steps:"
 echo "  cd ${target}"
 echo "  cd web && npm install   # one-time per worktree"
 echo
-echo "Then start a Claude Code session from ${target}."
+echo "Then start your agent or editor session from ${target}."

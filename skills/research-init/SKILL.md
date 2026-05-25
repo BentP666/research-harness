@@ -9,7 +9,7 @@ Use this skill when the user wants to bootstrap a project or topic into Research
 
 ## Workflow
 
-1. Read `~/code/research-harness/docs/agent-guide.md`.
+1. Read `docs/agent-guide.md`.
 2. Identify:
    - topic slug or project name
    - target venue or timeline if provided
@@ -37,13 +37,13 @@ If inputs are partial, continue with safe defaults:
 
 - missing venue: omit it
 - missing seeds: create integration files first
-- missing project-level guidance: use `docs/research-bootstrap.md` as the source template
+- missing project-level guidance: add a minimal `AGENTS.md` that points to `docs/agent-guide.md`
 
 Do not block on optional metadata.
 
 ## Rules
 
-- Prefer using existing Research Harness conventions from `docs/research-bootstrap.md`.
+- Prefer the public Research Harness conventions in `AGENTS.md` and `docs/agent-guide.md`.
 - Do not invent seed papers.
 - If topic metadata is missing, make the minimum safe assumptions and state them clearly.
 - For any topic intended for a paper, survey, or serious research direction,

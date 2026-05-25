@@ -9,7 +9,7 @@ Use this skill as the default entry point when the user wants to work inside the
 
 ## First Step
 
-Read `~/code/research-harness/docs/agent-guide.md` if the repo or topic context is incomplete.
+Read `docs/agent-guide.md` if the repo or topic context is incomplete.
 
 ## Routing Rules
 

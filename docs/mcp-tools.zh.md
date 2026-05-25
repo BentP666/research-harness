@@ -70,5 +70,4 @@ orchestrator_resume(topic_id=..., stop_before="experiment")
 ## 更多说明
 
 - Agent 操作规范：[`docs/agent-guide.md`](agent-guide.md)
-- 核心原语设计：[`docs/architecture/01_research_primitives.md`](architecture/01_research_primitives.md)
-- Orchestrator 设计：[`docs/architecture/06_orchestrator.md`](architecture/06_orchestrator.md)
+- 架构总览：[`docs/architecture.md`](architecture.md)

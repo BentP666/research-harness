@@ -473,69 +473,26 @@ Primitives are registered via `@register_primitive(spec)`; gates subclass `GateE
 
 ## Documentation
 
+Start with the small public surface below; older design notes and one-off
+reports intentionally live outside the public repository.
+
 | Document | What's in it |
 |----------|--------------|
 | [`docs/quickstart.md`](docs/quickstart.md) | Install, API keys, first topic |
-| [`docs/architecture.md`](docs/architecture.md) | Stages, gates, artifact types, storage model |
-| [`docs/agent-guide.md`](docs/agent-guide.md) | Driving the harness from Claude Code / Codex |
-| [`docs/python-api.md`](docs/python-api.md) | Using the harness without an MCP client |
+| [`docs/agent-guide.md`](docs/agent-guide.md) | Agent rules for Codex / Claude Code / Cursor |
+| [`docs/mcp-tools.zh.md`](docs/mcp-tools.zh.md) | MCP tools and workflow entry points |
+| [`docs/architecture.md`](docs/architecture.md) | Compact architecture overview |
+| [`docs/python-api.md`](docs/python-api.md) | Using RH without an MCP client |
 | [`docs/plugin-guide.md`](docs/plugin-guide.md) | Writing custom primitives, gates, backends |
 | [`docs/PAPER_MANAGEMENT.md`](docs/PAPER_MANAGEMENT.md) | Canonical paper-storage protocol |
-| [`docs/codex-workflow.md`](docs/codex-workflow.md) | Codex setup, checkpointing, and verification workflow |
-| [`docs/discover/README.md`](docs/discover/README.md) | RH Discover issue publishing and editorial workflow |
-| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common errors (LLM routing, ledger 422, deep-read edge cases) and how to fix them |
+| [`docs/zotero-rh-panel.md`](docs/zotero-rh-panel.md) | Zotero side-panel setup and safety model |
 | [`docs/DEMO.md`](docs/DEMO.md) | No-key and live workbench walkthrough |
-| [`CHANGELOG.md`](CHANGELOG.md) | 1.0.0 and earlier release notes |
-
-## Recent Updates
-
-A running log of the iterations that shape the public fork. Most recent first.
-
-### 2026-05-21 — v1.0.0 public-safe Discovery and governance release
-
-- **RH Discover 1.0** — file-backed issue publishing, opportunity briefs,
-  product API routes, and a dedicated Discovery workbench surface. Public
-  examples use sanitized or synthetic fixtures only.
-- **ResearchFlowBench diagnostics** — deterministic preflight, task-pack
-  validation, leakage, retrieval-trace integrity, and cost-cap helpers.
-- **Semantic governance utilities** — object graph validation, normalization,
-  trace checking, rollback payloads, and contract hardening.
-- **Codex workflow surface** — project Codex config, RH-specific skills,
-  checkpointing guidance, verification scripts, and review workflow docs.
-- **Release hygiene** — core package and web metadata are aligned to `1.0.0`;
-  Ruff, targeted pytest, Codex checks, web build, and GitHub PR checks pass.
-
-### 2026-05-10 — v0.4.0 workbench and parser release
-
-- **Optional Docling parser** — Paperindex now has a parser abstraction with the default PyMuPDF backend and an opt-in `research-harness[docling]` path for higher-fidelity extraction.
-- **Workbench release surface** — the home, demo, README, quickstart, and release docs now emphasize the core research loop and agent handoff.
-- **Cursor Agent setup** — project-local Cursor MCP config, rules, subagent, and deep-reading skill make RH provenance rules available in Cursor workflows.
-- **Release hygiene** — package/web metadata are aligned to `0.4.0`; Ruff format, targeted Ruff check, parser tests, web lint/tests/build all pass locally.
-
-### 2026-05-09 — v0.3.0 integrated research workflow release
-
-- **Workflow expansion** — CS research workflow v2 adds candidate seeding/upsert, red-ocean scoring, gap cross-verification, ranked recommendations, experiment handoff, and a single workflow-entry primitive for resuming topic work.
-- **Productized web dashboard** — Next.js app now covers agent setup, budgets, discovery, onboarding, paper reading, reports, topic-stage workflow panels, venue decisions, method atoms, goal pools, and retrieval logs.
-- **LLM routing and execution** — LiteLLM-backed providers, tier routing, token accounting, parallel deep-read pools, provider quarantine, and wall-clock timeouts make bulk paper reading more robust.
-- **Paperindex merge** — PDF/card/retrieval functionality now lives under `research_harness.paperindex`; `paperindex` remains as a compatibility shim.
-- **Release polish** — package versions are aligned to `0.3.0`; Python ruff, Python tests, web lint, web tests, and web build all pass locally.
-
-### 2026-04-22 — HTTP API + Web dashboard, concurrent provider search
-
-- **New FastAPI HTTP API** (`research_harness_mcp.http_api`, 28 endpoints, ~1064 LOC). Paginated read endpoints for topics/papers/projects/artifacts/provenance plus action endpoints (paper search, ingest, gap detect, claim extract, outline, section draft) that delegate to the same primitive registry as the MCP server. Install with `pip install -e "packages/research_harness_mcp[api]"`.
-- **New Next.js 16 / React 19 dashboard** under `web/`. Sidebar layout with dashboard home, library, and project pages; shadcn/ui components; tanstack/react-query for data fetching. Target: researchers who prefer a browser over a chat prompt.
-- **Concurrent paper-provider search** — `SearchAggregator.search` now queries every configured provider in parallel via `ThreadPoolExecutor`, cutting cold-cache search latency in proportion to the number of providers while preserving merge and ranking semantics.
-
-### 2026-04-22 — CI green on public fork
-
-- Dropped Python 3.10 from the CI matrix; `research_harness_mcp` already required `>=3.11`.
-- Cleaned up 212 ruff findings (`F401`, `F541`, `E402`, `F821`, `F841`, `E741`) across `llm_primitives.py`, `orchestrator/service.py`, `auto_runner/*`, `paper_source_clients.py`, and several test files; applied `ruff format`.
-- Restored missing re-exports so `from writing_checks import REVIEW_DIMENSIONS` and `from orchestrator.review import REVIEW_DIMENSIONS` resolve to the unified dimension sources.
-- Taught tests to run without a real LLM key: module-level `skipif` on the paperindex LLM tests and on `TestE2ELiteratureReview`, plus an autouse conftest fixture that stubs `PaperIndexer.build_card` when no provider is configured. Previously 22 CI tests failed with `401` / `No LLM provider`; now all 987+ pass in a keyless runner.
+| [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) | Common runtime/provider issues |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release history |
 
 ## Status
 
-**Version 1.0.0** — public-safe Discovery and governance release. RH Discover 1.0 adds issue publishing and a Discovery workbench, ResearchFlowBench adds deterministic diagnostics, semantic governance utilities harden graph validation/rollback flows, and Codex workflows are documented and checked. See [`CHANGELOG.md`](CHANGELOG.md) for the release notes.
+**Version 1.0.0** — public-safe Discovery and governance release. RH Discover 1.0 adds issue publishing and a Discovery workbench, ResearchFlowBench adds deterministic diagnostics, semantic governance utilities harden graph validation/rollback flows, and the public docs surface has been trimmed to setup, usage, architecture, API, and troubleshooting. See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot, plus LiteLLM-backed DeepSeek, Qwen/Tongyi, Zhipu/GLM, Doubao, MiniMax, Yi/Baichuan, and SiliconFlow through tier routing.
 

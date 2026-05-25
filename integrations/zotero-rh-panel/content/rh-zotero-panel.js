@@ -1,7 +1,7 @@
 /* global Zotero, TextDecoder, ChromeUtils, Components */
 
 var RHZoteroPanel = (() => {
-  const ADDON_ID = "research-harness-zotero@github.com.54yyyu";
+  const ADDON_ID = "research-harness-zotero@github.com.Biajin-PKU";
   const PANE_ID = "research-harness-zotero-panel";
   const API_URL_PREF = "extensions.researchharness.zotero.apiURL";
   const TOKEN_PREF = "extensions.researchharness.zotero.token";
@@ -11,7 +11,7 @@ var RHZoteroPanel = (() => {
   const PYTHON_BIN_PREF = "extensions.researchharness.zotero.pythonBin";
   const DEFAULT_API_URL = "http://127.0.0.1:8000";
   const DEFAULT_MODEL = "gpt-5.3-codex-spark";
-  const DEFAULT_REPO_ROOT = "/Users/biajin/code/research-harness-oss";
+  const DEFAULT_REPO_ROOT = "";
   const CHROME_CONTENT_BASE = "chrome://researchharnesszotero/content/";
   const LIBRARY_SIDENAV_WRAPPER_ID = "research-harness-zotero-library-sidenav-wrapper";
   const LIBRARY_SIDENAV_BUTTON_ID = "research-harness-zotero-library-sidenav-button";
@@ -1019,6 +1019,9 @@ var RHZoteroPanel = (() => {
       throw new Error("当前 Zotero 环境不支持自动启动本地 Research Harness 服务，请手动在仓库根目录运行 python -m research_harness_mcp.http_api。");
     }
     const repoRoot = getRepoRoot();
+    if (!repoRoot) {
+      throw new Error("请先设置 Zotero 偏好 extensions.researchharness.zotero.repoRoot 为本机 Research Harness 仓库绝对路径，或手动启动本地 Research Harness 服务。");
+    }
     const pythonBin = getPythonBin();
     const proc = await Subprocess.call({
       command: pythonBin,
@@ -2675,7 +2678,11 @@ var RHZoteroPanel = (() => {
     if (configured) {
       return configured;
     }
-    return joinPath(getRepoRoot(), ".venv/bin/python");
+    const repoRoot = getRepoRoot();
+    if (repoRoot) {
+      return joinPath(repoRoot, ".venv/bin/python");
+    }
+    return "python3";
   }
 
   function normalizePath(path) {

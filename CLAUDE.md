@@ -1,97 +1,53 @@
-# Research Harness — Monorepo
+# Research Harness — Agent Guide
 
-Agent-first research workflow platform for academic literature review, paper writing, and experiment orchestration.
+Research Harness is an agent-first research workflow platform for literature review, evidence management, experiment planning, and paper writing.
 
 ## Repository Layout
 
-```
-research-harness/
-├── packages/                        <- Tool packages
-│   ├── paperindex/                  <- PDF understanding engine
-│   ├── research_harness/            <- Workflow management
-│   └── research_harness_mcp/        <- MCP server
-├── .research-harness/
-│   ├── pool.db                      <- Paper database (created on first run)
-│   └── downloads/                   <- PDF storage
-└── docs/                            <- Platform documentation
-    └── PAPER_MANAGEMENT.md          <- Paper management protocol
+```text
+packages/                  Python packages
+  llm_router/              LLM provider routing
+  paperindex/              PDF parsing and paper-card compatibility package
+  research_harness/        Core workflow, primitives, provenance, CLI
+  research_harness_mcp/    MCP and HTTP API surfaces
+skills/                    Research Harness workflow skills
+integrations/zotero-rh-panel/  Optional Zotero side-panel plugin
+web/                       Optional Next.js workbench
+docs/                      Public setup, usage, architecture, and troubleshooting docs
 ```
 
 ## Paper Management
 
-> See `docs/PAPER_MANAGEMENT.md` for the full protocol.
+See `docs/PAPER_MANAGEMENT.md` for the full protocol.
 
-1. **Single DB**: `.research-harness/pool.db` (symlinked from `~/.research-harness/pool.db`)
-2. **Single PDF dir**: `.research-harness/downloads/`
-3. **Always specify topic on ingest**: `paper_ingest(source=..., topic_id=<N>)`
-4. **Use absolute paths** for all PDF references
+In short:
 
-## CLI Entry Points
+1. Use one RH database (`.research-harness/pool.db` by default, or `RESEARCH_HARNESS_DB_PATH`).
+2. Store PDFs through RH ingestion/acquisition, not ad-hoc folders.
+3. Always attach paper ingestion and analysis to an explicit topic.
+4. Use MCP tools for research primitives when provenance matters; use the `rh` CLI mainly for setup, listing, and data-management tasks.
+
+## Common Commands
 
 ```bash
+# Install / verify
+./setup.sh
+rh --json doctor
+python -m pytest packages/ -q
+
 # Data management
 rh topic list
 rh topic init "my-research-topic"
-rh paper ingest --arxiv-id 2401.12345 --topic my-topic
-rh paper queue --topic my-topic
-rh paper acquire <topic_id>           # batch download
-rh paper resolve-pdfs --topic <name>  # discover PDFs on disk
+rh paper ingest --arxiv-id 2401.12345 --topic my-research-topic
+rh paper queue --topic my-research-topic
+rh orchestrator status --topic my-research-topic
 
-# Tests
-python -m pytest packages/ -q --tb=short
-
-# MCP server (Claude Code auto-starts)
-python -m research_harness_mcp.server
+# MCP server
+python -m research_harness_mcp
 ```
 
-## Packages
+## Public Repository Hygiene
 
-- `packages/paperindex` — PDF understanding engine (structure extraction, search, paper card, multi-LLM provider)
-- `packages/research_harness` — Workflow management (paper pool, tasks, reviews, primitives, provenance)
-- `packages/research_harness_mcp` — MCP server (112 tools, stdio transport)
+Keep this repository focused on reusable code, sanitized examples, and concise public documentation. Do not commit local databases, private research artifacts, unpublished drafts, credentials, one-off debug logs, or personal machine paths.
 
-## Configuration
-
-```bash
-# DB path (default: .research-harness/pool.db)
-export RESEARCH_HARNESS_DB_PATH=~/.research-harness/pool.db
-
-# Execution backend
-export RESEARCH_HARNESS_BACKEND=claude_code   # default: local
-```
-
-### LLM Provider Routing
-
-```bash
-# Enable providers
-export CODEX_ENABLED=1
-export CURSOR_AGENT_ENABLED=1
-
-# Tier routing: light -> cheap/fast, medium -> balanced, heavy -> max quality
-# Override: LLM_ROUTE_{TIER}=provider:model
-```
-
-## Conventions
-
-- Research primitives -> MCP tools
-- Data management -> `rh` CLI
-- Primitive executions -> auto-tracked in provenance
-- LLM primitives -> auto-route by tier
-
-## Multi-Session Workflow (CRITICAL)
-
-> See `docs/WORKTREES.md` for the full protocol.
-
-**Two Claude sessions sharing one git checkout is unsafe.** When one session
-runs `git checkout`, the other session's uncommitted edits get discarded.
-
-**Rules:**
-
-1. The primary checkout `~/code/research-harness-oss` stays on `main`. **Do
-   not switch branches there.**
-2. Every feature branch lives in its own worktree at `~/code/rh-<feature>`.
-3. Before editing files, run `pwd && git branch --show-current` and confirm
-   the path matches the feature you're working on. If you're in the primary
-   on `main`, use `EnterWorktree(path=~/code/rh-<feature>)` to switch.
-4. New worktree: `scripts/wt-new.sh <feature>` from the primary, then
-   `cd ../rh-<feature>/web && npm install` once.
+For bugs or process improvements, prefer GitHub Issues or the project backlog instead of new top-level report files.

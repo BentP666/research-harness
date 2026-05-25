@@ -1,5 +1,5 @@
 #:schema https://developers.openai.com/codex/config-schema.json
-# Project-scoped Codex baseline for research-harness-oss.
+# Project-scoped Codex baseline for Research Harness.
 # Keep credentials in the user environment/keychain; this file is safe to commit.
 
 [features]

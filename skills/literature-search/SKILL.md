@@ -9,7 +9,7 @@ Use this skill for broad paper discovery.
 
 ## Workflow
 
-1. Read `~/code/research-harness/docs/agent-guide.md` if topic context is unclear.
+1. Read `docs/agent-guide.md` if topic context is unclear.
 2. Clarify or infer:
    - research topic
    - time range
