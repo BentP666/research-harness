@@ -1,75 +1,41 @@
-# Research Harness Product Demo
+# Zotero Plugin Demo
 
-Use this demo to show the GitHub release without requiring a live LLM key.
-The goal is to communicate the product experience: a research question becomes
-papers, evidence, gaps, and writing material inside one reusable workspace.
+Research Harness 1.0 uses the Zotero side-panel plugin as the primary public front end. The demo story is paper-first: select a Zotero item or collection, ask a research question, and let RH connect that context to topics, papers, claims, gaps, and guarded actions.
 
 ## Demo story
 
-Default topic:
+Default narrative:
 
-> Auto-Bidding / Budget Pacing in Online Advertising
+1. **Select a paper or collection in Zotero** — RH reads bibliographic context without moving the user into a separate web app.
+2. **Ask a paper-first question** — e.g. “这篇论文对自动科研主题有什么启发？”
+3. **Resolve RH context** — the local bridge matches Zotero items to RH papers/topics and uses the same primitive/provenance layer as MCP.
+4. **Preview guarded writes** — supported RH↔Zotero actions show a preview and require explicit confirmation before changing Zotero or RH state.
+5. **Continue in an agent** — heavier loops still run through MCP/CLI skills, while Zotero remains the reading surface.
 
-Five-step narrative:
+## Install from release
 
-1. **Frame the workspace** — create a tracked research topic with scope and
-   success criteria.
-2. **Build a paper pool** — ingest candidate papers instead of leaving search
-   results in chat logs.
-3. **Deep-read into evidence** — convert papers into notes, claims,
-   limitations, and reproducibility signals.
-4. **Choose a direction** — compare gaps and objections before promoting a
-   direction into an experiment brief.
-5. **Write from recorded work** — draft reports and sections from traceable
-   artifacts.
-
-## No-key demo
-
-Start the backend and frontend:
-
-```bash
-python -m research_harness_mcp.http_api
-cd web && npm run dev
-```
-
-Open:
+Download the latest plugin asset:
 
 ```text
-http://localhost:3000/demo
+https://github.com/Biajin-PKU/research-harness/releases/latest/download/research-harness-zotero-panel.xpi
 ```
 
-The page includes a static product walkthrough. If the backend is running, the
-"Replay canned run" button also replays pre-recorded responses from
-`research_harness.demo.canned_auto_bidding` with zero API cost.
+Then in Zotero:
 
-## Live demo with real models
+1. Tools → Add-ons
+2. Gear icon → Install Add-on From File…
+3. Select `research-harness-zotero-panel.xpi`
+4. Restart Zotero if prompted
 
-For a real run, configure at least one provider in `.env` and use the normal
-workflow:
+## Local bridge
 
 ```bash
-cp .env.example .env
-# add OPENAI_API_KEY, ANTHROPIC_API_KEY, KIMI_API_KEY, or another configured route
-
+pip install -e "packages/research_harness_mcp[api]"
 python -m research_harness_mcp.http_api
-cd web && npm run dev
 ```
 
-Then open the workbench and create a topic. A good live prompt for an agent is:
+The plugin defaults to `http://127.0.0.1:8000`. Auto-start is opt-in and requires setting the local `repoRoot` preference; see [`zotero-rh-panel.md`](zotero-rh-panel.md).
 
-```text
-Read AGENTS.md, docs/agent-guide.md, and skills/.
-Create a topic on "robust budget pacing for online advertising".
-Search for recent papers, ingest the useful ones, deep-read the top papers,
-and record claims and gaps in RH.
-```
+## Deprecated web demo
 
-## What to emphasize
-
-- RH is not a chatbot. It is a workbench that persists the research state.
-- The frontend shows progress and reviewable outputs; the agent runs the heavy
-  research loop.
-- Outputs are reusable: papers, claims, gaps, reports, and provenance survive
-  across sessions.
-- Advanced surfaces such as trend analysis are available, but they are not the
-  core first-run story.
+The old Next.js web dashboard/demo is deprecated and is no longer the public or remote front-end story. Keep it for local/internal experiments only; do not use it as the main release demo.

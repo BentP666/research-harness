@@ -78,4 +78,4 @@ for plugin in plugins:
 | SQLite storage | SSO/SAML/RBAC |
 | Plugin development | Managed cloud runs |
 | Local observation | Shared skill evolution |
-| CLI + MCP server | Web dashboard |
+| CLI + MCP server | Hosted/team integrations |

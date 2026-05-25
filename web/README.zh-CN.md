@@ -1,5 +1,7 @@
 # Research Harness
 
+> **公共前端已弃用：** Next.js dashboard 仅保留给本地/内部实验。Research Harness 1.0 主推 Zotero 侧边栏插件作为公共前端，不再把这个网页端作为远程 release demo。
+
 **面向长周期 AI 科研 agent 的 harness。**
 
 Research Harness 把 AI 辅助科研变成一条可持续、可审查的工作流：
@@ -44,7 +46,7 @@ cd research-harness
    - 安装了什么；
    - 当前使用哪个 Python 环境；
    - 如何启动或验证 MCP server；
-   - 如何启动可选的 web workbench；
+   - 旧 web workbench 已弃用、仅限本地使用；
    - 下一步我可以直接使用的一条科研 prompt。
 ```
 
@@ -94,23 +96,19 @@ KIMI_API_KEY=<your-kimi-key>
 
 只需要一个就能开始，其他 provider 可以之后再加。
 
-## 可选 web workbench
+## 遗留本地 workbench
 
-前端工作台可以用来查看 topic、论文、报告和状态。它是可选入口；
-推荐的第一路径仍然是让 agent 驱动 RH。
+这个应用作为公共/远程前端已经弃用，只保留给本地或内部实验。Research Harness 1.0 的 release demo 应使用 Zotero 侧边栏插件。
+
+如果仍需本地运行：
 
 ```bash
-# Backend
 pip install -e "packages/research_harness_mcp[api]"
 python -m research_harness_mcp.http_api
-
-# Frontend
 cd web
 npm install
 npm run dev
 ```
-
-打开 <http://localhost:3000>。无 key 产品 walkthrough 在 <http://localhost:3000/demo>。
 
 ## Harness 思想
 

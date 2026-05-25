@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
-## [1.0.0] — 2026-05-21
+## [1.0.0] — 2026-05-25
 
 ### Added
 
-- **RH Discover 1.0**: file-backed issue publishing, opportunity briefs,
-  product API endpoints, and a dedicated Discovery workbench surface in the
-  web app.
+- **Zotero-first public front end**: the RH-owned Zotero side-panel plugin is
+  the recommended public UI for paper-first research workflows; the legacy
+  Next.js web dashboard is deprecated/local-only.
 - **ResearchFlowBench diagnostics**: deterministic preflight helpers for task
   pack validation, leakage checks, retrieval trace integrity, and cost caps.
 - **Semantic governance utilities** for B5-style object graph validation,
@@ -29,13 +29,11 @@ _No unreleased changes._
 
 ### Changed
 
-- Bumped Python packages and web metadata from `0.4.0` to `1.0.0`.
-- Reworked `/discover` to redirect to the richer `/discovery` product surface
-  while preserving published issue archive routes.
+- Bumped Python packages, web metadata, and the Zotero plugin release line to `1.0.0`.
+- Kept local HTTP/API surfaces for the Zotero bridge and agent workflows while removing the old web dashboard from the public release story.
 - Expanded paper acquisition, source search configuration, compiled-summary
   handling, LLM primitive parsing, and MCP HTTP routes with tests.
-- Documented RH frontier-attention evidence requirements, Codex checkpoint
-  rules, Discovery incubation/roadmap plans, and workflow feedback.
+- Documented RH frontier-attention evidence requirements, Codex checkpoint rules, Zotero plugin installation, and public repository hygiene.
 
 ### Fixed
 

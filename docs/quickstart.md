@@ -165,21 +165,21 @@ rh auto-runner start --topic-id 1 --mode standard \
   --direction "your research direction here"
 ```
 
-## Launch the Web Workbench
+## Install the Zotero Plugin Front End
+
+The recommended interactive front end is the Zotero side-panel plugin.
+Download `research-harness-zotero-panel.xpi` from the latest GitHub Release,
+then install it in Zotero via **Tools → Add-ons → Install Add-on From File…**.
+
+Start the local RH bridge when needed:
 
 ```bash
-# Backend
 pip install -e "packages/research_harness_mcp[api]"
 python -m research_harness_mcp.http_api
-
-# Frontend
-cd web
-npm install
-npm run dev
 ```
 
-Open <http://localhost:3000>. For a no-key product walkthrough, open
-<http://localhost:3000/demo>.
+See [`zotero-rh-panel.md`](zotero-rh-panel.md) for preferences, auto-start,
+and safety details. The old Next.js web workbench is deprecated and local-only.
 
 ## Run Tests
 

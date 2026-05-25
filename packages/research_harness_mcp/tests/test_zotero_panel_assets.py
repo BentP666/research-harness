@@ -20,7 +20,10 @@ def test_zotero_panel_manifest_and_bootstrap_are_present():
     )
     assert manifest["applications"]["zotero"]["strict_min_version"] == "6.999"
     assert manifest["applications"]["zotero"]["strict_max_version"] == "9999.*"
-    assert manifest["applications"]["zotero"]["update_url"].endswith("update.json")
+    assert manifest["version"] == "1.0.0"
+    assert manifest["applications"]["zotero"]["update_url"].endswith(
+        "research-harness-zotero-update.json"
+    )
     assert manifest["icons"]["16"] == "content/icons/rh-icon-16.png"
     assert manifest["icons"]["32"] == "content/icons/rh-icon-32.png"
     assert manifest["icons"]["48"] == "content/icons/rh-icon-48.png"
@@ -283,8 +286,25 @@ def test_zotero_panel_builds_xpi(tmp_path: Path):
         capture_output=True,
         check=True,
     )
-    xpi_path = Path(completed.stdout.strip())
+    output_paths = [
+        Path(line) for line in completed.stdout.splitlines() if line.strip()
+    ]
+    xpi_path = next(path for path in output_paths if path.suffix == ".xpi")
+    update_path = next(
+        path
+        for path in output_paths
+        if path.name == "research-harness-zotero-update.json"
+    )
     assert xpi_path.exists()
+    assert update_path.exists()
+    update_manifest = json.loads(update_path.read_text(encoding="utf-8"))
+    addon_updates = update_manifest["addons"][
+        "research-harness-zotero@github.com.Biajin-PKU"
+    ]["updates"]
+    assert addon_updates[0]["version"] == "1.0.0"
+    assert addon_updates[0]["update_link"].endswith(
+        "/v1.0.0/research-harness-zotero-panel.xpi"
+    )
     with ZipFile(xpi_path) as archive:
         names = set(archive.namelist())
     assert "manifest.json" in names
