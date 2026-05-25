@@ -71,7 +71,7 @@ cd research-harness
    - 安装了什么；
    - 当前使用哪个 Python 环境；
    - 如何启动或验证 MCP server；
-   - 如何启动可选的 web workbench；
+   - 如何安装 Zotero 插件前端；
    - 下一步我可以直接使用的一条科研 prompt。
 ```
 
@@ -275,14 +275,14 @@ run_again = resume_topic(topic_id)
 
 ## 四种接口
 
-四种入口访问的是同一套原语注册表，读写的是同一份 `pool.db`。按任务选一个顺手的即可。
+核心本地入口访问的是同一套原语注册表，读写的是同一份 `pool.db`。交互式论文工作流现在主推 Zotero 插件前端。
 
 | 接口 | 适合 | 入口 |
 |------|------|------|
 | **MCP server** | Claude Code / Codex / 任意 MCP 客户端 | `python -m research_harness_mcp` |
 | **Python API** | Notebook、流水线、已有代码库 | `from research_harness import ResearchAPI` |
 | **`rh` CLI** | 终端、脚本、CI | `rh --help` |
-| **HTTP API + Web dashboard** | 用浏览器浏览 pool.db、触发入库 / 分析 | `python -m research_harness_mcp.http_api` + `cd web && npm run dev` |
+| **Zotero 插件** | 论文优先的本地 UI、目录上下文、受保护的 RH↔Zotero 写入动作 | 从最新版 GitHub Release 安装 `.xpi` |
 
 Provenance 说明：MCP server 和 `rh primitive exec` 走的是 `TrackedBackend`，每次执行都会被记录；Python API 直接调用原语实现，如果需要审计，请自行用 `TrackedBackend` 包一层。详见 [`docs/python-api.md`](docs/python-api.md)。
 
@@ -316,24 +316,20 @@ startup_timeout_sec = 30.0
 
 或用命令行：`codex mcp add research-harness -- /abs/path/python -m research_harness_mcp`。
 
-### HTTP API + Web dashboard
+### Zotero 插件 —— 主推前端
 
-如果操作者更习惯浏览器而不是聊天 prompt，仓库提供了 FastAPI 后端
-（130+ 条 REST route，包含分页读取和 action endpoint）以及 [`web/`](web/)
-下的 Next.js 16 / React 19 dashboard。启动方式：
+1.0 之后，公共前端主推 Zotero 侧边栏插件。它让用户留在文献管理器里，读取当前 item 或 collection，并把受保护的本地动作交给 RH HTTP bridge 执行。
+
+从最新 GitHub Release 安装 `.xpi`，如需自动启动本地服务，再在 Zotero 偏好里配置本机 RH 仓库路径。手动启动本地 bridge：
 
 ```bash
-# Backend —— 安装 FastAPI + uvicorn extras
 pip install -e "packages/research_harness_mcp[api]"
-python -m research_harness_mcp.http_api   # http://localhost:8000
-
-# Frontend
-cd web && npm install && npm run dev      # http://localhost:3000
+python -m research_harness_mcp.http_api   # http://127.0.0.1:8000
 ```
 
-Dashboard 展示 topics、papers、projects、artifacts 和 provenance stats，并提供
-paper search / ingest、gap detection、claim extraction、outline generation、
-section drafting 等按钮；它们都通过与 MCP server 相同的 primitive registry 执行。
+安装、偏好项和安全模型见 [`docs/zotero-rh-panel.md`](docs/zotero-rh-panel.md)。
+
+旧的 Next.js 网页端（`web/`）已弃用，不再作为公共或远程展示前端主推；它只保留给本地/内部实验场景。
 
 ## Vibe Coding 可用的 Skill
 
@@ -478,7 +474,7 @@ extension_points:
 
 ## 项目状态
 
-**1.0.0** —— 公共安全的 Discovery 与治理版本。RH Discover 1.0 提供 issue publishing 与 Discovery workbench；ResearchFlowBench 增加确定性诊断；semantic governance utilities 强化对象图校验 / 回滚流程；公共文档面已收敛到安装、使用、架构、API 与故障排查。发布历史见 [`CHANGELOG.md`](CHANGELOG.md)。
+**1.0.0** —— 公共安全、Zotero-first 的科研 harness 版本。主推前端切换为 Zotero 侧边栏插件；旧网页端弃用并仅保留为本地实验面。ResearchFlowBench 增加确定性诊断；semantic governance utilities 强化对象图校验 / 回滚流程；公共文档面已收敛到安装、使用、架构、API、Zotero 与故障排查。发布历史见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 已支持的 LLM Provider：OpenAI、Anthropic、Kimi / Moonshot，并通过 LiteLLM / tier routing 接入 DeepSeek、Qwen / 通义、Zhipu / GLM、Doubao、MiniMax、Yi / Baichuan、SiliconFlow 等 provider。
 

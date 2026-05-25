@@ -29,7 +29,7 @@ This document turns Codex usage for this repo into a repeatable workflow. It is 
 | Research primitive execution | MCP tools (`claim_extract`, `gap_detect`, `section_draft`, etc.) | RH CLI primitives that bypass provenance |
 | Dependency/API docs | Context7 or official docs | Training-data-only API guesses |
 | Current market/tool scans | Exa/web search with source attribution | Uncited recommendations |
-| Frontend verification | Playwright MCP or Playwright CLI with screenshots | Visual claims without evidence |
+| Zotero/local UI verification | Targeted asset tests or Playwright only for local/internal UI work | Visual claims without evidence |
 | Cross-file refactors | Serena after local install | Fragile global search/replace |
 | PR review automation | Manual Codex review workflow first | Auto-push/auto-merge before trust is established |
 
@@ -54,7 +54,7 @@ command = "serena"
 args = ["start-mcp-server", "--project-from-cwd", "--context=codex"]
 ```
 
-For this repo, validate the pilot by asking Codex to locate definitions/references across `packages/`, `web/`, and `skills/` before using Serena for edits.
+For this repo, validate the pilot by asking Codex to locate definitions/references across `packages/`, `integrations/zotero-rh-panel/`, and `skills/` before using Serena for edits.
 
 ## Verification commands
 

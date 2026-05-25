@@ -1,5 +1,7 @@
 # Research Harness
 
+> **Deprecated public front end:** The Next.js dashboard is kept for local/internal experiments only. Research Harness 1.0 promotes the Zotero side-panel plugin as the public front end. Do not use this app as the remote release demo.
+
 **A harness for long-running AI research agents.**
 
 Research Harness turns AI-assisted research into a persistent, reviewable
@@ -49,7 +51,7 @@ Please:
    - what was installed;
    - which Python environment is being used;
    - how to start or verify the MCP server;
-   - how to launch the optional web workbench;
+   - that the legacy web workbench is deprecated/local-only;
    - one research prompt I can use next.
 ```
 
@@ -101,24 +103,21 @@ KIMI_API_KEY=<your-kimi-key>
 
 Only one is required to start. Extra providers can be added later.
 
-## Optional web workbench
+## Legacy local workbench
 
-The web workbench is available for browsing topics, papers, reports, and state.
-It is optional; the recommended first path is still agent-driven.
+This app is deprecated as a public/remote front end. Keep it for local or
+internal experiments only; Research Harness 1.0 release demos should use the
+Zotero side-panel plugin.
+
+If you still need to run it locally:
 
 ```bash
-# Backend
 pip install -e "packages/research_harness_mcp[api]"
 python -m research_harness_mcp.http_api
-
-# Frontend
 cd web
 npm install
 npm run dev
 ```
-
-Open <http://localhost:3000>. A no-key product walkthrough is available at
-<http://localhost:3000/demo>.
 
 ## How the harness works
 

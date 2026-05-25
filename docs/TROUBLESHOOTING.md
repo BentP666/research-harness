@@ -78,7 +78,7 @@ Use whatever the proxy returns without error.
 
 ### ❗ `/api/agents/ledger` returns HTTP 422
 
-**Symptom:** Dashboard shows stale token-budget data; browser console
+**Symptom:** Legacy web dashboard shows stale token-budget data; browser console
 logs `422 Unprocessable Content` on `/api/agents/ledger?since=…&group_by=…`.
 
 **Cause:** Route ordering bug — the dynamic route `/api/agents/{agent_id}`
@@ -105,7 +105,7 @@ via the MCP tool dispatcher instead.
 `execute_tool("deep_read", …)`, matching how the MCP server and
 `toggle_deep_read` endpoint already worked.
 
-## Frontend warnings (non-functional)
+## Legacy web dashboard warnings (deprecated, non-functional)
 
 ### ⚠ `<circle> attribute r: Expected length, "undefined"`
 
@@ -127,7 +127,7 @@ client" on first load, pointing at the `Dark mode`/`Light mode` toggle.
 then the client swaps in the user's actual preference on mount —
 inherent to `next-themes` with SSR. No data corruption.
 
-**Workaround:** None required. The Next.js dev overlay shows "2 issues"
+**Workaround:** None required. The deprecated Next.js dev overlay shows "2 issues"
 because of this; it does not appear in production builds.
 
 ## Paper expansion jobs

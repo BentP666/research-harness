@@ -78,7 +78,7 @@ Please:
    - what was installed;
    - which Python environment is being used;
    - how to start or verify the MCP server;
-   - how to launch the optional web workbench;
+   - how to install the Zotero plugin front end;
    - one research prompt I can use next.
 ```
 
@@ -289,14 +289,14 @@ For a purely manual walkthrough (one primitive at a time, no runner), see [`docs
 
 ## Interfaces
 
-All four surfaces call the same primitive registry against the same `pool.db`. Pick whichever fits the task.
+The core local surfaces call the same primitive registry against the same `pool.db`. For interactive paper-first work, the recommended front end is now the Zotero plugin.
 
 | Surface | Best for | Entry point |
 |---------|----------|-------------|
 | **MCP server** | Claude Code / Codex / any MCP client | `python -m research_harness_mcp` |
 | **Python API** | Notebooks, pipelines, existing code | `from research_harness import ResearchAPI` |
 | **`rh` CLI** | Terminal workflows, scripts, CI | `rh --help` |
-| **HTTP API + Web dashboard** | Browse pool.db, trigger ingestion/analysis from a browser | `python -m research_harness_mcp.http_api` + `cd web && npm run dev` |
+| **Zotero plugin** | Paper-first local UI, collection context, guarded RH↔Zotero actions | Install the `.xpi` from the latest GitHub Release |
 
 Provenance note: MCP server and `rh primitive exec` route calls through `TrackedBackend`, which records every execution. Direct Python API calls go straight to primitive implementations — wrap them in `TrackedBackend` yourself when auditability is required. See [`docs/python-api.md`](docs/python-api.md).
 
@@ -330,20 +330,20 @@ startup_timeout_sec = 30.0
 
 Or via CLI: `codex mcp add research-harness -- /abs/path/python -m research_harness_mcp`.
 
-### HTTP API + Web dashboard
+### Zotero plugin — primary front end
 
-For operators who prefer a browser over a chat prompt, the repo ships a FastAPI backend (130+ REST routes, paginated reads + action endpoints) and a Next.js 16 / React 19 dashboard under [`web/`](web/). Start both:
+The public front-end path for 1.0 is the Zotero side-panel plugin. It keeps the user in the paper manager, reads the selected item or collection, and sends guarded local actions through the RH HTTP bridge.
+
+Install the latest `.xpi` from GitHub Releases, then point Zotero at your local RH checkout if you want auto-start. Manual local bridge:
 
 ```bash
-# Backend — installs FastAPI + uvicorn extras
 pip install -e "packages/research_harness_mcp[api]"
-python -m research_harness_mcp.http_api   # http://localhost:8000
-
-# Frontend
-cd web && npm install && npm run dev      # http://localhost:3000
+python -m research_harness_mcp.http_api   # http://127.0.0.1:8000
 ```
 
-The dashboard surfaces topics, papers, projects, artifacts, and provenance stats, and exposes buttons for paper search/ingest, gap detection, claim extraction, outline generation, and section drafting — each wired through the same primitive registry as the MCP server.
+See [`docs/zotero-rh-panel.md`](docs/zotero-rh-panel.md) for install, preferences, and the safety model.
+
+The old Next.js web dashboard under `web/` is deprecated and no longer promoted as a public or remote front end. It may remain useful for local/internal experiments, but new users should start from Zotero + MCP/CLI.
 
 ## Skills for Vibe Coding
 
@@ -492,7 +492,7 @@ reports intentionally live outside the public repository.
 
 ## Status
 
-**Version 1.0.0** — public-safe Discovery and governance release. RH Discover 1.0 adds issue publishing and a Discovery workbench, ResearchFlowBench adds deterministic diagnostics, semantic governance utilities harden graph validation/rollback flows, and the public docs surface has been trimmed to setup, usage, architecture, API, and troubleshooting. See [`CHANGELOG.md`](CHANGELOG.md) for release history.
+**Version 1.0.0** — public-safe Zotero-first research harness release. The recommended front end is now the Zotero side panel; the legacy web dashboard is deprecated/local-only. ResearchFlowBench adds deterministic diagnostics, semantic governance utilities harden graph validation/rollback flows, and the public docs surface has been trimmed to setup, usage, architecture, API, Zotero, and troubleshooting. See [`CHANGELOG.md`](CHANGELOG.md) for release history.
 
 Supported LLM providers: OpenAI, Anthropic, Kimi/Moonshot, plus LiteLLM-backed DeepSeek, Qwen/Tongyi, Zhipu/GLM, Doubao, MiniMax, Yi/Baichuan, and SiliconFlow through tier routing.
 
