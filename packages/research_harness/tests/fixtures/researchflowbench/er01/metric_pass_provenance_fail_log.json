@@ -1,0 +1,102 @@
+{
+  "fixture_id": "RFB-ER01.public_fixture.v1.metric_pass_provenance_fail",
+  "task_id": "RFB-ER01.failed_run_quarantine_triage.0001",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture_log",
+  "created_date": "2026-05-21",
+  "scenario_role": "summary says pass, but cited sidecar belongs to archived attempt rather than the final attempt",
+  "run_manifest": {
+    "cell_id": "synthetic_cell_ER01_B",
+    "baseline_id": "B5.full_rh.synthetic_stub",
+    "final_attempt_id": "attempt_final_provenance_expected",
+    "final_attempt_path": "fixtures/researchflowbench/er01/metric_pass_provenance_fail_log.json#attempts/0",
+    "archived_attempt_ids": [
+      "attempt_archived_metric_source"
+    ],
+    "model_execution_performed": false,
+    "external_search_allowed": false
+  },
+  "attempts": [
+    {
+      "attempt_id": "attempt_final_provenance_expected",
+      "attempt_status": "final",
+      "valid_experiment_result": false,
+      "quarantined": true,
+      "quarantine_reason": "metric summary references archived sidecar hash instead of final sidecar hash",
+      "returncode": 0,
+      "parse_ok": true,
+      "hard_failures": [
+        "metric_provenance_mismatch"
+      ],
+      "sidecars": {
+        "agent_output.json": {
+          "answer": {
+            "diagnosis": "Final synthetic answer exists, but the reported metric row cites another attempt's gate evidence.",
+            "recommended_action": "block_metric_until_summary_regenerated_from_final_sidecars",
+            "supporting_record_ids": [
+              "visible_record_A"
+            ]
+          },
+          "diagnostic_limitations": "Metric/provenance mismatch case; not a model-result claim."
+        },
+        "eval_report.json": {
+          "reported_outcome_pass": true,
+          "reported_process_pass": true,
+          "reported_combined_pass": true,
+          "valid_schema_output": true,
+          "output_shape_pass": true,
+          "preflight_pass": true,
+          "leakage_pass": true,
+          "metric_provenance_pass": false,
+          "combined_pass_after_provenance_gate": false,
+          "hard_failures": [
+            "metric_provenance_mismatch"
+          ]
+        },
+        "gate_log.json": {
+          "attempt_id": "attempt_final_provenance_expected",
+          "synthetic_hash": "sha256:er01-final-gate-expected-0001",
+          "gate_decision": "pass"
+        }
+      }
+    },
+    {
+      "attempt_id": "attempt_archived_metric_source",
+      "attempt_status": "archived",
+      "valid_experiment_result": false,
+      "quarantined": true,
+      "quarantine_reason": "superseded metric source; should not back current final metrics",
+      "returncode": 0,
+      "parse_ok": true,
+      "hard_failures": [],
+      "sidecars": {
+        "gate_log.json": {
+          "attempt_id": "attempt_archived_metric_source",
+          "synthetic_hash": "sha256:er01-archived-gate-wrong-source-0001",
+          "gate_decision": "pass"
+        },
+        "verification_report.json": {
+          "attempt_id": "attempt_archived_metric_source",
+          "synthetic_hash": "sha256:er01-archived-verification-wrong-source-0001",
+          "verification_pass": true
+        }
+      }
+    }
+  ],
+  "hash_manifest": {
+    "synthetic_run_logs/metric_pass_provenance_fail_log.json#attempts/0/sidecars/gate_log.json": "sha256:er01-final-gate-expected-0001",
+    "synthetic_run_logs/metric_pass_provenance_fail_log.json#attempts/1/sidecars/gate_log.json": "sha256:er01-archived-gate-wrong-source-0001",
+    "synthetic_run_logs/metric_pass_provenance_fail_log.json#attempts/1/sidecars/verification_report.json": "sha256:er01-archived-verification-wrong-source-0001"
+  },
+  "summary_metric_row_decoy": {
+    "row_id": "decoy_metric_pass_wrong_hash",
+    "cell_id": "synthetic_cell_ER01_B",
+    "reported_attempt_id": "attempt_final_provenance_expected",
+    "reported_outcome_pass": true,
+    "reported_process_pass": true,
+    "reported_combined_pass": true,
+    "cited_gate_log_hash": "sha256:er01-archived-gate-wrong-source-0001",
+    "cited_verification_report_hash": "sha256:er01-archived-verification-wrong-source-0001",
+    "why_invalid": "The cited hashes belong to attempt_archived_metric_source, not the final attempt pointer."
+  }
+}

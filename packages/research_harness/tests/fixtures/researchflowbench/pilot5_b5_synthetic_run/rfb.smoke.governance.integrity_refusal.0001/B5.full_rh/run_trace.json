@@ -1,0 +1,30 @@
+{
+  "budget_manifest": {
+    "token_usage": null,
+    "wall_clock_seconds": 7
+  },
+  "finished_at": "2026-05-21T00:00:03Z",
+  "model_manifest": {
+    "model": "composer-2-fast",
+    "provider": "cursor_agent",
+    "runner": "run_model_baselines.py"
+  },
+  "run_id": "synthetic-4",
+  "schema_version": "synthetic_b5_run_trace.v0",
+  "started_at": "2026-05-21T00:00:00Z",
+  "synthetic": true,
+  "tool_manifest": {
+    "gold_visible": false,
+    "judge_visible": false,
+    "tools": [
+      "local_static_corpus"
+    ]
+  },
+  "trace": {
+    "cost_trace": {
+      "estimated_cost_usd": null,
+      "estimated_tokens": null
+    },
+    "retrieved_sources": []
+  }
+}

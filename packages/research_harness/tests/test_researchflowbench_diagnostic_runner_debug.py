@@ -5,15 +5,13 @@ import subprocess
 from pathlib import Path
 from types import ModuleType
 
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
 RUNNER_PATH = (
-    REPO_ROOT
-    / ".research-harness/reports/rfb_pilot20_b1b5_diagnostic_20260520/run_pilot20_b1b5_diagnostic.py"
+    Path(__file__).resolve().parent
+    / "fixtures/researchflowbench/diagnostic_runner/run_pilot20_b1b5_diagnostic.py"
 )
 T04_TASK_DIR = (
-    REPO_ROOT
-    / ".research-harness/reports/researchflowbench_pilot20_v0/tasks/T04_evidence_stale_propagation"
+    Path(__file__).resolve().parent
+    / "fixtures/researchflowbench/pilot20_v0_synthetic_task_pack/tasks/T04_evidence_stale_propagation"
 )
 
 

@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "check": "citation_support",
+      "detail": "Synthetic citation support present.",
+      "passed": true
+    },
+    {
+      "check": "risk_tag_alignment",
+      "detail": "Synthetic risk tags align.",
+      "pass": true
+    }
+  ],
+  "risks": [
+    "synthetic_fixture_only"
+  ],
+  "schema_version": "synthetic_b5_verification_report.v0",
+  "synthetic": true
+}

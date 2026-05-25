@@ -1,0 +1,21 @@
+{
+  "allowed_tools": [
+    {
+      "enabled": true,
+      "fixture_path": "local_static_corpus.jsonl",
+      "tool_name": "local_static_corpus"
+    }
+  ],
+  "forbidden_tools": [
+    "browser_network_search",
+    "external_search",
+    "paper_search",
+    "web_search"
+  ],
+  "gold_visible": false,
+  "judge_visible": false,
+  "requires_preflight": true,
+  "schema_version": "researchflowbench.allowed_tools_contract.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.open_world_attribution_abstain.0001"
+}

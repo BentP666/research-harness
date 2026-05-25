@@ -1,0 +1,9 @@
+{
+  "corrupted_case_ids": [
+    "C01_full_context_citation_contradiction"
+  ],
+  "example_ids": [],
+  "schema_version": "researchflowbench.dev_example_ids.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.full_context_citation_eval.0001"
+}

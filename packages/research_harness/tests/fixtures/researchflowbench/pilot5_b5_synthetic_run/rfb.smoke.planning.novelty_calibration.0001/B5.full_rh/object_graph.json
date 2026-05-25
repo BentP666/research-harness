@@ -1,0 +1,23 @@
+{
+  "edges": [
+    {
+      "from": "obj.novelty_claim",
+      "relation": "compares_to",
+      "to": "obj.synthetic_baseline"
+    }
+  ],
+  "objects": [
+    {
+      "baseline_id": "synthetic.baseline",
+      "id": "obj.synthetic_baseline",
+      "type": "prior_card"
+    },
+    {
+      "id": "obj.novelty_claim",
+      "type": "novelty_verdict"
+    }
+  ],
+  "schema_version": "synthetic_b5_object_graph.v0",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

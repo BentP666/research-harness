@@ -7,7 +7,7 @@ name = "paperindex"
 version = "0.4.0"
 description = "Thin compatibility shim — the real engine lives in research_harness.paperindex"
 requires-python = ">=3.11"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 dependencies = [
   # The shim re-exports research_harness.paperindex. The [paperindex] extra
   # on research-harness pulls the PDF runtime deps (pymupdf, PyPDF2, pyyaml,

@@ -7,7 +7,7 @@ name = "research-harness"
 version = "1.0.0"
 description = "Agent-first research workflow platform"
 requires-python = ">=3.11"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 dependencies = [
   "click>=8.1",
   "rich>=13.0",

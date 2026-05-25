@@ -1,0 +1,6 @@
+{
+  "description": "Synthetic diagnostic runner fixture for public timeout/quarantine unit tests.",
+  "model_execution_performed": false,
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

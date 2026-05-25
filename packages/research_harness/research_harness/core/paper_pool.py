@@ -203,24 +203,43 @@ class PaperPool:
                 f"paper {note.paper_id} is not linked to topic {note.topic_id}"
             )
 
-        self._conn.execute(
+        existing = self._conn.execute(
             """
-            INSERT INTO topic_paper_notes (paper_id, topic_id, note_type, content, source)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (paper_id, topic_id, note_type)
-            DO UPDATE SET
-                content = excluded.content,
-                source = excluded.source,
-                created_at = datetime('now')
+            SELECT id FROM topic_paper_notes
+            WHERE paper_id = ? AND topic_id = ? AND note_type = ?
+            ORDER BY CASE WHEN source LIKE 'zotero:%' THEN 1 ELSE 0 END, id
+            LIMIT 1
             """,
-            (note.paper_id, note.topic_id, note.note_type, note.content, note.source),
-        )
-        self._conn.commit()
-        row = self._conn.execute(
-            "SELECT id FROM topic_paper_notes WHERE paper_id = ? AND topic_id = ? AND note_type = ?",
             (note.paper_id, note.topic_id, note.note_type),
         ).fetchone()
-        return int(row["id"])
+        if existing is None:
+            cursor = self._conn.execute(
+                """
+                INSERT INTO topic_paper_notes
+                    (paper_id, topic_id, note_type, content, source)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    note.paper_id,
+                    note.topic_id,
+                    note.note_type,
+                    note.content,
+                    note.source,
+                ),
+            )
+            note_id = int(cursor.lastrowid)
+        else:
+            self._conn.execute(
+                """
+                UPDATE topic_paper_notes
+                SET content = ?, source = ?, created_at = datetime('now')
+                WHERE id = ?
+                """,
+                (note.content, note.source, int(existing["id"])),
+            )
+            note_id = int(existing["id"])
+        self._conn.commit()
+        return note_id
 
     def get_topic_notes(
         self,

@@ -716,6 +716,31 @@ class CitationVerifyOutput:
 
 
 @dataclass(frozen=True)
+class CitationSanitizeItem:
+    """A valid or removed citation found during deterministic sanitization."""
+
+    original_number: int
+    ref_text: str
+    status: str = ""  # valid | removed
+    reason: str = ""
+    new_number: int = 0
+    source_id: str = ""
+    repaired: bool = False
+
+
+@dataclass(frozen=True)
+class CitationSanitizeOutput:
+    """Output of citation_sanitize primitive."""
+
+    sanitized_text: str = ""
+    valid_count: int = 0
+    removed_count: int = 0
+    repaired_count: int = 0
+    hallucinated_recorded: int = 0
+    items: list[CitationSanitizeItem] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class EvidenceTraceLink:
     """A single link in the evidence trace chain."""
 

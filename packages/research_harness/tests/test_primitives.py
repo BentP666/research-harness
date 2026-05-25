@@ -25,7 +25,7 @@ from research_harness.primitives.registry import PRIMITIVE_REGISTRY
 
 
 def test_primitive_registry_has_all_specs() -> None:
-    assert len(PRIMITIVE_REGISTRY) == 81
+    assert len(PRIMITIVE_REGISTRY) == 82
     for spec in PRIMITIVE_REGISTRY.values():
         assert spec.name
         assert spec.category
@@ -106,6 +106,7 @@ def test_list_by_category() -> None:
         "verified_registry_check",
         "paper_verify_numbers",
         "citation_verify",
+        "citation_sanitize",
         "evidence_trace",
         "section_review",
         "originality_boundary_check",

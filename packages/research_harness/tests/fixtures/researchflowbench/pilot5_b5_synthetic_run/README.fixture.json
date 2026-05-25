@@ -1,0 +1,6 @@
+{
+  "description": "Synthetic B5 run tree used only for public semantic governance tests.",
+  "model_execution_performed": false,
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

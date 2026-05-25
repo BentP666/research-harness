@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "check": "novelty_boundary",
+      "detail": "Synthetic caveat preserved.",
+      "result": "conditional"
+    },
+    {
+      "check": "comparator_alignment",
+      "detail": "Synthetic comparator included.",
+      "pass": true
+    }
+  ],
+  "risks": [
+    "synthetic_fixture_only"
+  ],
+  "schema_version": "synthetic_b5_verification_report.v0",
+  "synthetic": true
+}

@@ -1,0 +1,84 @@
+{
+  "fixture_id": "RFB-ER01.public_fixture.v1.success_like",
+  "task_id": "RFB-ER01.failed_run_quarantine_triage.0001",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture_log",
+  "created_date": "2026-05-21",
+  "scenario_role": "success-like final attempt; not an empirical model run",
+  "run_manifest": {
+    "cell_id": "synthetic_cell_ER01_A",
+    "baseline_id": "B5.full_rh.synthetic_stub",
+    "final_attempt_id": "attempt_final_success",
+    "final_attempt_path": "fixtures/researchflowbench/er01/success_like_log.json#attempts/0",
+    "archived_attempt_ids": [],
+    "incomplete_attempt_ids": [],
+    "model_execution_performed": false,
+    "external_search_allowed": false
+  },
+  "attempts": [
+    {
+      "attempt_id": "attempt_final_success",
+      "attempt_status": "final",
+      "valid_experiment_result": true,
+      "quarantined": false,
+      "quarantine_reason": null,
+      "returncode": 0,
+      "parse_ok": true,
+      "hard_failures": [],
+      "sidecars": {
+        "agent_output.json": {
+          "answer": {
+            "diagnosis": "Visible records support treating this synthetic cell as the only valid final result.",
+            "recommended_action": "count_as_final_valid_cell",
+            "supporting_record_ids": [
+              "visible_record_A",
+              "visible_record_B"
+            ]
+          },
+          "confidence": "synthetic_high",
+          "diagnostic_limitations": "Fixture-only success path; no empirical benchmark claim."
+        },
+        "eval_report.json": {
+          "outcome_pass": true,
+          "process_pass": true,
+          "combined_pass": true,
+          "valid_schema_output": true,
+          "output_shape_pass": true,
+          "preflight_pass": true,
+          "leakage_pass": true
+        },
+        "leakage_audit_report.json": {
+          "external_search_reference_in_output": false,
+          "hidden_material_reference_detected": false,
+          "hard_failures": []
+        },
+        "cost_latency_trace.json": {
+          "wall_clock_seconds": 1.25,
+          "tool_call_count": 0,
+          "token_usage": null,
+          "token_usage_unknown_reason": "synthetic fixture; no model execution",
+          "estimated_cost": null,
+          "estimated_cost_unknown_reason": "synthetic fixture; no paid API or model execution"
+        },
+        "run_trace.json": {
+          "events": [
+            {
+              "event_type": "read_static_fixture",
+              "path": "fixtures/researchflowbench/er01/success_like_log.json"
+            },
+            {
+              "event_type": "emit_synthetic_sidecars",
+              "status": "complete"
+            }
+          ],
+          "executor_returncode": 0
+        }
+      }
+    }
+  ],
+  "decoy_summary_row": {
+    "row_id": "decoy_summary_includes_only_success",
+    "valid_final_count_claim": 1,
+    "note": "This row is internally consistent for the success-like log but must not be generalized across invalid logs."
+  }
+}

@@ -7,28 +7,44 @@ Run standalone: python -m research_harness_mcp.http_api
 
 from __future__ import annotations
 
+import html
+import hashlib
 import json
 import logging
 import os
+import hmac
+import re
 import sqlite3
 import threading
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    StreamingResponse,
+)
 from pydantic import BaseModel, Field, field_validator
 
 from research_harness.api import ResearchAPI
 from research_harness.agents.families import get_family
 from research_harness.demo import list_entries as demo_list_entries
 from research_harness.demo import lookup as demo_lookup
+from research_harness.longtask import (
+    CodexExecutor,
+    DryRunExecutor,
+    LongTaskStore,
+    LongTaskSupervisor,
+)
 from research_harness_mcp.tools import execute_tool
 
 logger = logging.getLogger(__name__)
@@ -54,6 +70,36 @@ logging.getLogger("research_harness_mcp").setLevel(logging.INFO)
 _DEFAULT_DB_PATH = Path(__file__).resolve().parents[3] / ".research-harness" / "pool.db"
 
 DB_PATH = Path(os.environ.get("RESEARCH_HARNESS_DB_PATH") or str(_DEFAULT_DB_PATH))
+
+LONGTASK_HOME = Path(
+    os.environ.get("RESEARCH_HARNESS_LONGTASK_HOME")
+    or str(DB_PATH.parent.parent / ".longrun")
+)
+
+ZOTERO_CODEX_MODEL_OPTIONS: dict[str, str] = {
+    "gpt-5.3-codex-spark": "快速",
+    "gpt-5.4-mini": "平衡",
+    "gpt-5.4": "强力",
+    "gpt-5.5": "最强",
+}
+ZOTERO_CODEX_DEFAULT_MODEL = "gpt-5.3-codex-spark"
+_ZOTERO_CODEX_POOL: Any | None = None
+_ZOTERO_CODEX_POOL_LOCK = threading.Lock()
+
+
+def _default_zotero_codex_model() -> str:
+    configured = os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_MODEL", "").strip()
+    if configured in ZOTERO_CODEX_MODEL_OPTIONS:
+        return configured
+    return ZOTERO_CODEX_DEFAULT_MODEL
+
+
+def _validate_zotero_codex_model(value: str) -> str:
+    model = str(value or "").strip()
+    if model not in ZOTERO_CODEX_MODEL_OPTIONS:
+        allowed = ", ".join(ZOTERO_CODEX_MODEL_OPTIONS)
+        raise ValueError(f"unsupported Zotero Codex model: {model}; allowed: {allowed}")
+    return model
 
 
 # ---------------------------------------------------------------------------
@@ -274,23 +320,103 @@ class ProvenanceSummary(BaseModel):
     recent_records: list[dict[str, Any]]
 
 
+class LongTaskGateDecisionRequest(BaseModel):
+    decision: Literal["approved", "rejected", "paused", "replan_requested"]
+    actor: str = Field(default="mobile", min_length=1, max_length=80)
+    token: str | None = Field(default=None, max_length=512)
+    note: str = Field(default="", max_length=2000)
+
+
+class LongTaskStartRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    objective: str = Field(min_length=1, max_length=20000)
+    max_workers: int = Field(default=2, ge=1, le=8)
+
+
+class LongTaskGateCreateRequest(BaseModel):
+    task_id: str | None = Field(default=None, max_length=80)
+    gate_type: str = Field(default="continue_next_wave", min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=200)
+    token: str | None = Field(default=None, max_length=512)
+
+
+class LongTaskDispatchRequest(BaseModel):
+    limit: int | None = Field(default=None, ge=1, le=8)
+    timeout_seconds: int = Field(default=300, ge=1, le=3600)
+    execute: bool = False
+    cwd: str = Field(default=".", max_length=2000)
+
+
+class LongTaskSuperviseRequest(BaseModel):
+    max_cycles: int = Field(default=10, ge=1, le=100)
+    limit_per_cycle: int | None = Field(default=None, ge=1, le=8)
+    timeout_seconds: int = Field(default=300, ge=1, le=3600)
+    execute: bool = False
+    cwd: str = Field(default=".", max_length=2000)
+
+
 # ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
 
+
+def _close_zotero_codex_pool() -> None:
+    global _ZOTERO_CODEX_POOL
+    pool = _ZOTERO_CODEX_POOL
+    _ZOTERO_CODEX_POOL = None
+    if pool is not None:
+        try:
+            pool.close_all()
+        except Exception:
+            logger.warning("Failed to close Zotero Codex pool", exc_info=True)
+
+
+@asynccontextmanager
+async def app_lifespan(_app: FastAPI):
+    try:
+        yield
+    finally:
+        _close_zotero_codex_pool()
+
+
 app = FastAPI(
     title="Research Harness API",
     description="REST API for the research-harness pool.db — read endpoints + write/action endpoints via MCP tools",
-    version="0.1.0",
+    version="1.0.0",
+    lifespan=app_lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        origin.strip()
+        for origin in os.environ.get(
+            "RESEARCH_HARNESS_CORS_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000",
+        ).split(",")
+        if origin.strip()
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def longtask_admin_token_middleware(request: Request, call_next):
+    """Optional local admin token gate for LongTask HTTP endpoints."""
+    if request.url.path.startswith("/api/longtasks") and request.method != "OPTIONS":
+        expected = os.environ.get("RESEARCH_HARNESS_LONGTASK_ADMIN_TOKEN")
+        if expected:
+            provided = request.headers.get("X-LongTask-Token", "")
+            authorization = request.headers.get("Authorization", "")
+            if authorization.startswith("Bearer "):
+                provided = authorization.removeprefix("Bearer ").strip()
+            if not hmac.compare_digest(provided, expected):
+                return JSONResponse(
+                    {"detail": "LongTask admin token required"},
+                    status_code=401,
+                )
+    return await call_next(request)
 
 
 # ---------------------------------------------------------------------------
@@ -303,6 +429,283 @@ def health_check():
     """Basic liveness probe."""
     exists = DB_PATH.exists()
     return {"status": "ok" if exists else "db_missing", "db_path": str(DB_PATH)}
+
+
+# ---------------------------------------------------------------------------
+# Codex LongTask Supervisor
+# ---------------------------------------------------------------------------
+
+
+def _longtask_store() -> LongTaskStore:
+    return LongTaskStore(LONGTASK_HOME)
+
+
+def _longtask_base_url(request: Request) -> str:
+    return os.environ.get("RESEARCH_HARNESS_PUBLIC_BASE_URL") or str(
+        request.base_url
+    ).rstrip("/")
+
+
+def _longtask_api_executor(execute: bool, cwd: str):
+    if not execute:
+        return DryRunExecutor()
+    if os.environ.get("RESEARCH_HARNESS_LONGTASK_API_EXECUTE") != "1":
+        raise HTTPException(
+            status_code=403,
+            detail="real Codex execution through HTTP is disabled; set RESEARCH_HARNESS_LONGTASK_API_EXECUTE=1",
+        )
+    return CodexExecutor(Path(cwd).resolve())
+
+
+@app.get("/api/longtasks/runs")
+def list_longtask_runs(limit: int = Query(default=20, ge=1, le=100)):
+    """List recent Codex LongTask supervisor runs."""
+    return _longtask_store().list_runs(limit=limit)
+
+
+@app.post("/api/longtasks/runs", status_code=201)
+def create_longtask_run(body: LongTaskStartRequest):
+    """Create a new longtask run from a mobile/web client."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    run = supervisor.start_run(
+        title=body.title,
+        objective_text=body.objective,
+        max_workers=body.max_workers,
+    )
+    return supervisor.store.get_run_detail(run.id)
+
+
+@app.get("/api/longtasks/runs/{run_id}")
+def get_longtask_run(run_id: str, request: Request):
+    """Return a run, its execution path, attempts, gates, and event log."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    try:
+        return supervisor.describe_run(
+            run_id,
+            base_url=_longtask_base_url(request),
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="longtask run not found") from exc
+
+
+@app.post("/api/longtasks/runs/{run_id}/dispatch")
+def dispatch_longtask_run(run_id: str, body: LongTaskDispatchRequest):
+    """Dispatch currently ready work; HTTP defaults to safe dry-run execution."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    try:
+        supervisor.store.get_run_detail(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="longtask run not found") from exc
+    results = supervisor.dispatch_ready(
+        run_id,
+        executor=_longtask_api_executor(body.execute, body.cwd),
+        limit=body.limit,
+        timeout_seconds=body.timeout_seconds,
+    )
+    return {
+        "run_id": run_id,
+        "dispatched": len(results),
+        "results": [result.result for result in results],
+    }
+
+
+@app.post("/api/longtasks/runs/{run_id}/supervise")
+def supervise_longtask_run(run_id: str, body: LongTaskSuperviseRequest):
+    """Run dry-run supervision cycles until complete, gated, or blocked."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    try:
+        supervisor.store.get_run_detail(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="longtask run not found") from exc
+    return supervisor.supervise(
+        run_id,
+        executor=_longtask_api_executor(body.execute, body.cwd),
+        max_cycles=body.max_cycles,
+        limit_per_cycle=body.limit_per_cycle,
+        timeout_seconds=body.timeout_seconds,
+    )
+
+
+@app.post("/api/longtasks/runs/{run_id}/gates", status_code=201)
+def create_longtask_gate(
+    run_id: str, body: LongTaskGateCreateRequest, request: Request
+):
+    """Create a pending mobile/human approval gate for a run."""
+    store = _longtask_store()
+    try:
+        store.get_run_detail(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="longtask run not found") from exc
+    supervisor = LongTaskSupervisor(store)
+    gate = supervisor.create_gate(
+        run_id=run_id,
+        task_id=body.task_id,
+        gate_type=body.gate_type,
+        title=body.title,
+        token=body.token,
+    )
+    return {
+        **gate.__dict__,
+        "notification": supervisor.gate_notification_payload(
+            gate.id,
+            base_url=_longtask_base_url(request),
+        ),
+    }
+
+
+@app.post("/api/longtasks/gates/{gate_id}/decision")
+def decide_longtask_gate(gate_id: str, body: LongTaskGateDecisionRequest):
+    """Record a mobile approval/rejection/pause/replan decision for a gate."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    decision = supervisor.decide_gate(
+        gate_id,
+        decision=body.decision,
+        actor=body.actor,
+        token=body.token,
+        note=body.note,
+    )
+    if not decision.accepted:
+        raise HTTPException(status_code=403, detail=decision.message)
+    return decision.__dict__
+
+
+@app.get("/api/longtasks/gates/{gate_id}/action")
+def confirm_longtask_gate_signed_action(
+    request: Request,
+    gate_id: str,
+    decision: Literal["approved", "rejected", "paused", "replan_requested"],
+    expires_at: int = Query(ge=0),
+    signature: str = Query(min_length=32, max_length=256),
+    view: bool = Query(default=False),
+):
+    """Confirm a signed mobile/chat action URL without mutating state."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    result = supervisor.validate_gate_signature(
+        gate_id,
+        decision=decision,
+        expires_at=expires_at,
+        signature=signature,
+    )
+    if not result.accepted:
+        status_code = 409 if result.message == "gate is not pending" else 403
+        if view:
+            return HTMLResponse(
+                _signed_gate_action_html(
+                    gate_id=gate_id,
+                    run_id="",
+                    title="",
+                    decision=decision,
+                    error=result.message,
+                    action_url=str(request.url),
+                ),
+                status_code=status_code,
+            )
+        raise HTTPException(status_code=status_code, detail=result.message)
+    gate = supervisor.store.get_gate(gate_id)
+    if view:
+        return HTMLResponse(
+            _signed_gate_action_html(
+                gate_id=gate_id,
+                run_id=str(gate["run_id"]),
+                title=str(gate["title"]),
+                decision=decision,
+                action_url=str(request.url),
+            )
+        )
+    return {
+        "gate_id": gate_id,
+        "decision": decision,
+        "title": gate["title"],
+        "status": gate["status"],
+        "expires_at": expires_at,
+        "requires_post": True,
+    }
+
+
+@app.post("/api/longtasks/gates/{gate_id}/action")
+def decide_longtask_gate_signed_action(
+    gate_id: str,
+    decision: Literal["approved", "rejected", "paused", "replan_requested"],
+    expires_at: int = Query(ge=0),
+    signature: str = Query(min_length=32, max_length=256),
+):
+    """Consume a signed mobile/chat action URL after explicit confirmation."""
+    supervisor = LongTaskSupervisor(_longtask_store())
+    result = supervisor.decide_gate_with_signature(
+        gate_id,
+        decision=decision,
+        expires_at=expires_at,
+        signature=signature,
+        actor="signed-link",
+    )
+    if not result.accepted:
+        status_code = 409 if result.message == "gate is not pending" else 403
+        raise HTTPException(status_code=status_code, detail=result.message)
+    return result.__dict__
+
+
+def _signed_gate_action_html(
+    *,
+    gate_id: str,
+    run_id: str,
+    title: str,
+    decision: str,
+    action_url: str,
+    error: str | None = None,
+) -> str:
+    safe_title = html.escape(title or gate_id)
+    safe_run_id = html.escape(run_id)
+    safe_decision = html.escape(decision)
+    safe_action = html.escape(action_url)
+    note = f'<p class="state">{html.escape(error or "")}</p>' if error else ""
+    return f"""
+<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
+  <title>Codex LongTask Gate</title>
+  <style>
+    :root {{ color-scheme: light dark; }}
+    body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }}
+    .card {{ margin: 0 auto; max-width: 30rem; padding: 1rem; border: 1px solid #334155; background: #1e293b; border-radius: 14px; margin-top: 2.5rem; }}
+    h1 {{ margin: 0 0 .75rem 0; font-size: 1.1rem; }}
+    p {{ margin: .35rem 0; color: #cbd5e1; font-size: .95rem; }}
+    .state {{ color: #fda4af; }}
+    button {{ margin-top: .75rem; width: 100%; border: none; border-radius: .6rem; padding: .7rem 1rem; background: #4f46e5; color: white; font-size: 1rem; }}
+    #result {{ margin-top: .75rem; display: none; padding: .7rem; background: #0b1220; border: 1px solid #334155; border-radius: .6rem; white-space: pre-wrap; }}
+  </style>
+  <script>
+    async function confirmAction() {{
+      const response = await fetch(window.location.pathname + window.location.search, {{
+        method: 'POST',
+      }});
+      const text = await response.text();
+      const result = document.getElementById('result');
+      result.style.display = 'block';
+      result.textContent = text;
+      if (!response.ok) {{
+        result.style.color = '#fca5a5';
+      }} else {{
+        result.style.color = '#86efac';
+      }}
+    }}
+  </script>
+</head>
+<body>
+  <main class="card">
+    <h1>{safe_title}</h1>
+    <p><strong>Run:</strong> {safe_run_id}</p>
+    <p><strong>Decision:</strong> {safe_decision}</p>
+    <p>Mobile confirmation for signed LongTask gate link.</p>
+    {note}
+    <p class="state">Action endpoint: <code>{safe_action}</code></p>
+    <button type="button" onclick="confirmAction()">Confirm this decision</button>
+    <pre id="result"></pre>
+  </main>
+</body>
+</html>
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -2317,6 +2720,75 @@ def _pick_candidate_source(candidate: dict[str, Any]) -> str:
     return ""
 
 
+def _find_paper_id_in_topic_by_source(
+    conn: sqlite3.Connection, topic_id: int, source: str
+) -> int | None:
+    source = str(source or "").strip()
+    if not source:
+        return None
+    if source.startswith("10."):
+        clause = "p.doi = ?"
+        params: list[Any] = [topic_id, source]
+    elif "/" not in source and len(source) < 20:
+        clause = "p.arxiv_id = ?"
+        params = [topic_id, source]
+    else:
+        clause = "p.title = ? OR p.url = ?"
+        params = [topic_id, source, source]
+    row = conn.execute(
+        f"""
+        SELECT p.id
+        FROM papers p
+        JOIN paper_topics pt ON pt.paper_id = p.id
+        WHERE pt.topic_id = ? AND ({clause})
+        ORDER BY p.id ASC
+        LIMIT 1
+        """,
+        params,
+    ).fetchone()
+    return int(row["id"]) if row else None
+
+
+def _get_or_create_zotero_seed_topic(
+    *, topic_id: int | None, topic_name: str, description: str
+) -> tuple[int, bool]:
+    name = str(topic_name or "").strip()
+    if topic_id is not None:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT id FROM topics WHERE id = ?", (int(topic_id),)
+            ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Topic {topic_id} not found")
+        return int(topic_id), False
+
+    with get_db() as conn:
+        existing = conn.execute(
+            "SELECT id FROM topics WHERE name = ? ORDER BY id ASC LIMIT 1",
+            (name,),
+        ).fetchone()
+        if existing:
+            return int(existing["id"]), False
+        now = datetime.now(timezone.utc).isoformat()
+        cur = conn.execute(
+            """
+            INSERT INTO topics (name, description, status, created_at)
+            VALUES (?, ?, 'active', ?)
+            """,
+            (name, description, now),
+        )
+        conn.commit()
+        created_id = int(cur.lastrowid)
+
+    try:
+        _run_tool("orchestrator_resume", {"topic_id": created_id})
+    except HTTPException:
+        raise
+    except Exception:
+        logger.warning("Failed to bootstrap Zotero seed topic", exc_info=True)
+    return created_id, True
+
+
 def _paper_already_in_topic(
     conn: sqlite3.Connection, topic_id: int, source: str
 ) -> bool:
@@ -2375,7 +2847,7 @@ def _build_expansion_query(
         phrase = " ".join(words).strip()
         if phrase:
             phrases.append(phrase)
-    return " ".join(part for part in [base, *phrases[:3]] if part).strip() or topic_name
+    return "\n".join(part for part in [base, *phrases[:3]] if part).strip() or topic_name
 
 
 def _deep_read_provider_pool() -> list[str]:
@@ -3583,6 +4055,2184 @@ class PaperIngestRequest(BaseModel):
     source: str  # arxiv ID, DOI, or URL
     topic_id: int | None = None
     relevance: str = "medium"
+
+
+class ZoteroSyncRequest(BaseModel):
+    direction: Literal["push", "pull", "both"] = "push"
+    root_collection: str = "Research Harness"
+    topic_collection_name: str | None = Field(default=None, max_length=240)
+    target_collection_key: str | None = Field(default=None, max_length=64)
+    target_collection_name: str | None = Field(default=None, max_length=240)
+    target_collection_path: str | None = Field(default=None, max_length=1000)
+    library_id: str | None = None
+    library_type: Literal["user", "group"] = "user"
+    api_key: str | None = None
+    api_base: str | None = None
+    limit: int | None = Field(default=None, ge=1)
+    paper_ids: list[int] = Field(default_factory=list, max_length=500)
+    skip_notes: bool = False
+    force: bool = False
+    include_rh_generated: bool = False
+    dry_run: bool = True
+
+    @field_validator("paper_ids", mode="after")
+    @classmethod
+    def _dedupe_paper_ids(cls, values: list[int]) -> list[int]:
+        seen: set[int] = set()
+        result: list[int] = []
+        for value in values:
+            paper_id = int(value)
+            if paper_id <= 0 or paper_id in seen:
+                continue
+            seen.add(paper_id)
+            result.append(paper_id)
+        return result
+
+
+class ZoteroChatItemContext(BaseModel):
+    zotero_item_key: str = Field(default="", max_length=64)
+    library_id: str | int | None = None
+    library_type: Literal["user", "group"] = "user"
+    title: str = Field(default="", max_length=1000)
+    creators: list[str] = Field(default_factory=list, max_length=50)
+    year: int | None = None
+    doi: str = Field(default="", max_length=300)
+    arxiv_id: str = Field(default="", max_length=100)
+    url: str = Field(default="", max_length=2000)
+    abstract: str = Field(default="", max_length=12000)
+    extra: str = Field(default="", max_length=12000)
+    tags: list[str] = Field(default_factory=list, max_length=200)
+    selected_text: str = Field(default="", max_length=20000)
+    note_text: str = Field(default="", max_length=20000)
+    screenshots: list[str] = Field(default_factory=list, max_length=2)
+    current_directory_key: str = Field(default="", max_length=64)
+    current_directory_name: str = Field(default="", max_length=240)
+    current_directory_path: str = Field(default="", max_length=1200)
+
+    @field_validator("tags", "creators", mode="after")
+    @classmethod
+    def _trim_string_lists(cls, values: list[str]) -> list[str]:
+        return [str(value).strip()[:500] for value in values if str(value).strip()]
+
+    @field_validator("screenshots", mode="after")
+    @classmethod
+    def _validate_screenshots(cls, values: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for value in values:
+            text = str(value or "").strip()
+            if not text:
+                continue
+            if not re.match(r"^data:image/(png|jpeg|jpg|webp);base64,", text, flags=re.I):
+                raise ValueError("screenshots must be data:image base64 URLs")
+            if len(text) > 4_000_000:
+                raise ValueError("each screenshot must be under 4MB as a data URL")
+            cleaned.append(text)
+        return cleaned[:2]
+
+
+class ZoteroChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=12000)
+    item: ZoteroChatItemContext = Field(default_factory=ZoteroChatItemContext)
+    conversation_id: str | None = Field(default=None, max_length=120)
+    locale: str = Field(default="zh-CN", max_length=32)
+    model: str = Field(default_factory=_default_zotero_codex_model, max_length=80)
+
+    @field_validator("model", mode="after")
+    @classmethod
+    def _validate_codex_model(cls, value: str) -> str:
+        return _validate_zotero_codex_model(value)
+
+
+class ZoteroWarmupRequest(BaseModel):
+    model: str = Field(default_factory=_default_zotero_codex_model, max_length=80)
+
+    @field_validator("model", mode="after")
+    @classmethod
+    def _validate_codex_model(cls, value: str) -> str:
+        return _validate_zotero_codex_model(value)
+
+
+class ZoteroSeedPaperApplyRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=600)
+    topic_id: int | None = None
+    topic_name: str = Field(default="", max_length=240)
+    topic_description: str = Field(default="", max_length=2000)
+    candidate_sources: list[str] = Field(default_factory=list, max_length=20)
+    target_collection_key: str = Field(default="", max_length=64)
+    target_collection_name: str = Field(default="", max_length=240)
+    target_collection_path: str = Field(default="", max_length=1200)
+    library_id: str | int | None = None
+    library_type: Literal["user", "group"] = "user"
+    dry_run: bool = False
+
+    @field_validator("candidate_sources", mode="after")
+    @classmethod
+    def _trim_candidate_sources(cls, values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        cleaned: list[str] = []
+        for value in values:
+            text = str(value or "").strip()[:1000]
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            cleaned.append(text)
+        return cleaned
+
+
+@app.post("/api/topics/{topic_id}/zotero-sync")
+def sync_topic_zotero(topic_id: int, body: ZoteroSyncRequest, request: Request):
+    """Synchronize a topic with Zotero via the HTTP API.
+
+    This mirrors the CLI/MCP Zotero sync surface. Push dry-run is safe without
+    Zotero credentials; pull dry-run still needs Zotero read access because it
+    previews actual child notes and PDF annotations.
+    """
+    _require_zotero_chat_token(request)
+
+    with get_db() as conn:
+        topic = conn.execute(
+            "SELECT id, name FROM topics WHERE id = ?", (topic_id,)
+        ).fetchone()
+        if topic is None:
+            raise HTTPException(status_code=404, detail="Topic not found")
+
+    from research_harness import zotero_resource
+    from research_harness.zotero_sync import ZoteroSyncService
+
+    library_type = body.library_type or os.getenv("ZOTERO_LIBRARY_TYPE", "user")
+    library_id = _zotero_api_library_id(body.library_id, library_type)
+    client = None
+    needs_zotero_client = (not body.dry_run) or body.direction in {"pull", "both"}
+    if needs_zotero_client:
+        try:
+            client = zotero_resource.create_zotero_resource_from_env(
+                library_id=library_id,
+                library_type=library_type,
+                api_key=body.api_key or os.getenv("ZOTERO_API_KEY", ""),
+                base_url=body.api_base or os.getenv("ZOTERO_API_BASE", ""),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    service = ZoteroSyncService(
+        db_path=DB_PATH,
+        client=client,
+        library_id=library_id,
+        library_type=library_type,
+    )
+    push_result = None
+    pull_result = None
+    if body.direction in {"push", "both"}:
+        push_result = service.sync_topic(
+            topic["name"],
+            root_collection=body.root_collection,
+            topic_collection_name=body.topic_collection_name or body.target_collection_name,
+            target_collection_key=body.target_collection_key,
+            include_notes=not body.skip_notes,
+            dry_run=body.dry_run,
+            limit=body.limit,
+            force=body.force,
+            paper_ids=body.paper_ids,
+        )
+    if body.direction in {"pull", "both"}:
+        pull_result = service.pull_topic(
+            topic["name"],
+            dry_run=body.dry_run,
+            limit=body.limit,
+            include_rh_generated=body.include_rh_generated,
+        )
+
+    return {
+        "status": "success",
+        "summary": f"Zotero {body.direction} sync completed for topic {topic_id}",
+        "output": {
+            "topic_id": topic_id,
+            "topic": topic["name"],
+            "direction": body.direction,
+            "dry_run": body.dry_run,
+            "push": push_result.to_dict() if push_result is not None else None,
+            "pull": pull_result.to_dict() if pull_result is not None else None,
+        },
+    }
+
+
+@app.post("/api/zotero/seed-papers/apply")
+def apply_zotero_seed_papers(body: ZoteroSeedPaperApplyRequest, request: Request):
+    """Ingest previewed seed papers into an RH topic and push them to a Zotero collection.
+
+    This is the explicit confirmation endpoint for the collection-level Zotero
+    bootstrap flow. The preceding chat action only searches and previews
+    candidates; this endpoint is the first mutating step.
+    """
+
+    _require_zotero_chat_token(request)
+    if not body.candidate_sources:
+        raise HTTPException(status_code=400, detail="candidate_sources is required")
+    if not body.target_collection_key:
+        raise HTTPException(status_code=400, detail="target_collection_key is required")
+
+    topic_name = (
+        body.topic_name
+        or _last_zotero_path_segment(body.target_collection_path)
+        or body.target_collection_name
+        or body.query
+    ).strip()
+    if not topic_name:
+        raise HTTPException(status_code=400, detail="topic_name could not be inferred")
+
+    from research_harness import zotero_resource
+    from research_harness.zotero_sync import ZoteroSyncService
+
+    library_type = body.library_type or os.getenv("ZOTERO_LIBRARY_TYPE", "user")
+    library_id = _zotero_api_library_id(body.library_id, library_type)
+    client = None
+    if not body.dry_run:
+        try:
+            client = zotero_resource.create_zotero_resource_from_env(
+                library_id=library_id,
+                library_type=library_type,
+                api_key=os.getenv("ZOTERO_API_KEY", ""),
+                base_url=os.getenv("ZOTERO_API_BASE", ""),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    topic_id, created_topic = _get_or_create_zotero_seed_topic(
+        topic_id=body.topic_id,
+        topic_name=topic_name,
+        description=body.topic_description
+        or (
+            "Created from Zotero collection bootstrap.\n\n"
+            f"Initial query: {body.query}\n"
+            f"Collection: {body.target_collection_path or body.target_collection_name}"
+        ),
+    )
+
+    api = ResearchAPI(db_path=DB_PATH)
+    paper_ids: list[int] = []
+    ingest_errors: list[dict[str, str]] = []
+    for source in body.candidate_sources:
+        with get_db() as conn:
+            existing_id = _find_paper_id_in_topic_by_source(conn, topic_id, source)
+        if existing_id:
+            paper_ids.append(existing_id)
+            continue
+        try:
+            ingest_out = _ingest_paper_impl(
+                api,
+                source=source,
+                topic_id=topic_id,
+                relevance="high",
+            )
+            paper_id = int(ingest_out.get("paper_id", 0) or 0)
+            if paper_id:
+                paper_ids.append(paper_id)
+        except Exception as exc:  # pragma: no cover - provider failures vary by host
+            ingest_errors.append({"source": source, "error": str(exc)[:1000]})
+
+    paper_ids = list(dict.fromkeys(paper_ids))
+    push_result = None
+    if paper_ids:
+        service = ZoteroSyncService(
+            db_path=DB_PATH,
+            client=client,
+            library_id=library_id,
+            library_type=library_type,
+        )
+        push_result = service.sync_topic(
+            topic_name,
+            topic_collection_name=body.target_collection_name or topic_name,
+            target_collection_key=body.target_collection_key,
+            include_notes=True,
+            dry_run=body.dry_run,
+            paper_ids=paper_ids,
+        )
+
+    return {
+        "status": "success",
+        "summary": f"Seed papers applied to topic {topic_id}",
+        "output": {
+            "topic_id": topic_id,
+            "topic_name": topic_name,
+            "created_topic": created_topic,
+            "query": body.query,
+            "paper_ids": paper_ids,
+            "ingested_count": len(paper_ids),
+            "ingest_errors": ingest_errors,
+            "push": push_result.to_dict() if push_result is not None else None,
+        },
+    }
+
+
+@app.post("/api/zotero/chat")
+def zotero_chat(body: ZoteroChatRequest, request: Request):
+    """Local Zotero side-panel bridge for RH-owned paper/topic conversations.
+
+    The endpoint intentionally does not run Codex by default. It resolves the
+    selected Zotero item to RH entities, returns a concise Chinese response, and
+    emits a Codex handoff prompt that a terminal or later app-server bridge can
+    execute with explicit user control.
+    """
+    _require_zotero_chat_token(request)
+    with get_db() as conn:
+        matched = _resolve_zotero_chat_match(conn, body.item)
+
+    prompt = _build_zotero_codex_handoff_prompt(body, matched)
+    assistant_message = _build_zotero_chat_assistant_message(body, matched)
+    context_payload = _zotero_context_payload(body, matched)
+    return {
+        "status": "success",
+        "summary": "Zotero chat request prepared",
+        "output": {
+            "conversation_id": body.conversation_id
+            or _stable_zotero_chat_conversation_id(body, matched),
+            "matched": matched,
+            "context": context_payload,
+            "available_actions": _zotero_available_actions(context_payload, matched),
+            "assistant_message": assistant_message,
+            "codex_handoff": {
+                "mode": "manual",
+                "prompt": prompt,
+                "hint": "复制该 prompt 到 Codex 终端，或后续接入 Codex app-server/longtask 自动执行。",
+            },
+            "suggested_actions": _zotero_chat_suggested_actions(matched),
+        },
+    }
+
+
+@app.post("/api/zotero/warmup", status_code=202)
+def zotero_warmup(
+    body: ZoteroWarmupRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+):
+    """Pre-initialize the local Codex app-server used by Zotero chat.
+
+    Zotero calls this opportunistically when the panel is rendered. It returns
+    quickly: the expensive local subprocess initialization runs as a background
+    task, and no Codex thread/turn is started here.
+    """
+
+    _require_zotero_chat_token(request)
+    cwd = _zotero_codex_cwd()
+    effort = _zotero_codex_effort()
+    service_tier = _zotero_codex_service_tier()
+    background_tasks.add_task(
+        _warm_zotero_codex_pool,
+        cwd=cwd,
+        model=body.model,
+        effort=effort,
+        service_tier=service_tier,
+    )
+    return {
+        "status": "warming",
+        "model": body.model,
+        "cwd": str(cwd),
+        "effort": effort,
+        "service_tier": service_tier,
+    }
+
+
+@app.post("/api/zotero/chat/stream")
+def zotero_chat_stream(body: ZoteroChatRequest, request: Request):
+    """Stream a real Codex app-server answer for the Zotero side panel.
+
+    The stream preserves multi-turn context by mapping the Zotero/RH
+    conversation id to a persisted Codex thread id. The Codex side is run with
+    read-only sandbox and approvalPolicy=never so a Zotero question cannot
+    mutate the repo, RH DB, or Zotero state without a separate explicit path.
+    """
+    _require_zotero_chat_token(request)
+    with get_db() as conn:
+        matched = _resolve_zotero_chat_match(conn, body.item)
+
+    conversation_id = body.conversation_id or _stable_zotero_chat_conversation_id(
+        body, matched
+    )
+    store = _zotero_codex_thread_store()
+    existing_thread_id = store.get_thread_id(conversation_id)
+    prompt = _build_zotero_codex_turn_prompt(
+        body,
+        matched,
+        is_followup=bool(existing_thread_id),
+    )
+
+    return StreamingResponse(
+        _zotero_chat_sse_stream(
+            body=body,
+            matched=matched,
+            conversation_id=conversation_id,
+            existing_thread_id=existing_thread_id,
+            prompt=prompt,
+            store=store,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _zotero_chat_sse_stream(
+    *,
+    body: ZoteroChatRequest,
+    matched: dict[str, Any],
+    conversation_id: str,
+    existing_thread_id: str | None,
+    prompt: str,
+    store: Any,
+):
+    full_text: list[str] = []
+    current_thread_id = existing_thread_id
+    context_payload = _zotero_context_payload(body, matched)
+    available_actions = _zotero_available_actions(context_payload, matched)
+    yield _sse_encode(
+        "ready",
+        {
+            "conversation_id": conversation_id,
+            "thread_id": current_thread_id,
+            "model": body.model,
+            "matched": matched,
+            "context": context_payload,
+            "available_actions": available_actions,
+            "suggested_actions": _zotero_chat_suggested_actions(matched),
+        },
+    )
+    action_response = _maybe_prepare_zotero_chat_action(body, matched)
+    if action_response is not None:
+        if action_response.get("kind") == "action_preview":
+            preview_payload = dict(action_response["preview"])
+            yield _sse_encode("action_preview", preview_payload)
+            yield _sse_encode(
+                "done",
+                {
+                    "conversation_id": conversation_id,
+                    "thread_id": current_thread_id,
+                    "model": body.model,
+                    "assistant_message": preview_payload.get("message", ""),
+                    "matched": matched,
+                    "context": context_payload,
+                    "available_actions": available_actions,
+                    "action_preview": True,
+                    "suggested_actions": _zotero_chat_suggested_actions(matched),
+                },
+            )
+            return
+        if action_response.get("kind") == "assistant_message":
+            yield _sse_encode(
+                "done",
+                {
+                    "conversation_id": conversation_id,
+                    "thread_id": current_thread_id,
+                    "model": body.model,
+                    "assistant_message": action_response.get("message", ""),
+                    "matched": matched,
+                    "context": context_payload,
+                    "available_actions": available_actions,
+                    "suggested_actions": _zotero_chat_suggested_actions(matched),
+                },
+            )
+            return
+    yield _sse_encode(
+        "status",
+        {
+            "conversation_id": conversation_id,
+            "thread_id": current_thread_id,
+            "model": body.model,
+            "status": {
+                "type": "warming",
+                "message": "正在连接本地 Codex 通道…",
+            },
+        },
+    )
+    try:
+        for event in _stream_zotero_codex_turn(
+            conversation_id=conversation_id,
+            existing_thread_id=existing_thread_id,
+            prompt=prompt,
+            matched=matched,
+            model=body.model,
+            image_urls=body.item.screenshots,
+        ):
+            event_data = dict(event.data)
+            thread_id = event_data.get("thread_id")
+            if thread_id:
+                current_thread_id = str(thread_id)
+                _save_zotero_codex_thread(
+                    store=store,
+                    conversation_id=conversation_id,
+                    thread_id=current_thread_id,
+                    matched=matched,
+                    item=body.item,
+                )
+            if event.event == "delta":
+                text = str(event_data.get("text") or "")
+                if text:
+                    full_text.append(text)
+                yield _sse_encode("delta", {"text": text})
+            elif event.event == "done":
+                yield _sse_encode(
+                    "done",
+                    {
+                        "conversation_id": conversation_id,
+                        "thread_id": current_thread_id,
+                        "model": body.model,
+                        "assistant_message": "".join(full_text),
+                        "matched": matched,
+                        "context": context_payload,
+                        "available_actions": available_actions,
+                        "suggested_actions": _zotero_chat_suggested_actions(matched),
+                    },
+                )
+            elif event.event in {"started", "status"}:
+                yield _sse_encode(event.event, event_data)
+    except Exception as exc:  # pragma: no cover - exact Codex failures vary by host
+        logger.exception("Zotero Codex stream failed")
+        yield _sse_encode(
+            "error",
+            {
+                "message": str(exc),
+                "conversation_id": conversation_id,
+                "thread_id": current_thread_id,
+                "model": body.model,
+            },
+        )
+
+
+def _sse_encode(event: str, data: dict[str, Any]) -> str:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _zotero_codex_thread_store():
+    from research_harness_mcp.codex_app_server import ZoteroCodexConversationStore
+
+    store_path = Path(
+        os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_THREADS_PATH")
+        or str(DB_PATH.parent / "zotero-codex-threads.json")
+    )
+    return ZoteroCodexConversationStore(store_path)
+
+
+def _zotero_codex_pool():
+    global _ZOTERO_CODEX_POOL
+    if _ZOTERO_CODEX_POOL is not None:
+        return _ZOTERO_CODEX_POOL
+    from research_harness_mcp.codex_app_server import CodexAppServerPool
+
+    with _ZOTERO_CODEX_POOL_LOCK:
+        if _ZOTERO_CODEX_POOL is None:
+            _ZOTERO_CODEX_POOL = CodexAppServerPool()
+        return _ZOTERO_CODEX_POOL
+
+
+def _zotero_codex_cwd() -> Path:
+    return Path(
+        os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_CWD")
+        or os.environ.get("RESEARCH_HARNESS_CODEX_CWD")
+        or str(Path(__file__).resolve().parents[3])
+    ).resolve()
+
+
+def _zotero_codex_effort() -> str:
+    return os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_EFFORT", "").strip() or "low"
+
+
+def _zotero_codex_service_tier() -> str | None:
+    return (
+        os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_SERVICE_TIER", "").strip()
+        or None
+    )
+
+
+def _warm_zotero_codex_pool(
+    *,
+    cwd: str | Path,
+    model: str,
+    effort: str,
+    service_tier: str | None,
+) -> None:
+    try:
+        _zotero_codex_pool().prewarm(
+            cwd=cwd,
+            model=model,
+            effort=effort,
+            service_tier=service_tier,
+        )
+        logger.info("Prewarmed Zotero Codex app-server model=%s cwd=%s", model, cwd)
+    except Exception:
+        logger.warning(
+            "Failed to prewarm Zotero Codex app-server model=%s cwd=%s",
+            model,
+            cwd,
+            exc_info=True,
+        )
+
+
+def _save_zotero_codex_thread(
+    *,
+    store: Any,
+    conversation_id: str,
+    thread_id: str,
+    matched: dict[str, Any],
+    item: ZoteroChatItemContext,
+) -> None:
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    try:
+        store.save_thread(
+            conversation_id=conversation_id,
+            thread_id=thread_id,
+            paper_id=paper.get("id"),
+            topic_id=topic.get("id"),
+            zotero_item_key=item.zotero_item_key,
+        )
+    except Exception:
+        logger.warning("Failed to persist Zotero Codex thread mapping", exc_info=True)
+
+
+def _stream_zotero_codex_turn(
+    *,
+    conversation_id: str,
+    existing_thread_id: str | None,
+    prompt: str,
+    matched: dict[str, Any],
+    model: str,
+    image_urls: list[str] | None = None,
+) -> Any:
+    instructions = _zotero_codex_base_instructions()
+    cwd = _zotero_codex_cwd()
+    effort = _zotero_codex_effort()
+    service_tier = _zotero_codex_service_tier()
+    logger.info(
+        "Streaming Zotero Codex turn conversation=%s model=%s cwd=%s existing_thread=%s",
+        conversation_id,
+        model,
+        cwd,
+        bool(existing_thread_id),
+    )
+    yield from _zotero_codex_pool().stream_turn(
+        cwd=cwd,
+        instructions=instructions,
+        existing_thread_id=existing_thread_id,
+        prompt=prompt,
+        model=model,
+        effort=effort,
+        service_tier=service_tier,
+        image_urls=image_urls or None,
+    )
+
+
+def _zotero_codex_base_instructions() -> str:
+    return """你是 Research Harness 的 Zotero 侧边栏科研助手。
+
+工作边界：
+- 默认回答本身只读；不要声称自己已经写入文件、数据库、Zotero 或远程资源。
+- 如果用户要求把 RH 论文同步/写入 Zotero，优先引导用户使用侧边栏的确认式“同步”动作，或说明应走 RH API 的 dry-run -> 用户确认 -> apply 流程；不要编造不存在的本地脚本。
+- 只有本次请求已由 RH API 返回 action_preview 时，侧边栏才会出现确认按钮；不要让用户点击不存在的“确认/apply”按钮。
+- 目前侧边栏确认按钮只接入“把 RH 论文导入当前目录”。PDF 附件、标签/元数据编辑等写入动作尚未接入按钮时，直接说明“还没有接入侧边栏确认按钮”，不要假装可点击推进。
+- 优先使用当前 prompt 中的 RH paper/topic/provenance 上下文；需要更多证据时说明应由用户在 Codex 终端执行的 RH primitive。
+- 用中文回答，短而有信息密度；不要机械复述“我已匹配到”。
+- 如果写入需求超出侧边栏现有确认动作，先给出计划、风险和可实现的 action 设计。
+- 如果匹配不到 RH paper/topic，给出同步或入库路径。
+""".strip()
+
+
+def _build_zotero_codex_turn_prompt(
+    body: ZoteroChatRequest,
+    matched: dict[str, Any],
+    *,
+    is_followup: bool,
+) -> str:
+    handoff = _build_zotero_codex_handoff_prompt(body, matched)
+    if not is_followup:
+        return "\n".join(
+            [
+                handoff,
+                "",
+                "## 侧边栏实时回答要求",
+                "- 直接回答用户问题，不要输出交接说明。",
+                "- 控制在 3-6 个要点；必要时给出下一步 RH 操作建议。",
+            ]
+        )
+    return "\n".join(
+        [
+            "这是同一个 Zotero/RH 会话的后续问题，请沿用当前 Codex thread 的多轮上下文。",
+            "下面仍提供最新 Zotero/RH 匹配信息，若与历史上下文冲突，以最新信息为准。",
+            "",
+            handoff,
+            "",
+            "## 侧边栏实时回答要求",
+            "- 直接接着上一轮回答，不要重新介绍系统。",
+            "- 用中文，短而具体。",
+        ]
+    )
+
+
+def _require_zotero_chat_token(request: Request) -> None:
+    expected = os.environ.get("RESEARCH_HARNESS_ZOTERO_CHAT_TOKEN", "").strip()
+    if not expected:
+        return
+    provided = request.headers.get("X-RH-Zotero-Token", "").strip()
+    authorization = request.headers.get("Authorization", "")
+    if authorization.startswith("Bearer "):
+        provided = authorization.removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Zotero chat token required")
+
+
+def _resolve_zotero_chat_match(
+    conn: sqlite3.Connection, item: ZoteroChatItemContext
+) -> dict[str, Any]:
+    """Resolve Zotero-side context to RH paper/topic records.
+
+    Match order is deliberately RH-first:
+    1. Existing zotero_item_links entry, if this item was pushed by RH.
+    2. RH tags (`rh-paper-id:*`, `rh-topic:*`) written during sync.
+    3. Bibliographic fallback by DOI, arXiv ID, then title.
+    """
+    tag_values = _normalize_zotero_chat_tags(item.tags)
+    library_id = _normalize_zotero_library_id(item.library_id)
+
+    link_row = _find_zotero_linked_paper(
+        conn,
+        zotero_item_key=item.zotero_item_key,
+        library_id=library_id,
+        library_type=item.library_type,
+    )
+    if link_row is not None:
+        return _zotero_chat_match_payload(link_row, source="zotero_item_links")
+
+    tag_paper_id = _extract_rh_paper_id_tag(tag_values)
+    tag_topic = _extract_rh_topic_tag(tag_values)
+    if tag_paper_id is not None:
+        row = _find_paper_topic_for_chat(
+            conn,
+            paper_id=tag_paper_id,
+            topic_hint=tag_topic,
+        )
+        if row is not None:
+            return _zotero_chat_match_payload(row, source="rh_tags")
+
+    bibliographic_row = _find_paper_by_bibliographic_context(conn, item)
+    if bibliographic_row is not None:
+        return _zotero_chat_match_payload(
+            bibliographic_row, source="bibliographic_fallback"
+        )
+
+    return {
+        "source": "unmatched",
+        "paper": None,
+        "topic": None,
+        "zotero_link": None,
+        "confidence": 0.0,
+    }
+
+
+def _find_zotero_linked_paper(
+    conn: sqlite3.Connection,
+    *,
+    zotero_item_key: str,
+    library_id: str,
+    library_type: str,
+) -> sqlite3.Row | None:
+    item_key = str(zotero_item_key or "").strip()
+    if not item_key:
+        return None
+    library_id = str(library_id or "").strip()
+    library_type = str(library_type or "").strip()
+    library_filter = ""
+    params: list[Any] = [item_key]
+    if library_id:
+        library_filter = "AND zil.zotero_library_id = ?"
+        params.append(library_id)
+        if library_type:
+            library_filter += " AND zil.zotero_library_type = ?"
+            params.append(library_type)
+    try:
+        return conn.execute(
+            f"""
+            SELECT
+                p.id AS paper_id, p.title, p.authors, p.year, p.venue, p.doi,
+                p.arxiv_id, p.url, p.abstract, p.status, p.deep_read,
+                t.id AS topic_id, t.name AS topic_name,
+                zil.zotero_library_id, zil.zotero_library_type,
+                zil.zotero_collection_key, zil.zotero_item_key,
+                zil.zotero_note_key, zil.last_synced_at
+            FROM zotero_item_links zil
+            JOIN papers p ON p.id = zil.paper_id
+            JOIN topics t ON t.id = zil.topic_id
+            WHERE zil.zotero_item_key = ?
+              {library_filter}
+            ORDER BY
+                CASE WHEN zil.zotero_library_id = ? THEN 0 ELSE 1 END,
+                CASE WHEN zil.zotero_library_type = ? THEN 0 ELSE 1 END,
+                zil.last_synced_at DESC
+            LIMIT 1
+            """,
+            (*params, library_id, library_type),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return None
+
+
+def _find_paper_topic_for_chat(
+    conn: sqlite3.Connection, *, paper_id: int, topic_hint: str
+) -> sqlite3.Row | None:
+    topic_hint = topic_hint.strip()
+    params: list[Any] = [paper_id]
+    topic_filter = ""
+    if topic_hint:
+        if topic_hint.isdigit():
+            topic_filter = "AND t.id = ?"
+            params.append(int(topic_hint))
+        else:
+            topic_filter = "AND t.name = ?"
+            params.append(topic_hint)
+    row = conn.execute(
+        f"""
+        SELECT
+            p.id AS paper_id, p.title, p.authors, p.year, p.venue, p.doi,
+            p.arxiv_id, p.url, p.abstract, p.status, p.deep_read,
+            t.id AS topic_id, t.name AS topic_name,
+            '' AS zotero_library_id, '' AS zotero_library_type,
+            '' AS zotero_collection_key, '' AS zotero_item_key,
+            '' AS zotero_note_key, '' AS last_synced_at
+        FROM papers p
+        LEFT JOIN paper_topics pt ON pt.paper_id = p.id
+        LEFT JOIN topics t ON t.id = pt.topic_id
+        WHERE p.id = ?
+        {topic_filter}
+        ORDER BY t.id IS NULL, t.id
+        LIMIT 1
+        """,
+        params,
+    ).fetchone()
+    if row is None and topic_hint:
+        return _find_paper_topic_for_chat(conn, paper_id=paper_id, topic_hint="")
+    return row
+
+
+def _find_paper_by_bibliographic_context(
+    conn: sqlite3.Connection, item: ZoteroChatItemContext
+) -> sqlite3.Row | None:
+    doi = _normalize_doi(item.doi)
+    if doi:
+        row = _find_paper_by_field(conn, "doi", doi)
+        if row is not None:
+            return row
+    arxiv_id = _normalize_arxiv_id(item.arxiv_id or item.url)
+    if arxiv_id:
+        row = _find_paper_by_field(conn, "arxiv_id", arxiv_id)
+        if row is not None:
+            return row
+    title = _normalize_title_for_match(item.title)
+    if title:
+        return conn.execute(
+            """
+            SELECT
+                p.id AS paper_id, p.title, p.authors, p.year, p.venue, p.doi,
+                p.arxiv_id, p.url, p.abstract, p.status, p.deep_read,
+                t.id AS topic_id, t.name AS topic_name,
+                '' AS zotero_library_id, '' AS zotero_library_type,
+                '' AS zotero_collection_key, '' AS zotero_item_key,
+                '' AS zotero_note_key, '' AS last_synced_at
+            FROM papers p
+            LEFT JOIN paper_topics pt ON pt.paper_id = p.id
+            LEFT JOIN topics t ON t.id = pt.topic_id
+            WHERE lower(trim(p.title)) = lower(trim(?))
+            ORDER BY t.id IS NULL, t.id
+            LIMIT 1
+            """,
+            (title,),
+        ).fetchone()
+    return None
+
+
+def _find_paper_by_field(
+    conn: sqlite3.Connection, field: Literal["doi", "arxiv_id"], value: str
+) -> sqlite3.Row | None:
+    return conn.execute(
+        f"""
+        SELECT
+            p.id AS paper_id, p.title, p.authors, p.year, p.venue, p.doi,
+            p.arxiv_id, p.url, p.abstract, p.status, p.deep_read,
+            t.id AS topic_id, t.name AS topic_name,
+            '' AS zotero_library_id, '' AS zotero_library_type,
+            '' AS zotero_collection_key, '' AS zotero_item_key,
+            '' AS zotero_note_key, '' AS last_synced_at
+        FROM papers p
+        LEFT JOIN paper_topics pt ON pt.paper_id = p.id
+        LEFT JOIN topics t ON t.id = pt.topic_id
+        WHERE lower(p.{field}) = lower(?)
+        ORDER BY t.id IS NULL, t.id
+        LIMIT 1
+        """,
+        (value,),
+    ).fetchone()
+
+
+def _zotero_chat_match_payload(
+    row: sqlite3.Row, *, source: str
+) -> dict[str, Any]:
+    paper = {
+        "id": int(row["paper_id"]),
+        "title": row["title"] or "",
+        "authors": _parse_json_field(row["authors"], []),
+        "year": row["year"],
+        "venue": row["venue"] or "",
+        "doi": row["doi"] or "",
+        "arxiv_id": row["arxiv_id"] or "",
+        "url": row["url"] or "",
+        "abstract": row["abstract"] or "",
+        "status": row["status"] or "",
+        "deep_read": bool(row["deep_read"]),
+    }
+    topic_id = row["topic_id"]
+    topic = (
+        {"id": int(topic_id), "name": row["topic_name"] or ""}
+        if topic_id is not None
+        else None
+    )
+    zotero_link = None
+    if row["zotero_item_key"]:
+        zotero_link = {
+            "zotero_library_id": row["zotero_library_id"] or "",
+            "zotero_library_type": row["zotero_library_type"] or "",
+            "zotero_collection_key": row["zotero_collection_key"] or "",
+            "zotero_item_key": row["zotero_item_key"] or "",
+            "zotero_note_key": row["zotero_note_key"] or "",
+            "last_synced_at": row["last_synced_at"] or "",
+        }
+    confidence = 1.0 if source in {"zotero_item_links", "rh_tags"} else 0.7
+    return {
+        "source": source,
+        "paper": paper,
+        "topic": topic,
+        "zotero_link": zotero_link,
+        "confidence": confidence,
+    }
+
+
+def _build_zotero_chat_assistant_message(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> str:
+    paper = matched.get("paper")
+    topic = matched.get("topic")
+    if not paper:
+        return (
+            "我还没有把当前 Zotero 条目匹配到 RH 论文库。建议先执行一次 "
+            "`rh zotero sync --direction push` 或在 Zotero 条目里保留 "
+            "`rh-paper-id:*` 标签；也可以把 DOI/arXiv/title 发给 RH 入库。"
+        )
+
+    topic_text = f"；主题：{topic['name']}" if topic else ""
+    deep_read_text = "已精读" if paper.get("deep_read") else "尚未标记精读"
+    selected_text_hint = (
+        "我也收到了你在 Zotero 中选择的文本，会把它作为局部阅读上下文。"
+        if body.item.selected_text
+        else "如果你在 PDF/笔记中选中文本再提问，我会把选区一起交给 RH/Codex。"
+    )
+    return (
+        f"我已匹配到 RH paper #{paper['id']}《{paper['title']}》"
+        f"{topic_text}；当前状态：{paper.get('status') or 'unknown'}，{deep_read_text}。"
+        f"{selected_text_hint} 下一步可以让 Codex 基于 RH provenance 检查 deepread、"
+        "导入人类笔记，或生成针对当前问题的阅读/实验建议。"
+    )
+
+
+def _build_zotero_codex_handoff_prompt(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> str:
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    item = body.item
+    lines = [
+        "你正在 Research Harness 项目中接手一个来自 Zotero 侧边栏的实时请求。",
+        "请优先使用 RH 数据库、已有 deepread/provenance/topic notes，而不是重新发明状态。",
+        "",
+        "## 用户问题",
+        body.message.strip(),
+        "",
+        "## RH 匹配结果",
+        f"- match_source: {matched.get('source')}",
+        f"- confidence: {matched.get('confidence')}",
+        f"- topic_id: {topic.get('id', '')}",
+        f"- topic_name: {topic.get('name', '')}",
+        f"- paper_id: {paper.get('id', '')}",
+        f"- paper_title: {paper.get('title') or item.title}",
+        f"- doi: {paper.get('doi') or item.doi}",
+        f"- arxiv_id: {paper.get('arxiv_id') or item.arxiv_id}",
+        "",
+        "## Zotero 当前上下文",
+        f"- zotero_item_key: {item.zotero_item_key}",
+        f"- library_id: {_normalize_zotero_library_id(item.library_id)}",
+        f"- title: {item.title}",
+        f"- tags: {', '.join(item.tags[:40])}",
+    ]
+    if item.selected_text:
+        lines.extend(["", "## Zotero 选中文本", _truncate_text(item.selected_text, 6000)])
+    if item.note_text:
+        lines.extend(["", "## Zotero 笔记片段", _truncate_text(item.note_text, 6000)])
+    if item.screenshots:
+        lines.extend(
+            [
+                "",
+                "## Zotero 截图",
+                f"用户附带了 {len(item.screenshots)} 张截图，请结合图像内容回答。",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "## 输出要求",
+            "- 用中文回答，简洁但给出可执行下一步。",
+            "- 如果需要修改 RH/Zotero 状态，先说明计划和风险；不要绕过 RH sync/provenance 规则。",
+            "- 若用户要把论文/PDF 加入 Zotero 并希望可读性增强，触发 paper-reading-annotation skill，生成博士生精读级 PDF 高亮/批注。",
+            "- 若匹配不到 RH paper/topic，请建议入库或同步路径。",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _zotero_context_payload(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> dict[str, Any]:
+    """Summarize the Zotero surface state for the side panel.
+
+    The plugin needs to render different capabilities when the user is on a
+    concrete item vs. when they have navigated back to a collection/library.
+    Keep this payload model-owned and deterministic; action execution still
+    requires a later backend-provided preview/apply spec.
+    """
+
+    item = body.item
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    directory = {
+        "key": item.current_directory_key,
+        "name": item.current_directory_name,
+        "path": item.current_directory_path,
+        "library_id": _normalize_zotero_library_id(item.library_id),
+        "library_type": str(item.library_type or "user").strip() or "user",
+    }
+    has_item_context = bool(
+        item.zotero_item_key
+        or item.title
+        or item.doi
+        or item.arxiv_id
+        or paper.get("id")
+    )
+    has_collection_context = bool(
+        directory["key"] or directory["name"] or directory["path"]
+    )
+    if has_item_context:
+        kind = "paper"
+    elif has_collection_context:
+        kind = "collection"
+    else:
+        kind = "library"
+    return {
+        "kind": kind,
+        "zotero_item_key": item.zotero_item_key,
+        "zotero_title": item.title,
+        "paper_id": paper.get("id"),
+        "paper_title": paper.get("title"),
+        "topic_id": topic.get("id"),
+        "topic_name": topic.get("name"),
+        "directory": directory,
+    }
+
+
+def _zotero_available_actions(
+    context: dict[str, Any], matched: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Return mode-specific action descriptors for passive UI affordances."""
+
+    kind = context.get("kind")
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    directory = context.get("directory") or {}
+    actions: list[dict[str, Any]] = []
+    if kind == "paper":
+        actions.append(
+            {
+                "action_type": "ask_rh_about_current_paper",
+                "label": "围绕当前论文继续问 RH",
+                "requires_preview": False,
+                "paper_id": paper.get("id"),
+                "topic_id": topic.get("id"),
+            }
+        )
+        if paper.get("id"):
+            actions.append(
+                {
+                    "action_type": "zotero_attach_pdf",
+                    "label": "把 RH PDF 附加到当前 Zotero 条目",
+                    "requires_preview": True,
+                    "paper_id": paper.get("id"),
+                    "topic_id": topic.get("id"),
+                }
+            )
+        if paper.get("id") and directory.get("key"):
+            actions.append(
+                {
+                    "action_type": "sync_current_paper_to_collection",
+                    "label": "把当前 RH 论文同步到当前目录",
+                    "requires_preview": True,
+                    "paper_id": paper.get("id"),
+                    "topic_id": topic.get("id"),
+                    "target_collection_key": directory.get("key"),
+                }
+            )
+        return actions
+
+    actions.extend(
+        [
+            {
+                "action_type": "init_topic_from_collection",
+                "label": "从当前 Zotero 目录初始化 RH 主题",
+                "requires_preview": True,
+                "target_collection_key": directory.get("key"),
+                "target_collection_name": directory.get("name"),
+            },
+            {
+                "action_type": "sync_rh_missing_papers_to_collection",
+                "label": "选择 RH 推荐/缺失论文补充到当前 Zotero 目录",
+                "requires_preview": True,
+                "target_collection_key": directory.get("key"),
+                "target_collection_name": directory.get("name"),
+            },
+        ]
+    )
+    return actions
+
+
+def _prepare_zotero_seed_papers_action(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> dict[str, Any] | None:
+    if not _looks_like_zotero_seed_search_request(body.message):
+        return None
+
+    directory_name = (
+        body.item.current_directory_path
+        or body.item.current_directory_name
+        or ""
+    ).strip()
+    if not directory_name or not str(body.item.current_directory_key or "").strip():
+        return {
+            "kind": "assistant_message",
+            "message": "要让 RH 为新目录找种子论文，请先在左侧选中一个具体 Zotero 目录。",
+        }
+
+    with get_db() as conn:
+        topic = _infer_zotero_import_topic(conn, body, matched)
+
+    topic_id = int(topic["id"]) if topic and topic.get("id") is not None else None
+    topic_name = (
+        str(topic.get("name") or "").strip()
+        if topic
+        else _last_zotero_path_segment(directory_name)
+        or body.item.current_directory_name
+    )
+    query = _zotero_seed_search_query(body, topic_name=topic_name)
+    requested_count = _extract_zotero_import_count(body.message) or 5
+    max_results = max(1, min(requested_count, 12))
+
+    api = ResearchAPI(db_path=DB_PATH)
+    try:
+        search_out = _search_papers_impl(
+            api,
+            query=query,
+            topic_id=topic_id,
+            max_results=max_results,
+        )
+    except Exception as exc:
+        return {
+            "kind": "assistant_message",
+            "message": f"我尝试为当前目录检索种子论文，但 paper_search 失败：{exc}",
+        }
+
+    raw_candidates = search_out.get("papers") or []
+    records: list[dict[str, Any]] = []
+    candidate_sources: list[str] = []
+    for candidate in raw_candidates:
+        if not isinstance(candidate, dict):
+            continue
+        source = _pick_candidate_source(candidate)
+        if not source or source in candidate_sources:
+            continue
+        candidate_sources.append(source)
+        records.append(_zotero_seed_candidate_preview(candidate, source=source))
+        if len(records) >= max_results:
+            break
+
+    if not records:
+        errors = search_out.get("provider_errors") or []
+        suffix = f"\n\n检索错误：{'; '.join(map(str, errors))}" if errors else ""
+        return {
+            "kind": "assistant_message",
+            "message": f"我还没有为“{directory_name}”找到可用的种子论文。你可以换一个更具体的关键词。{suffix}",
+        }
+
+    library_type = str(body.item.library_type or "user").strip() or "user"
+    library_id = _zotero_api_library_id(body.item.library_id, library_type)
+    target_name = body.item.current_directory_name or directory_name
+    return {
+        "kind": "action_preview",
+        "preview": {
+            "action_type": "zotero_seed_paper_search",
+            "title": "为当前目录找种子论文",
+            "message": (
+                f"我用“{query}”为当前 Zotero 目录“{directory_name}”找到了 "
+                f"{len(records)} 篇候选种子论文。确认后会创建/复用 RH 主题，"
+                "把这些论文入库，并同步到当前 Zotero 目录。"
+            ),
+            "query": query,
+            "topic_id": topic_id,
+            "topic_name": topic_name,
+            "source_label": f"RH paper_search · {query}",
+            "target_collection_key": body.item.current_directory_key,
+            "target_collection_name": target_name,
+            "target_collection_path": directory_name,
+            "target_label": directory_name,
+            "library_id": library_id,
+            "library_type": library_type,
+            "planned_count": len(records),
+            "candidate_sources": candidate_sources,
+            "records": records,
+            "notice": "这是空目录/新主题的启动流：先预览候选论文，再由确认动作写入 RH 与 Zotero。",
+            "confirm_label": "入库并导入",
+            "cancel_label": "取消",
+            "list_label": "查看候选",
+            "apply": {
+                "type": "http_json",
+                "method": "POST",
+                "path": "/api/zotero/seed-papers/apply",
+                "label": "入库并导入",
+                "payload": {
+                    "query": query,
+                    "topic_id": topic_id,
+                    "topic_name": topic_name,
+                    "topic_description": (
+                        "Created from Zotero collection bootstrap.\n\n"
+                        f"Initial query: {query}\n"
+                        f"Collection: {directory_name}"
+                    ),
+                    "candidate_sources": candidate_sources,
+                    "target_collection_key": body.item.current_directory_key,
+                    "target_collection_name": target_name,
+                    "target_collection_path": directory_name,
+                    "library_id": library_id,
+                    "library_type": library_type,
+                    "dry_run": False,
+                },
+            },
+        },
+    }
+
+
+def _zotero_seed_candidate_preview(
+    candidate: dict[str, Any], *, source: str
+) -> dict[str, Any]:
+    authors = candidate.get("authors") or []
+    if not isinstance(authors, list):
+        authors = [str(authors)]
+    return {
+        "title": str(candidate.get("title") or "Untitled"),
+        "authors": [str(author) for author in authors[:8] if str(author).strip()],
+        "year": candidate.get("year"),
+        "venue": str(candidate.get("venue") or ""),
+        "doi": str(candidate.get("doi") or ""),
+        "arxiv_id": str(candidate.get("arxiv_id") or ""),
+        "url": str(candidate.get("url") or ""),
+        "source": source,
+        "snippet": str(candidate.get("snippet") or candidate.get("abstract") or "")[:800],
+        "citation_count": candidate.get("citation_count"),
+    }
+
+
+def _maybe_prepare_zotero_chat_action(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> dict[str, Any] | None:
+    pdf_action = _prepare_zotero_pdf_attachment_action(body, matched)
+    if pdf_action is not None:
+        return pdf_action
+
+    seed_action = _prepare_zotero_seed_papers_action(body, matched)
+    if seed_action is not None:
+        return seed_action
+
+    if _looks_like_unsupported_zotero_write_request(body.message):
+        return {
+            "kind": "assistant_message",
+            "message": _unsupported_zotero_write_message(body, matched),
+        }
+
+    if _looks_like_zotero_directory_capability_question(body, matched):
+        context_payload = _zotero_context_payload(body, matched)
+        actions = _zotero_available_actions(context_payload, matched)
+        action_lines = "\n".join(
+            f"- {action['label']}" for action in actions if action.get("label")
+        )
+        return {
+            "kind": "assistant_message",
+            "message": (
+                "当前是 Zotero 目录/文库模式。我会把这里当作一个待初始化或待补全的 RH 入口，"
+                "而不是套用单篇论文界面。\n\n"
+                f"可用能力：\n{action_lines}"
+            ),
+        }
+
+    if not _looks_like_zotero_import_request(body.message):
+        return None
+
+    directory_name = (
+        body.item.current_directory_path
+        or body.item.current_directory_name
+        or ""
+    ).strip()
+    if not directory_name or not str(body.item.current_directory_key or "").strip():
+        return {
+            "kind": "assistant_message",
+            "message": "要把 RH 论文导入 Zotero，请先在左侧选中一个具体目录。",
+        }
+
+    with get_db() as conn:
+        topic = _infer_zotero_import_topic(conn, body, matched)
+        if topic is None:
+            return {
+                "kind": "assistant_message",
+                "message": (
+                    "我还不知道该从哪个 RH 主题导入。请选中一篇已接入 RH 的论文，"
+                    "或在消息里明确主题名 / topic id。"
+                ),
+            }
+
+        from research_harness.zotero_sync import (
+            filter_sync_records_by_paper_ids,
+            load_topic_sync_records,
+            _record_preview,
+        )
+
+        records = load_topic_sync_records(conn, topic_name=topic["name"], limit=None)
+        current_paper_only = _message_targets_current_paper_only(body.message)
+        matched_paper = matched.get("paper") or {}
+        if current_paper_only and matched_paper.get("id"):
+            records = filter_sync_records_by_paper_ids(
+                records,
+                [int(matched_paper["id"])],
+            )
+
+        deep_read_only = _message_targets_deep_read_only(body.message)
+        if deep_read_only:
+            records = [record for record in records if record.deep_read]
+
+        requested_count = _extract_zotero_import_count(body.message)
+        if requested_count is not None:
+            records = records[:requested_count]
+
+        if not records:
+            if current_paper_only:
+                return {
+                    "kind": "assistant_message",
+                    "message": "当前论文不在可导入范围内，或还没有关联到这个 RH 主题。",
+                }
+            if deep_read_only:
+                return {
+                    "kind": "assistant_message",
+                    "message": f"主题“{topic['name']}”下暂时没有满足条件的精读论文可导入。",
+                }
+            return {
+                "kind": "assistant_message",
+                "message": f"主题“{topic['name']}”下暂时没有可导入论文。",
+            }
+
+        paper_ids = [record.paper_id for record in records]
+        library_type = str(body.item.library_type or "user").strip() or "user"
+        library_id = _zotero_api_library_id(body.item.library_id, library_type)
+        known_existing_count = _count_existing_zotero_collection_links(
+            conn,
+            topic_id=int(topic["id"]),
+            target_collection_key=body.item.current_directory_key,
+            library_id=library_id,
+            library_type=library_type,
+            paper_ids=paper_ids,
+        )
+        filter_bits: list[str] = []
+        if current_paper_only:
+            filter_bits.append("当前论文")
+        elif deep_read_only:
+            filter_bits.append("仅精读")
+        if requested_count is not None:
+            filter_bits.append(f"前 {requested_count} 篇")
+        filter_label = " · ".join(filter_bits)
+        source_label = (
+            f"当前论文 · {matched_paper.get('title', '')}".strip(" ·")
+            if current_paper_only and matched_paper.get("title")
+            else f"RH 主题 · {topic['name']}"
+        )
+        summary_scope = (
+            f"当前论文《{matched_paper.get('title', '')}》"
+            if current_paper_only and matched_paper.get("title")
+            else f"主题“{topic['name']}”"
+        )
+        summary_filters = []
+        if deep_read_only:
+            summary_filters.append("精读")
+        if requested_count is not None:
+            summary_filters.append(f"{len(records)} 篇")
+        elif len(records) == 1:
+            summary_filters.append("1 篇")
+        filter_text = (
+            f"（{'，'.join(summary_filters)}）" if summary_filters else ""
+        )
+        return {
+            "kind": "action_preview",
+            "preview": {
+                "action_type": "sync_rh_papers_to_collection",
+                "title": "导入到当前目录",
+                "message": (
+                    f"我可以把 {summary_scope}{filter_text} 导入当前目录“{directory_name}”。"
+                    "确认后我会直接执行。"
+                ),
+                "topic_id": int(topic["id"]),
+                "source_label": source_label,
+                "target_collection_key": body.item.current_directory_key,
+                "target_collection_name": body.item.current_directory_name or directory_name,
+                "target_collection_path": directory_name,
+                "target_label": directory_name,
+                "library_id": library_id,
+                "library_type": library_type,
+                "planned_count": len(records),
+                "known_existing_count": known_existing_count,
+                "filter_label": filter_label,
+                "paper_ids": paper_ids,
+                "records": [_record_preview(record) for record in records],
+                "notice": "将写入当前 Zotero 目录，并保留 RH 标签与来源映射。",
+                "confirm_label": "确认导入",
+                "cancel_label": "取消",
+                "list_label": "查看清单",
+                "apply": {
+                    "type": "http_json",
+                    "method": "POST",
+                    "path": f"/api/topics/{int(topic['id'])}/zotero-sync",
+                    "label": "确认导入",
+                    "payload": {
+                        "direction": "push",
+                        "dry_run": False,
+                        "paper_ids": paper_ids,
+                        "target_collection_key": body.item.current_directory_key,
+                        "target_collection_name": body.item.current_directory_name
+                        or directory_name,
+                        "target_collection_path": directory_name,
+                        "library_id": library_id,
+                        "library_type": library_type,
+                    },
+                },
+            },
+        }
+
+
+def _prepare_zotero_pdf_attachment_action(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> dict[str, Any] | None:
+    if not _looks_like_zotero_pdf_attachment_request(body.message):
+        return None
+
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    if not paper.get("id"):
+        return {
+            "kind": "assistant_message",
+            "message": (
+                "我识别到你想给当前 Zotero 条目附加 PDF，但当前条目还没有匹配到 RH paper。"
+                "请先通过 DOI/arXiv/title 入库或同步到 RH，再执行 PDF 附件动作。"
+            ),
+        }
+
+    parent_item_key = str(body.item.zotero_item_key or "").strip()
+    if not parent_item_key:
+        return {
+            "kind": "assistant_message",
+            "message": "要附加 PDF，请先选中一个具体 Zotero 条目，而不是目录或文库。",
+        }
+
+    with get_db() as conn:
+        row = conn.execute(
+            """
+            SELECT id, title, doi, arxiv_id, pdf_path
+            FROM papers
+            WHERE id = ?
+            """,
+            (int(paper["id"]),),
+        ).fetchone()
+    if row is None:
+        return {
+            "kind": "assistant_message",
+            "message": f"RH paper #{paper['id']} 不存在，无法生成 PDF 附件预览。",
+        }
+
+    pdf_path, pdf_error = _trusted_pdf_path_for_zotero(row["pdf_path"] or "")
+    if pdf_error:
+        arxiv_id = row["arxiv_id"] or body.item.arxiv_id
+        source_hint = f"（arXiv {arxiv_id}）" if arxiv_id else ""
+        return {
+            "kind": "assistant_message",
+            "message": (
+                f"我识别到要附加 PDF{source_hint}，但 RH 当前没有可安全导入的本地 PDF："
+                f"{pdf_error}。请先用 paper_ingest / paper_sync 补齐 PDF，然后再在侧边栏确认附加。"
+            ),
+        }
+
+    assert pdf_path is not None
+    library_type = str(body.item.library_type or "user").strip() or "user"
+    local_library_id = _normalize_zotero_library_id(body.item.library_id)
+    title = row["title"] or paper.get("title") or body.item.title or "RH PDF"
+    arxiv_id = row["arxiv_id"] or body.item.arxiv_id
+    source_bits = ["RH PDF"]
+    if arxiv_id:
+        source_bits.append(f"arXiv {arxiv_id}")
+    return {
+        "kind": "action_preview",
+        "preview": {
+            "action_type": "zotero_attach_pdf",
+            "title": "附加 PDF 到当前 Zotero 条目",
+            "message": (
+                f"我可以把 RH paper #{paper['id']} 的 PDF 附加到当前 Zotero 条目 "
+                f"`{parent_item_key}`。这是 dry-run 预览；确认后只新增 PDF 附件，"
+                "不修改 topic、claims 或 deepread 记录。"
+            ),
+            "paper_id": int(paper["id"]),
+            "topic_id": int(topic["id"]) if topic.get("id") else None,
+            "source_label": " · ".join(source_bits),
+            "target_label": f"Zotero item {parent_item_key}",
+            "planned_count": 1,
+            "count_label": "PDF 附件",
+            "pdf_path": str(pdf_path),
+            "records": [
+                {
+                    "paper_id": int(paper["id"]),
+                    "title": title,
+                    "doi": row["doi"] or "",
+                    "arxiv_id": arxiv_id or "",
+                    "pdf_path": str(pdf_path),
+                }
+            ],
+            "notice": (
+                "将调用 Zotero 本地附件导入；不会改 RH topic、claims、deepread。"
+                "若 Zotero 条目已有同一 PDF，可能产生重复附件。"
+            ),
+            "confirm_label": "确认附加 PDF",
+            "cancel_label": "取消",
+            "apply": {
+                "type": "zotero_local",
+                "handler": "zotero_import_file_attachment",
+                "label": "确认附加 PDF",
+                "payload": {
+                    "parent_item_key": parent_item_key,
+                    "parent_library_id": local_library_id,
+                    "library_type": library_type,
+                    "paper_id": int(paper["id"]),
+                    "topic_id": int(topic["id"]) if topic.get("id") else None,
+                    "pdf_path": str(pdf_path),
+                    "title": title,
+                    "replace_existing": False,
+                },
+            },
+        },
+    }
+
+
+def _trusted_pdf_path_for_zotero(raw: str) -> tuple[Path | None, str | None]:
+    text = str(raw or "").strip()
+    if not text:
+        return None, "RH 数据库中还没有 pdf_path"
+    try:
+        candidate = Path(text).expanduser().resolve()
+    except OSError as exc:
+        return None, f"pdf_path 无效：{exc}"
+    if not PDF_ROOTS:
+        return None, "未配置允许的 PDF 根目录"
+    trusted_roots: list[Path] = []
+    for root in PDF_ROOTS:
+        try:
+            trusted_roots.append(Path(root).expanduser().resolve())
+        except OSError:
+            continue
+    if not any(candidate.is_relative_to(root) for root in trusted_roots):
+        return None, "PDF 路径不在允许的 RH PDF 根目录下"
+    if not candidate.is_file():
+        return None, "pdf_path 已记录，但本地文件不存在"
+    return candidate, None
+
+
+def _looks_like_zotero_directory_capability_question(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> bool:
+    context = _zotero_context_payload(body, matched)
+    if context.get("kind") not in {"collection", "library"}:
+        return False
+    compact = re.sub(r"\s+", "", str(body.message or ""))
+    return any(
+        hint in compact
+        for hint in (
+            "可以怎么推进",
+            "怎么推进",
+            "能做什么",
+            "有什么功能",
+            "有哪些功能",
+            "目录可以",
+            "文库可以",
+        )
+    )
+
+
+def _looks_like_unsupported_zotero_write_request(message: str) -> bool:
+    """Catch Zotero/RH writes that do not yet have a side-panel apply path.
+
+    If these fall through to Codex, the model may correctly describe RH's
+    dry-run -> confirm -> apply policy but incorrectly imply that a confirmation
+    button exists. Keep unsupported writes inside the RH API so the UI shows a
+    truthful, non-blocking response instead of pointing at nonexistent controls.
+    """
+
+    text = str(message or "").strip()
+    if not text:
+        return False
+    if _looks_like_zotero_import_request(text):
+        return False
+
+    compact = re.sub(r"\s+", "", text)
+    lowered = compact.lower()
+    write_verbs = (
+        "写入",
+        "同步",
+        "下载",
+        "附加",
+        "添加",
+        "加入",
+        "修改",
+        "更新",
+        "删除",
+        "替换",
+        "导出",
+        "apply",
+        "confirm",
+        "dry-run",
+        "dryrun",
+    )
+    zotero_targets = (
+        "zotero",
+        "当前条目",
+        "当前论文",
+        "条目",
+        "pdf",
+        "附件",
+        "attachment",
+        "标签",
+        "tag",
+        "tags",
+        "元数据",
+        "metadata",
+        "笔记",
+        "note",
+        "notes",
+    )
+    if not any(verb in compact or verb in lowered for verb in write_verbs):
+        return False
+    if not any(target in compact or target in lowered for target in zotero_targets):
+        return False
+    return True
+
+
+def _unsupported_zotero_write_message(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> str:
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    item = body.item
+    is_pdf_request = _looks_like_zotero_pdf_attachment_request(body.message)
+    action_label = "PDF 附件写入" if is_pdf_request else "这个 Zotero/RH 写入动作"
+    identity_bits = []
+    if paper.get("id"):
+        identity_bits.append(f"RH paper_id={paper['id']}")
+    if item.zotero_item_key:
+        identity_bits.append(f"Zotero {item.zotero_item_key}")
+    arxiv_id = paper.get("arxiv_id") or item.arxiv_id
+    if arxiv_id:
+        identity_bits.append(f"arXiv {arxiv_id}")
+    if topic.get("id"):
+        identity_bits.append(f"topic_id={topic['id']}")
+    identity_text = "；".join(identity_bits) if identity_bits else "当前条目"
+    return (
+        f"我识别到你要对 {identity_text} 执行{action_label}，但这个动作还没有接入侧边栏确认按钮，"
+        "所以我不会让你点击不存在的按钮。\n\n"
+        "现在侧边栏可确认执行的写入动作只有“把 RH 论文导入当前目录”。"
+        "要让这里继续推进，需要先实现一个专门的 dry-run/确认/apply action："
+        "预览目标 Zotero 条目、PDF 来源、是否会新增/替换附件，然后再执行写入。"
+    )
+
+
+def _looks_like_zotero_pdf_attachment_request(message: str) -> bool:
+    compact = re.sub(r"\s+", "", str(message or ""))
+    lowered = compact.lower()
+    pdf_terms = ("pdf", "PDF", "附件", "附加", "attachment", "attach")
+    write_terms = ("下载", "附加", "添加", "加入", "同步", "替换", "写入", "apply")
+    return any(term in compact or term in lowered for term in pdf_terms) and any(
+        term in compact or term in lowered for term in write_terms
+    )
+
+
+def _looks_like_zotero_import_request(message: str) -> bool:
+    text = str(message or "").strip()
+    if not text:
+        return False
+    compact = re.sub(r"\s+", "", text)
+    lowered = compact.lower()
+    if _looks_like_zotero_metadata_edit_request(compact, lowered):
+        return False
+    target_hints = (
+        "当前目录",
+        "这个目录",
+        "该目录",
+        "此目录",
+        "这里",
+        "collection",
+        "zotero",
+    )
+    if not any(hint in compact or hint in lowered for hint in target_hints):
+        return False
+    if any(keyword in compact for keyword in ("导入", "加入", "添加", "放入", "放到")):
+        return True
+    if "同步" not in compact:
+        return False
+    return any(
+        pattern in compact or pattern in lowered
+        for pattern in (
+            "同步到当前目录",
+            "同步至当前目录",
+            "同步到这个目录",
+            "同步至这个目录",
+            "同步到该目录",
+            "同步至该目录",
+            "同步到此目录",
+            "同步至此目录",
+            "同步到这里",
+            "同步至这里",
+            "同步到collection",
+            "同步至collection",
+            "同步到zotero",
+            "同步至zotero",
+        )
+    )
+
+
+def _looks_like_zotero_metadata_edit_request(compact: str, lowered: str) -> bool:
+    """Avoid treating metadata/tag editing chat as RH→Zotero paper imports."""
+
+    edit_verbs = ("添加", "加入", "修改", "更新", "整理")
+    metadata_targets = (
+        "标签",
+        "tag",
+        "tags",
+        "笔记",
+        "note",
+        "notes",
+        "标注",
+        "annotation",
+        "annotations",
+    )
+    if not any(verb in compact for verb in edit_verbs):
+        return False
+    if not any(target in compact or target in lowered for target in metadata_targets):
+        return False
+    return not any(import_verb in compact for import_verb in ("导入", "放入", "放到"))
+
+
+def _zotero_api_library_id(value: str | int | None, library_type: str) -> str:
+    """Resolve Zotero desktop-local library ids to Zotero Web API ids.
+
+    Zotero Desktop exposes the personal library as local ``libraryID=1``, while
+    Zotero Web API writes require the account ``userID``. The side panel sends
+    desktop-local ids, so use configured Web API ids for the personal library
+    when the local id is supplied.
+    """
+
+    normalized = _normalize_zotero_library_id(value)
+    configured = os.getenv("ZOTERO_LIBRARY_ID", "").strip()
+    configured_type = os.getenv("ZOTERO_LIBRARY_TYPE", "user").strip() or "user"
+    effective_type = str(library_type or "user").strip() or "user"
+    if (
+        effective_type == "user"
+        and configured
+        and configured_type == "user"
+        and (not normalized or normalized == "1")
+    ):
+        return configured
+    if not normalized and configured and configured_type == effective_type:
+        return configured
+    return normalized
+
+
+def _infer_zotero_import_topic(
+    conn: sqlite3.Connection,
+    body: ZoteroChatRequest,
+    matched: dict[str, Any],
+) -> dict[str, Any] | None:
+    topic = matched.get("topic")
+    if topic:
+        return {"id": int(topic["id"]), "name": str(topic["name"] or "")}
+
+    explicit_topic_id = _extract_explicit_topic_id(body.message)
+    if explicit_topic_id is not None:
+        row = conn.execute(
+            "SELECT id, name FROM topics WHERE id = ?",
+            (explicit_topic_id,),
+        ).fetchone()
+        if row is not None:
+            return {"id": int(row["id"]), "name": str(row["name"] or "")}
+
+    text = str(body.message or "").strip()
+    directory_topic_hints = _zotero_directory_topic_hints(body.item)
+    rows = conn.execute(
+        """
+        SELECT id, name
+        FROM topics
+        WHERE name <> ''
+        ORDER BY LENGTH(name) DESC, id
+        LIMIT 200
+        """
+    ).fetchall()
+    for row in rows:
+        topic_name = str(row["name"] or "").strip()
+        if topic_name and (
+            topic_name in text or topic_name in directory_topic_hints
+        ):
+            return {"id": int(row["id"]), "name": topic_name}
+    return None
+
+
+def _zotero_directory_topic_hints(item: ZoteroChatItemContext) -> set[str]:
+    """Return topic-name candidates from the current Zotero collection context."""
+
+    hints: set[str] = set()
+    name = str(item.current_directory_name or "").strip()
+    path = str(item.current_directory_path or "").strip()
+    if name:
+        hints.add(name)
+    if path:
+        hints.add(path)
+        for segment in re.split(r"\s*(?:/|>|›|\\\\)\s*", path):
+            segment = segment.strip()
+            if segment:
+                hints.add(segment)
+    return hints
+
+
+def _last_zotero_path_segment(path: str) -> str:
+    text = str(path or "").strip()
+    if not text:
+        return ""
+    segments = [
+        segment.strip()
+        for segment in re.split(r"\s*(?:/|>|›|\\\\)\s*", text)
+        if segment.strip()
+    ]
+    return segments[-1] if segments else text
+
+
+def _looks_like_zotero_seed_search_request(message: str) -> bool:
+    text = str(message or "").strip()
+    lowered = text.lower()
+    if not text:
+        return False
+    if _looks_like_zotero_import_request(text):
+        return False
+    paper_terms = (
+        "论文",
+        "文章",
+        "文献",
+        "paper",
+        "papers",
+        "literature",
+        "reference",
+    )
+    search_terms = (
+        "找",
+        "寻找",
+        "推荐",
+        "搜索",
+        "检索",
+        "补",
+        "discover",
+        "recommend",
+        "search",
+        "find",
+    )
+    seed_terms = (
+        "最开始",
+        "开始",
+        "初始",
+        "起步",
+        "入门",
+        "种子",
+        "seed",
+        "starter",
+        "空目录",
+        "空文件夹",
+        "新目录",
+        "新文件夹",
+    )
+    return (
+        any(term in lowered for term in paper_terms)
+        and any(term in lowered for term in search_terms)
+        and any(term in lowered for term in seed_terms)
+    )
+
+
+def _zotero_seed_search_query(
+    body: ZoteroChatRequest, *, topic_name: str = ""
+) -> str:
+    message = str(body.message or "").strip()
+    explicit_patterns = [
+        r"(?:query|关键词|检索词|搜索词)\s*[:：=]\s*(.+)$",
+        r"(?:围绕|关于)\s*[“\"']?([^”\"'，。；;]+)[”\"']?\s*(?:找|寻找|推荐|搜索|检索)",
+    ]
+    for pattern in explicit_patterns:
+        match = re.search(pattern, message, flags=re.I)
+        if match:
+            value = match.group(1).strip()
+            if value:
+                return value[:240]
+
+    topic = str(topic_name or "").strip()
+    if topic:
+        return topic[:240]
+
+    for candidate in (
+        _last_zotero_path_segment(body.item.current_directory_path),
+        body.item.current_directory_name,
+        body.item.title,
+    ):
+        value = str(candidate or "").strip()
+        if value:
+            return value[:240]
+    return message[:240] or "research seed papers"
+
+
+def _extract_explicit_topic_id(message: str) -> int | None:
+    text = str(message or "")
+    patterns = [
+        r"\btopic[_\s-]?id[:：=\s]*(\d+)\b",
+        r"\btopic[:：=\s]+(\d+)\b",
+        r"主题[:：=\s]+(\d+)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.I)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def _message_targets_current_paper_only(message: str) -> bool:
+    text = str(message or "")
+    return any(
+        hint in text
+        for hint in ("这篇", "当前论文", "当前文章", "这篇论文", "这篇文章", "本文")
+    )
+
+
+def _message_targets_deep_read_only(message: str) -> bool:
+    lowered = str(message or "").lower()
+    return any(
+        hint in lowered
+        for hint in ("精读", "deepread", "deep read", "deep-read")
+    )
+
+
+def _extract_zotero_import_count(message: str) -> int | None:
+    text = str(message or "")
+    digit_match = re.search(r"(\d{1,3})\s*篇", text)
+    if digit_match:
+        return max(1, int(digit_match.group(1)))
+    chinese_match = re.search(r"([一二三四五六七八九十两]{1,4})\s*篇", text)
+    if chinese_match:
+        return _simple_chinese_number(chinese_match.group(1))
+    return None
+
+
+def _simple_chinese_number(text: str) -> int | None:
+    text = str(text or "").strip()
+    digits = {
+        "一": 1,
+        "二": 2,
+        "两": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+    }
+    if not text:
+        return None
+    if text == "十":
+        return 10
+    if text in digits:
+        return digits[text]
+    if len(text) == 2 and text.startswith("十") and text[1] in digits:
+        return 10 + digits[text[1]]
+    if len(text) == 2 and text.endswith("十") and text[0] in digits:
+        return digits[text[0]] * 10
+    if len(text) == 3 and text[1] == "十" and text[0] in digits and text[2] in digits:
+        return digits[text[0]] * 10 + digits[text[2]]
+    return None
+
+
+def _count_existing_zotero_collection_links(
+    conn: sqlite3.Connection,
+    *,
+    topic_id: int,
+    target_collection_key: str,
+    library_id: str,
+    library_type: str,
+    paper_ids: list[int],
+) -> int:
+    collection_key = str(target_collection_key or "").strip()
+    library_id = _normalize_zotero_library_id(library_id)
+    library_type = str(library_type or "").strip()
+    if not collection_key or not library_id or not paper_ids:
+        return 0
+    placeholders = ",".join("?" for _ in paper_ids)
+    library_type_filter = "AND zotero_library_type = ?" if library_type else ""
+    params: list[Any] = [topic_id, collection_key, library_id]
+    if library_type:
+        params.append(library_type)
+    params.extend(paper_ids)
+    row = conn.execute(
+        f"""
+        SELECT COUNT(DISTINCT paper_id) AS count
+        FROM zotero_item_links
+        WHERE topic_id = ?
+          AND zotero_collection_key = ?
+          AND zotero_library_id = ?
+          {library_type_filter}
+          AND paper_id IN ({placeholders})
+        """,
+        params,
+    ).fetchone()
+    return int(row["count"]) if row and row["count"] is not None else 0
+
+
+def _zotero_chat_suggested_actions(matched: dict[str, Any]) -> list[dict[str, Any]]:
+    paper = matched.get("paper")
+    topic = matched.get("topic")
+    if not paper:
+        return [
+            {
+                "kind": "sync_or_ingest",
+                "label": "先把当前 Zotero 条目同步/入库到 RH",
+                "requires_confirmation": True,
+            }
+        ]
+    return [
+        {
+            "kind": "codex_handoff",
+            "label": "把当前问题交给 Codex/RH 继续处理",
+            "requires_confirmation": False,
+            "paper_id": paper["id"],
+            "topic_id": topic["id"] if topic else None,
+        },
+        {
+            "kind": "pull_human_notes",
+            "label": "导入 Zotero 人类笔记/标注到 RH",
+            "requires_confirmation": True,
+            "paper_id": paper["id"],
+            "topic_id": topic["id"] if topic else None,
+        },
+        {
+            "kind": "paper_reading_annotation",
+            "label": "生成博士精读 PDF 高亮/批注",
+            "requires_confirmation": True,
+            "paper_id": paper["id"],
+            "topic_id": topic["id"] if topic else None,
+            "skill": "paper-reading-annotation",
+        },
+    ]
+
+
+def _stable_zotero_chat_conversation_id(
+    body: ZoteroChatRequest, matched: dict[str, Any]
+) -> str:
+    paper = matched.get("paper") or {}
+    topic = matched.get("topic") or {}
+    seed = "|".join(
+        [
+            str(topic.get("id") or ""),
+            str(paper.get("id") or ""),
+            body.item.zotero_item_key,
+            body.item.title,
+        ]
+    )
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:16]
+    return f"zotero-chat-{digest}"
+
+
+def _normalize_zotero_chat_tags(tags: list[str]) -> list[str]:
+    return [str(tag or "").strip() for tag in tags if str(tag or "").strip()]
+
+
+def _extract_rh_paper_id_tag(tags: list[str]) -> int | None:
+    for tag in tags:
+        match = re.match(r"^rh-paper-id:(\d+)$", tag.strip(), flags=re.I)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def _extract_rh_topic_tag(tags: list[str]) -> str:
+    for tag in tags:
+        match = re.match(r"^rh-topic:(.+)$", tag.strip(), flags=re.I)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
+def _normalize_zotero_library_id(value: str | int | None) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _normalize_doi(value: str) -> str:
+    text = str(value or "").strip()
+    text = re.sub(r"^https?://(dx\.)?doi\.org/", "", text, flags=re.I)
+    text = text.removeprefix("doi:").strip()
+    return text
+
+
+def _normalize_arxiv_id(value: str) -> str:
+    text = str(value or "").strip()
+    match = re.search(r"(\d{4}\.\d{4,5}(?:v\d+)?)", text)
+    if match:
+        return match.group(1)
+    text = text.removeprefix("arxiv:").removeprefix("arXiv:").strip()
+    return text
+
+
+def _normalize_title_for_match(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip())
+
+
+def _truncate_text(value: str, max_chars: int) -> str:
+    text = str(value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars].rstrip()}…"
 
 
 @app.post("/api/papers/ingest")
@@ -5796,10 +8446,16 @@ if __name__ == "__main__":
     # Next.js dashboard.
     _package_dir = str(Path(__file__).resolve().parent)
 
+    host = os.environ.get("RESEARCH_HARNESS_HTTP_HOST", "127.0.0.1")
+    if host not in {"127.0.0.1", "localhost", "::1"}:
+        logger.warning(
+            "Starting Research Harness API on non-loopback host %s; do not expose LongTask endpoints without auth/TLS/allowlist.",
+            host,
+        )
     uvicorn.run(
         "research_harness_mcp.http_api:app",
-        host="0.0.0.0",
-        port=8000,
+        host=host,
+        port=int(os.environ.get("RESEARCH_HARNESS_HTTP_PORT", "8000")),
         reload=True,
         reload_dirs=[_package_dir],
     )

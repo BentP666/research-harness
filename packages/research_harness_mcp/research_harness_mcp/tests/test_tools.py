@@ -46,6 +46,7 @@ def test_list_tool_definitions() -> None:
     assert "provenance_summary" in names
     assert "provenance_export" in names
     assert "advisory_check" in names
+    assert "zotero_sync" in names
 
     # Paperindex
     assert "paperindex_search" in names
@@ -90,6 +91,39 @@ def _assert_envelope(result: dict) -> None:
     assert isinstance(result["artifacts"], list)
 
 
+def _seed_zotero_db(db: Database) -> None:
+    import json
+
+    conn = db.connect()
+    try:
+        conn.execute("INSERT INTO topics (name, description) VALUES ('demo-topic', '')")
+        conn.execute(
+            """
+            INSERT INTO papers
+                (title, authors, year, venue, doi, arxiv_id, url, abstract, status, deep_read)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "Agentic Zotero MCP Sync",
+                json.dumps(["Ada Lovelace"]),
+                2026,
+                "ICLR",
+                "10.1234/zotero-mcp",
+                "2601.99999",
+                "https://arxiv.org/abs/2601.99999",
+                "A paper for Zotero MCP sync tests.",
+                "pdf_ready",
+                1,
+            ),
+        )
+        conn.execute(
+            "INSERT INTO paper_topics (paper_id, topic_id, relevance) VALUES (1, 1, 'high')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Primitive tool execution
 # ---------------------------------------------------------------------------
@@ -123,6 +157,45 @@ def test_execute_unknown_tool() -> None:
     _assert_envelope(result)
     assert result["status"] == "error"
     assert "Unknown tool" in result["output"]["error"]
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_execute_zotero_sync_push_dry_run(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    _seed_zotero_db(db)
+
+    result = execute_tool(
+        "zotero_sync",
+        {
+            "topic": "demo-topic",
+            "direction": "push",
+            "dry_run": True,
+            "limit": 1,
+        },
+    )
+
+    _assert_envelope(result)
+    assert result["status"] == "success"
+    assert result["output"]["direction"] == "push"
+    assert result["output"]["push"]["planned_count"] == 1
+    assert result["output"]["push"]["records"][0]["title"] == "Agentic Zotero MCP Sync"
+
+
+@pytest.mark.usefixtures("_env_db")
+def test_execute_zotero_sync_validates_direction(db: Database) -> None:
+    from research_harness_mcp.tools import execute_tool
+
+    _seed_zotero_db(db)
+
+    result = execute_tool(
+        "zotero_sync",
+        {"topic": "demo-topic", "direction": "sideways", "dry_run": True},
+    )
+
+    _assert_envelope(result)
+    assert result["status"] == "error"
+    assert "direction" in result["output"]["error"]
 
 
 # ---------------------------------------------------------------------------

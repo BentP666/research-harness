@@ -16,13 +16,19 @@ from ..experiment.citation_verifier import (
 from ..experiment.paper_verifier import verify_paper_numbers
 from ..experiment.verified_registry import build_registry_from_metrics
 from ..storage.db import Database
+from ..verification import CitationSource
+from ..verification import SourceRegistry
+from ..verification import sanitize_citations
 from .registry import (
+    CITATION_SANITIZE_SPEC,
     CITATION_VERIFY_SPEC,
     EVIDENCE_TRACE_SPEC,
     PAPER_VERIFY_NUMBERS_SPEC,
     register_primitive,
 )
 from .types import (
+    CitationSanitizeItem,
+    CitationSanitizeOutput,
     CitationVerifyItem,
     CitationVerifyOutput,
     EvidenceTraceLink,
@@ -132,6 +138,133 @@ def citation_verify(
         items=items,
         pass_rate=pass_rate,
     )
+
+
+@register_primitive(CITATION_SANITIZE_SPEC)
+def citation_sanitize(
+    *,
+    db: Database,
+    topic_id: int,
+    text: str,
+    extra_sources: list[dict[str, Any]] | None = None,
+    **_: Any,
+) -> CitationSanitizeOutput:
+    """Sanitize generated references against RH-controlled sources."""
+
+    registry = SourceRegistry.from_topic(db, topic_id)
+    for raw in extra_sources or []:
+        registry.add(
+            CitationSource(
+                source_id=str(
+                    raw.get("source_id") or raw.get("url") or raw.get("doi") or ""
+                ),
+                title=str(raw.get("title") or ""),
+                url=str(raw.get("url") or ""),
+                doi=str(raw.get("doi") or ""),
+                arxiv_id=str(raw.get("arxiv_id") or ""),
+                paper_id=raw.get("paper_id"),
+                metadata={
+                    key: value
+                    for key, value in raw.items()
+                    if key
+                    not in {"source_id", "title", "url", "doi", "arxiv_id", "paper_id"}
+                },
+            )
+        )
+
+    result = sanitize_citations(text, registry)
+    recorded = _record_hallucinated_citations(
+        db, topic_id, result.removed_citations
+    )
+
+    items: list[CitationSanitizeItem] = []
+    for item in result.valid_citations:
+        items.append(
+            CitationSanitizeItem(
+                original_number=item.original_number,
+                ref_text=item.ref_text,
+                status="valid",
+                new_number=item.new_number,
+                source_id=item.source_id,
+                repaired=item.repaired,
+            )
+        )
+    for item in result.removed_citations:
+        items.append(
+            CitationSanitizeItem(
+                original_number=item.original_number,
+                ref_text=item.ref_text,
+                status="removed",
+                reason=item.reason,
+            )
+        )
+
+    return CitationSanitizeOutput(
+        sanitized_text=result.sanitized_text,
+        valid_count=result.valid_count,
+        removed_count=result.removed_count,
+        repaired_count=result.repaired_count,
+        hallucinated_recorded=recorded,
+        items=items,
+    )
+
+
+def _record_hallucinated_citations(
+    db: Database, topic_id: int, removed: list[Any]
+) -> int:
+    """Best-effort write to citation_verifications for gate visibility."""
+
+    hallucinated = [item for item in removed if item.reason == "not_in_source_registry"]
+    if not hallucinated:
+        return 0
+
+    conn = db.connect()
+    try:
+        columns = {
+            row["name"]
+            for row in conn.execute(
+                "PRAGMA table_info(citation_verifications)"
+            ).fetchall()
+        }
+        if not columns:
+            return 0
+
+        project_row = conn.execute(
+            "SELECT id FROM projects WHERE topic_id = ? ORDER BY id LIMIT 1",
+            (topic_id,),
+        ).fetchone()
+        if project_row is None:
+            return 0
+        project_id = int(project_row["id"])
+
+        count = 0
+        for item in hallucinated:
+            if "topic_id" in columns:
+                conn.execute(
+                    """
+                    INSERT INTO citation_verifications
+                        (project_id, topic_id, title, status, confidence, source)
+                    VALUES (?, ?, ?, 'hallucinated', 0.0, 'citation_sanitize')
+                    """,
+                    (project_id, topic_id, item.ref_text),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO citation_verifications
+                        (project_id, title, status, confidence, source)
+                    VALUES (?, ?, 'hallucinated', 0.0, 'citation_sanitize')
+                    """,
+                    (project_id, item.ref_text),
+                )
+            count += 1
+        conn.commit()
+        return count
+    except Exception:
+        logger.exception("Failed to record hallucinated citation rows")
+        return 0
+    finally:
+        conn.close()
 
 
 @register_primitive(EVIDENCE_TRACE_SPEC)

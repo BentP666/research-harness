@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Settings,
   X,
+  GitBranch,
 } from "lucide-react";
 import {
   Sheet,
@@ -38,6 +39,7 @@ export function MobileNav() {
   ];
 
   const labItems = [
+    { key: "longrun", label: t("nav.longrun"), href: "/longrun", icon: GitBranch },
     { key: "trends", label: t("nav.trends"), href: "/research/trends", icon: TrendingUp },
     { key: "discover", label: t("nav.discover"), href: "/discover", icon: Compass },
     { key: "agents", label: t("nav.agents"), href: "/agents", icon: Bot },

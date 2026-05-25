@@ -10,8 +10,8 @@ from research_harness.semantic_governance.normalization import convert_b5_run
 from research_harness.semantic_governance.validators import validate_bundle
 
 RUN_ROOT = (
-    Path(__file__).resolve().parents[3]
-    / ".research-harness/reports/researchflowbench_pilot5_v0/runs/model_actual_cursor_full5_clean_20260520"
+    Path(__file__).resolve().parent
+    / "fixtures/researchflowbench/pilot5_b5_synthetic_run"
 )
 
 

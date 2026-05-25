@@ -1,0 +1,14 @@
+{
+  "advance_or_block": "advance",
+  "invalidated_objects": [],
+  "missing_evidence": [],
+  "preserved_objects": [
+    "ev.X2",
+    "paper 2260"
+  ],
+  "reasons": [
+    "Synthetic writing gate reason 2."
+  ],
+  "schema_version": "synthetic_b5_gate_log.v0",
+  "synthetic": true
+}

@@ -1,0 +1,19 @@
+{
+  "advance_or_block": "block",
+  "invalidated_objects": [
+    "obj.claim_47pct",
+    "obj.req_log"
+  ],
+  "missing_evidence": [
+    "synthetic follow-up review"
+  ],
+  "preserved_objects": [
+    "ev.X3",
+    "paper 2233"
+  ],
+  "reasons": [
+    "Synthetic governance gate reason 4."
+  ],
+  "schema_version": "synthetic_b5_gate_log.v0",
+  "synthetic": true
+}

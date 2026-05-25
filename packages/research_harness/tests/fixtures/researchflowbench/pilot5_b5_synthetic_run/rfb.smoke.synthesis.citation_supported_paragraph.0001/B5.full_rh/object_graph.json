@@ -1,0 +1,33 @@
+{
+  "edges": [
+    {
+      "from": "obj.synthetic_paragraph",
+      "relation": "supported_by",
+      "to": "ev.X2"
+    },
+    {
+      "from": "ev.X2",
+      "relation": "cites",
+      "to": "obj.paper.synthetic_2260"
+    }
+  ],
+  "objects": [
+    {
+      "evidence_id": "X2",
+      "id": "ev.X2",
+      "type": "evidence_span"
+    },
+    {
+      "id": "obj.synthetic_paragraph",
+      "type": "draft"
+    },
+    {
+      "id": "obj.paper.synthetic_2260",
+      "paper_id": "2260",
+      "type": "paper"
+    }
+  ],
+  "schema_version": "synthetic_b5_object_graph.v0",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

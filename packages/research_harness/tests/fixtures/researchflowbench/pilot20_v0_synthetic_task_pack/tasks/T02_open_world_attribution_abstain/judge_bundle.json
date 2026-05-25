@@ -1,0 +1,21 @@
+{
+  "judge_only": true,
+  "leakage_canaries": [
+    "SYNTHETIC_JUDGE_CANARY_T02"
+  ],
+  "schema_version": "researchflowbench.judge_bundle.v0.synthetic",
+  "scoring": {
+    "combined": {
+      "axis_separation_required": true,
+      "rubric": "synthetic combined axis"
+    },
+    "outcome": {
+      "rubric": "synthetic outcome axis"
+    },
+    "process": {
+      "rubric": "synthetic process axis"
+    }
+  },
+  "synthetic": true,
+  "task_id": "rfb.synthetic.open_world_attribution_abstain.0001"
+}

@@ -1,0 +1,9 @@
+{
+  "corrupted_case_ids": [
+    "C04_evidence_correction_stale_propagation"
+  ],
+  "example_ids": [],
+  "schema_version": "researchflowbench.dev_example_ids.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.evidence_stale_propagation.0001"
+}

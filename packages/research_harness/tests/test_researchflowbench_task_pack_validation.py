@@ -7,8 +7,8 @@ from pathlib import Path
 from research_harness.eval.researchflowbench import validate_pilot20_task_pack
 
 PILOT20_ROOT = (
-    Path(__file__).resolve().parents[3]
-    / ".research-harness/reports/researchflowbench_pilot20_v0"
+    Path(__file__).resolve().parent
+    / "fixtures/researchflowbench/pilot20_v0_synthetic_task_pack"
 )
 
 

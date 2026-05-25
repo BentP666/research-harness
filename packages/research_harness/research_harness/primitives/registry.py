@@ -673,6 +673,43 @@ CITATION_VERIFY_SPEC = PrimitiveSpec(
     requires_llm=False,
 )
 
+CITATION_SANITIZE_SPEC = PrimitiveSpec(
+    name="citation_sanitize",
+    category=PrimitiveCategory.VERIFICATION,
+    description=(
+        "Deterministically sanitize Markdown references against the RH topic paper pool. "
+        "Removes hallucinated references, repairs unique clipped URLs, deduplicates, "
+        "renumbers inline citations, and records hallucinated citations when possible."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "topic_id": {"type": "integer"},
+            "text": {"type": "string", "description": "Markdown text to sanitize."},
+            "extra_sources": {
+                "type": "array",
+                "description": "Additional citable sources outside the topic paper pool.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "source_id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "url": {"type": "string"},
+                        "doi": {"type": "string"},
+                        "arxiv_id": {"type": "string"},
+                        "paper_id": {"type": "integer"},
+                    },
+                },
+                "default": [],
+            },
+        },
+        "required": ["topic_id", "text"],
+    },
+    output_type="CitationSanitizeOutput",
+    requires_llm=False,
+    idempotent=True,
+)
+
 EVIDENCE_TRACE_SPEC = PrimitiveSpec(
     name="evidence_trace",
     category=PrimitiveCategory.VERIFICATION,
@@ -1762,6 +1799,7 @@ for spec in (
     VERIFIED_REGISTRY_CHECK_SPEC,
     PAPER_VERIFY_NUMBERS_SPEC,
     CITATION_VERIFY_SPEC,
+    CITATION_SANITIZE_SPEC,
     EVIDENCE_TRACE_SPEC,
     OUTLINE_GENERATE_SPEC,
     SECTION_REVIEW_SPEC,

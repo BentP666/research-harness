@@ -1,0 +1,70 @@
+{
+  "edges": [
+    {
+      "from": "obj.literature_outputs.baseline_map_omitted",
+      "relation": "derived_from",
+      "to": "obj.planning_outputs"
+    },
+    {
+      "from": "obj.planning_outputs",
+      "relation": "derived_from",
+      "to": "obj.draft_section"
+    },
+    {
+      "from": "ev.X3",
+      "relation": "supports_included_baseline",
+      "to": "obj.literature_outputs.baseline_map_omitted"
+    },
+    {
+      "from": "ev.X4",
+      "relation": "supports_included_baseline",
+      "to": "obj.literature_outputs.baseline_map_omitted"
+    }
+  ],
+  "objects": [
+    {
+      "id": "obj.literature_outputs.baseline_map_omitted",
+      "reason": "synthetic omitted baseline",
+      "stage": "literature",
+      "status": "invalidated",
+      "type": "stage_output"
+    },
+    {
+      "id": "obj.planning_outputs",
+      "stage": "planning",
+      "type": "stage_output"
+    },
+    {
+      "id": "obj.draft_section",
+      "type": "draft"
+    },
+    {
+      "evidence_id": "X3",
+      "id": "ev.X3",
+      "type": "evidence_span"
+    },
+    {
+      "evidence_id": "X4",
+      "id": "ev.X4",
+      "type": "evidence_span"
+    },
+    {
+      "id": "obj.paper.synthetic_2233",
+      "paper_id": "2233",
+      "type": "paper"
+    },
+    {
+      "id": "obj.paper.synthetic_2260",
+      "paper_id": "2260",
+      "type": "paper"
+    },
+    {
+      "id": "obj.paper.synthetic_2057",
+      "paper_id": "2057",
+      "type": "paper"
+    }
+  ],
+  "schema_version": "synthetic_b5_object_graph.v0",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

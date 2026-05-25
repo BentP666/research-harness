@@ -1,0 +1,23 @@
+{
+  "corrupted_case_ids": [
+    "C02_open_world_ambiguous_or_missing_source"
+  ],
+  "gold_asset_ids": [
+    "evidence.T02.synthetic_public"
+  ],
+  "human_calibration_required": true,
+  "judge_only": true,
+  "leakage_canaries": [
+    "SYNTHETIC_HIDDEN_CANARY_T02"
+  ],
+  "outcome_oracle": {
+    "expected": "Synthetic outcome oracle for T02."
+  },
+  "process_oracle": {
+    "expected": "Synthetic process oracle for T02."
+  },
+  "release_grade": false,
+  "schema_version": "researchflowbench.gold_bundle.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.open_world_attribution_abstain.0001"
+}

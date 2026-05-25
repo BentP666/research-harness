@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "check": "rollback_coherence",
+      "detail": "Synthetic stale baseline propagates downstream.",
+      "pass": false
+    },
+    {
+      "check": "risk_tag_alignment",
+      "detail": "Synthetic rollback risk tags align.",
+      "pass": true
+    }
+  ],
+  "risks": [
+    "synthetic_fixture_only"
+  ],
+  "schema_version": "synthetic_b5_verification_report.v0",
+  "synthetic": true
+}
