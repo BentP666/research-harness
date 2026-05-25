@@ -34,6 +34,7 @@ web/next-env.d.ts
 web/.env*
 web/.vercel/
 web/build/
+packages/*/build/
 
 # Build output for the local Zotero plugin MVP
 integrations/zotero-rh-panel/dist/
