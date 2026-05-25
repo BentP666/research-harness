@@ -16,7 +16,7 @@ def test_zotero_panel_manifest_and_bootstrap_are_present():
     manifest = json.loads((PLUGIN_DIR / "manifest.json").read_text())
 
     assert manifest["applications"]["zotero"]["id"] == (
-        "research-harness-zotero@github.com.54yyyu"
+        "research-harness-zotero@github.com.Biajin-PKU"
     )
     assert manifest["applications"]["zotero"]["strict_min_version"] == "6.999"
     assert manifest["applications"]["zotero"]["strict_max_version"] == "9999.*"
@@ -213,9 +213,9 @@ def test_zotero_panel_can_auto_start_local_service_safely():
     prefs_js = (PLUGIN_DIR / "prefs.js").read_text()
     panel_js = (PLUGIN_DIR / "content" / "rh-zotero-panel.js").read_text()
 
-    assert 'pref("extensions.researchharness.zotero.autoStart", true);' in prefs_js
-    assert 'pref("extensions.researchharness.zotero.repoRoot"' in prefs_js
-    assert 'pref("extensions.researchharness.zotero.pythonBin"' in prefs_js
+    assert 'pref("extensions.researchharness.zotero.autoStart", false);' in prefs_js
+    assert 'pref("extensions.researchharness.zotero.repoRoot", "");' in prefs_js
+    assert 'pref("extensions.researchharness.zotero.pythonBin", "");' in prefs_js
 
     assert "AUTO_START_PREF" in panel_js
     assert "REPO_ROOT_PREF" in panel_js
@@ -225,6 +225,7 @@ def test_zotero_panel_can_auto_start_local_service_safely():
     assert "canAutoStartApi" in panel_js
     assert "isLoopbackApiUrl" in panel_js
     assert "startResearchHarnessApi" in panel_js
+    assert "请先设置 Zotero 偏好 extensions.researchharness.zotero.repoRoot" in panel_js
     assert "waitForResearchHarnessApi" in panel_js
     assert "loadSubprocessModule" in panel_js
     assert "Subprocess.sys.mjs" in panel_js

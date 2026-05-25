@@ -11,7 +11,7 @@ integration test.
 - CI checks (e.g., verify that a topic's paper pool hasn't regressed)
 - Testing a new primitive you are developing
 
-For agentic workflows, use an MCP client instead (see [main README](../README.md#mcp-server--claude-code)).
+For agentic workflows, use an MCP client instead (see [MCP tools and workflows](mcp-tools.zh.md) or the repository README).
 For shell scripting, use the `rh` CLI.
 
 ## Setup
@@ -144,5 +144,5 @@ then switch to Claude Code for an agentic write-up session.
 ## Further Reading
 
 - [Primitive reference](../packages/research_harness/research_harness/primitives/) — every `*_impls.py` module lists its specs
-- [Orchestrator stages](architecture/06_orchestrator.md) — gate and artifact specifications
+- [Architecture overview](architecture.md) — stages, provenance, gates, and extension points
 - [Plugin guide](plugin-guide.md) — adding your own primitives

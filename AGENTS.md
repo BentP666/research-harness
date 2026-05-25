@@ -30,7 +30,7 @@ cat docs/agent-guide.md
 
 1. 论文必须入库：通过 research-harness MCP 的 `paper_ingest` 或 `rh paper ingest` CLI 入库，不要把论文散放在项目目录
 2. 产出必须记录：关键产出通过 `orchestrator_record_artifact` 记录到数据库
-3. 经验必须反馈：工具不足、流程改进、bug 写入 `docs/feedback/`
+3. 经验必须反馈：工具不足、流程改进、bug 优先开 GitHub Issue 或进入项目正式 backlog；不要在公共仓库新增一次性调试日志/报告
 
 ### ⚠️ MCP 优先，CLI 只做数据管理
 

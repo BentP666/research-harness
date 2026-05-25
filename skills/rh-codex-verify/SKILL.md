@@ -1,6 +1,6 @@
 ---
 name: rh-codex-verify
-description: Verify Codex workflow/config/skill changes in research-harness-oss. Trigger on phrases like "rh-codex-verify", "/rh-codex-verify", "run codex-check", "验证 Codex 配置", or before handing off Codex-authored changes.
+description: Verify Codex workflow/config/skill changes in Research Harness. Trigger on phrases like "rh-codex-verify", "/rh-codex-verify", "run codex-check", "验证 Codex 配置", or before handing off Codex-authored changes.
 ---
 
 # RH Codex Verify

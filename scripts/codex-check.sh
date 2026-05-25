@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Standard Codex verification entrypoint for research-harness-oss.
+# Standard Codex verification entrypoint for Research Harness.
 
 set -euo pipefail
 

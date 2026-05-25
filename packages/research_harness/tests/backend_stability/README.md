@@ -96,7 +96,7 @@ appropriate subset and returns `(overall_passed, [results...])`.
   *deliberately* break the precondition and verify the assertion fires.
   This proves the suite catches what it claims to catch.
 - **Regression on every P0/P1.** Every documented historical bug in
-  `docs/feedback/bugs.md` has a named test slot in `regressions/`. New bugs
+  historical P0/P1 bugs have named test slots in `regressions/`. New bugs
   get a new test before the fix lands.
 
 ## Known schema-level findings surfaced by the suite
