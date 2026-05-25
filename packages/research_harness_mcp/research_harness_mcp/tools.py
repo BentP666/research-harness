@@ -1116,9 +1116,7 @@ def _execute_zotero_sync(db: Database, arguments: dict[str, Any]) -> dict[str, A
         return {"error": "direction must be one of: push, pull, both"}
 
     dry_run = bool(arguments.get("dry_run", True))
-    library_id = str(
-        arguments.get("library_id") or os.getenv("ZOTERO_LIBRARY_ID", "")
-    )
+    library_id = str(arguments.get("library_id") or os.getenv("ZOTERO_LIBRARY_ID", ""))
     library_type = str(
         arguments.get("library_type") or os.getenv("ZOTERO_LIBRARY_TYPE", "user")
     )
@@ -1132,9 +1130,7 @@ def _execute_zotero_sync(db: Database, arguments: dict[str, Any]) -> dict[str, A
             library_id=library_id,
             library_type=library_type,
             api_key=str(arguments.get("api_key") or os.getenv("ZOTERO_API_KEY", "")),
-            base_url=str(
-                arguments.get("api_base") or os.getenv("ZOTERO_API_BASE", "")
-            ),
+            base_url=str(arguments.get("api_base") or os.getenv("ZOTERO_API_BASE", "")),
         )
 
     limit_value = arguments.get("limit")

@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[3]
 def test_root_license_is_polyform_noncommercial() -> None:
     license_text = (ROOT / "LICENSE").read_text()
 
-    assert "Required Notice: Copyright 2026 Research Harness Contributors" in license_text
+    assert (
+        "Required Notice: Copyright 2026 Research Harness Contributors" in license_text
+    )
     assert "PolyForm Noncommercial License 1.0.0" in license_text
 
 

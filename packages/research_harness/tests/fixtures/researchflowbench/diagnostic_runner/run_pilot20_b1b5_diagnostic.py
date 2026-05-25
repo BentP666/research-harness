@@ -5,7 +5,12 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-EXTERNAL_TOOLS = {"external_search", "web_search", "paper_search", "browser_network_search"}
+EXTERNAL_TOOLS = {
+    "external_search",
+    "web_search",
+    "paper_search",
+    "browser_network_search",
+}
 
 
 def _load_json(path: str | Path) -> dict[str, Any]:
@@ -14,7 +19,9 @@ def _load_json(path: str | Path) -> dict[str, Any]:
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def _decode(value: bytes | str | None) -> str:
@@ -89,7 +96,11 @@ def run_cell(
 
     (cell_dir / "raw_stdout.txt").write_text(stdout, encoding="utf-8")
     (cell_dir / "raw_stderr.txt").write_text(stderr, encoding="utf-8")
-    partial = raw_response_path.read_text(encoding="utf-8") if raw_response_path.exists() else stdout
+    partial = (
+        raw_response_path.read_text(encoding="utf-8")
+        if raw_response_path.exists()
+        else stdout
+    )
     (cell_dir / "partial_response.txt").write_text(partial, encoding="utf-8")
     provider_observed = _provider_from_stderr(stderr)
     failures = []
@@ -104,40 +115,67 @@ def run_cell(
     failures = sorted(set(failures))
     hard_failure = bool(failures)
 
-    _write_json(cell_dir / "timeout_metadata.json", {
-        "timed_out": timed_out,
-        "timeout_seconds": timeout_seconds,
-        "input_mode": "stdin_dash_prompt",
-        "stdout_bytes": len(stdout.encode("utf-8")),
-        "stderr_bytes": len(stderr.encode("utf-8")),
-    })
-    _write_json(cell_dir / "quarantine_reason.json", {
-        "valid_experiment_result": not hard_failure,
-        "hard_failures": failures,
-    })
-    _write_json(cell_dir / "agent_output.json", parsed if parsed else {"parse_failed": True})
-    _write_json(cell_dir / "cost_latency_trace.json", {
-        "task_id": task_path.name,
-        "baseline_id": baseline_id,
-        "token_usage": None,
-        "token_usage_unknown_reason": "synthetic diagnostic timeout fixture",
-    })
-    _write_json(cell_dir / "eval_report.json", {"hard_failure": hard_failure, "failures": failures})
-    _write_json(cell_dir / "run_trace.json", {
-        "provider_observed": provider_observed,
-        "reasoning_effort": reasoning_effort,
-        "returncode": returncode,
-        "tools_used": ["local_static_corpus"],
-    })
-    _write_json(cell_dir / "object_graph.json", {"objects": [], "edges": [], "synthetic": True})
-    _write_json(cell_dir / "gate_log.json", {"advance_or_block": "block" if hard_failure else "advance"})
-    _write_json(cell_dir / "verification_report.json", {"checks": [], "risks": failures})
-    _write_json(cell_dir / "executor_config.json", {
-        "baseline_key": baseline_key,
-        "baseline_id": baseline_id,
-        "model": model,
-        "provider_profile": provider_profile,
-    })
+    _write_json(
+        cell_dir / "timeout_metadata.json",
+        {
+            "timed_out": timed_out,
+            "timeout_seconds": timeout_seconds,
+            "input_mode": "stdin_dash_prompt",
+            "stdout_bytes": len(stdout.encode("utf-8")),
+            "stderr_bytes": len(stderr.encode("utf-8")),
+        },
+    )
+    _write_json(
+        cell_dir / "quarantine_reason.json",
+        {
+            "valid_experiment_result": not hard_failure,
+            "hard_failures": failures,
+        },
+    )
+    _write_json(
+        cell_dir / "agent_output.json", parsed if parsed else {"parse_failed": True}
+    )
+    _write_json(
+        cell_dir / "cost_latency_trace.json",
+        {
+            "task_id": task_path.name,
+            "baseline_id": baseline_id,
+            "token_usage": None,
+            "token_usage_unknown_reason": "synthetic diagnostic timeout fixture",
+        },
+    )
+    _write_json(
+        cell_dir / "eval_report.json",
+        {"hard_failure": hard_failure, "failures": failures},
+    )
+    _write_json(
+        cell_dir / "run_trace.json",
+        {
+            "provider_observed": provider_observed,
+            "reasoning_effort": reasoning_effort,
+            "returncode": returncode,
+            "tools_used": ["local_static_corpus"],
+        },
+    )
+    _write_json(
+        cell_dir / "object_graph.json", {"objects": [], "edges": [], "synthetic": True}
+    )
+    _write_json(
+        cell_dir / "gate_log.json",
+        {"advance_or_block": "block" if hard_failure else "advance"},
+    )
+    _write_json(
+        cell_dir / "verification_report.json", {"checks": [], "risks": failures}
+    )
+    _write_json(
+        cell_dir / "executor_config.json",
+        {
+            "baseline_key": baseline_key,
+            "baseline_id": baseline_id,
+            "model": model,
+            "provider_profile": provider_profile,
+        },
+    )
     result = {
         "cell_dir": str(cell_dir),
         "hard_failure": hard_failure,
@@ -148,9 +186,16 @@ def run_cell(
     return result
 
 
-def _execution_order(task_keys: list[str], baseline_keys: list[str] | None) -> list[tuple[str, str]]:
+def _execution_order(
+    task_keys: list[str], baseline_keys: list[str] | None
+) -> list[tuple[str, str]]:
     baselines = baseline_keys or ["B5", "B1"]
-    return [(task, baseline) for task in task_keys for baseline in ["B5", "B1"] if baseline in baselines]
+    return [
+        (task, baseline)
+        for task in task_keys
+        for baseline in ["B5", "B1"]
+        if baseline in baselines
+    ]
 
 
 def _tool_call_count(stdout: str, stderr: str) -> int:

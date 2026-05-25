@@ -110,7 +110,9 @@ def test_codex_client_denies_server_approval_requests_before_completion():
     events = list(client.stream_turn("thread-1", "只读回答"))
 
     assert events[-1].event == "done"
-    approval_reply = next(message for message in transport.sent if message.get("id") == "approval-1")
+    approval_reply = next(
+        message for message in transport.sent if message.get("id") == "approval-1"
+    )
     assert approval_reply["result"] == {"decision": "decline"}
 
 
@@ -218,6 +220,7 @@ def test_zotero_codex_conversation_store_persists_thread_mapping(tmp_path: Path)
     reloaded = ZoteroCodexConversationStore(tmp_path / "threads.json")
     assert reloaded.get_thread_id("conv-1") == "thread-1"
     assert reloaded.read_all()["conv-1"]["paper_id"] == 7
+
 
 class FakePoolClient:
     def __init__(self, **kwargs):

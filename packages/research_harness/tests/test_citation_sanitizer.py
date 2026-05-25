@@ -46,7 +46,10 @@ The second valid claim appears later [3].
     assert "this one is not [2]" not in result.sanitized_text
     assert "supported [1]" in result.sanitized_text
     assert "later [2]" in result.sanitized_text
-    assert "[1] Verified Paper. https://example.org/papers/verified" in result.sanitized_text
+    assert (
+        "[1] Verified Paper. https://example.org/papers/verified"
+        in result.sanitized_text
+    )
     assert "[2] Second Paper. arXiv:2501.12345" in result.sanitized_text
 
 

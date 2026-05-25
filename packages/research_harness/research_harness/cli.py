@@ -2882,13 +2882,10 @@ def zotero_sync(
 
     db = get_db(ctx)
     effective_adapter = adapter or os.getenv("ZOTERO_ADAPTER", "web")
-    effective_library_id = (
-        library_id
-        or (
-            "local"
-            if effective_adapter in {"connector", "local", "desktop"}
-            else os.getenv("ZOTERO_LIBRARY_ID", "")
-        )
+    effective_library_id = library_id or (
+        "local"
+        if effective_adapter in {"connector", "local", "desktop"}
+        else os.getenv("ZOTERO_LIBRARY_ID", "")
     )
     client = None
     needs_zotero_client = (not dry_run) or direction in {"pull", "both"}

@@ -52,7 +52,9 @@ class ZoteroChild:
 
 
 class ZoteroResource(Protocol):
-    def find_collection(self, name: str, parent_key: str | None = None) -> str | None: ...
+    def find_collection(
+        self, name: str, parent_key: str | None = None
+    ) -> str | None: ...
 
     def create_collection(self, name: str, parent_key: str | None = None) -> str: ...
 
@@ -62,13 +64,17 @@ class ZoteroResource(Protocol):
 
     def update_item(self, item_key: str, payload: dict[str, Any]) -> None: ...
 
-    def create_note(self, parent_item_key: str, note_html: str, tags: list[str]) -> str: ...
+    def create_note(
+        self, parent_item_key: str, note_html: str, tags: list[str]
+    ) -> str: ...
 
     def update_note(
         self, note_key: str, parent_item_key: str, note_html: str, tags: list[str]
     ) -> None: ...
 
-    def list_item_children(self, item_key: str) -> list[dict[str, Any] | ZoteroChild]: ...
+    def list_item_children(
+        self, item_key: str
+    ) -> list[dict[str, Any] | ZoteroChild]: ...
 
 
 class ZoteroWebApiResource:
@@ -221,9 +227,7 @@ class ZoteroConnectorResource:
         self._client = httpx.Client(timeout=timeout)
 
     def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
-        response = self._client.request(
-            method, f"{self.connector_url}{path}", **kwargs
-        )
+        response = self._client.request(method, f"{self.connector_url}{path}", **kwargs)
         if response.status_code >= 400:
             raise ZoteroResourceError(
                 f"Zotero Connector {method} {path} failed: "
@@ -330,7 +334,9 @@ class ZoteroConnectorResource:
             json={
                 "sessionID": session_id,
                 "target": target,
-                "tags": _dedupe([*_tags_from_zotero(payload.get("tags") or []), *note_tags]),
+                "tags": _dedupe(
+                    [*_tags_from_zotero(payload.get("tags") or []), *note_tags]
+                ),
                 "note": note_html,
             },
         )
@@ -359,7 +365,9 @@ class ZoteroConnectorResource:
                     raise ZoteroResourceError(f"Zotero item not found: {item_key}")
                 item_id = int(item["itemID"])
                 for collection_key in payload.get("collections") or []:
-                    collection_id = self._collection_id_for_key(conn, str(collection_key))
+                    collection_id = self._collection_id_for_key(
+                        conn, str(collection_key)
+                    )
                     if collection_id is not None:
                         conn.execute(
                             """
@@ -368,7 +376,9 @@ class ZoteroConnectorResource:
                             """,
                             (collection_id, item_id),
                         )
-                _add_item_tags(conn, item_id, _tags_from_zotero(payload.get("tags") or []))
+                _add_item_tags(
+                    conn, item_id, _tags_from_zotero(payload.get("tags") or [])
+                )
                 conn.execute(
                     """
                     UPDATE items
@@ -646,7 +656,9 @@ def clean_zotero_note_html(note_html: str) -> str:
     return text.strip()
 
 
-def _note_payload(parent_item_key: str, note_html: str, tags: list[str]) -> dict[str, Any]:
+def _note_payload(
+    parent_item_key: str, note_html: str, tags: list[str]
+) -> dict[str, Any]:
     return {
         "itemType": "note",
         "parentItem": parent_item_key,
@@ -683,7 +695,9 @@ def _dedupe(values: list[str]) -> list[str]:
     return result
 
 
-def _connector_item_payload(payload: dict[str, Any], connector_item_id: str) -> dict[str, Any]:
+def _connector_item_payload(
+    payload: dict[str, Any], connector_item_id: str
+) -> dict[str, Any]:
     item = {
         key: value
         for key, value in payload.items()

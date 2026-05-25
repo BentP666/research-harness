@@ -219,7 +219,9 @@ def test_zotero_chat_link_match_filters_library_when_library_is_supplied(
     assert matched["zotero_link"]["zotero_library_type"] == "group"
 
 
-def test_zotero_chat_optional_token_gate(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+def test_zotero_chat_optional_token_gate(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
     monkeypatch.setenv("RESEARCH_HARNESS_ZOTERO_CHAT_TOKEN", "secret-token")
 
     blocked = client.post(
@@ -272,10 +274,15 @@ def test_zotero_chat_stream_uses_codex_app_server_and_persists_thread(
                 "image_urls": image_urls,
             }
         )
-        yield CodexStreamEvent("started", {"thread_id": existing_thread_id or "thread-1", "turn_id": "turn-1"})
+        yield CodexStreamEvent(
+            "started",
+            {"thread_id": existing_thread_id or "thread-1", "turn_id": "turn-1"},
+        )
         yield CodexStreamEvent("delta", {"text": "第一段"})
         yield CodexStreamEvent("delta", {"text": "，第二段"})
-        yield CodexStreamEvent("done", {"thread_id": existing_thread_id or "thread-1", "turn_id": "turn-1"})
+        yield CodexStreamEvent(
+            "done", {"thread_id": existing_thread_id or "thread-1", "turn_id": "turn-1"}
+        )
 
     monkeypatch.setattr(http_api, "_stream_zotero_codex_turn", fake_stream_codex_turn)
 
@@ -308,7 +315,7 @@ def test_zotero_chat_stream_uses_codex_app_server_and_persists_thread(
     assert calls[0]["matched"]["paper"]["id"] == 1
     assert calls[0]["model"] == "gpt-5.4-mini"
     assert calls[0]["image_urls"] == ["data:image/png;base64,abc"]
-    assert "\"model\":\"gpt-5.4-mini\"" in first.text
+    assert '"model":"gpt-5.4-mini"' in first.text
 
     second = client.post(
         "/api/zotero/chat/stream",
@@ -341,7 +348,9 @@ def test_zotero_chat_stream_uses_codex_app_server_and_persists_thread(
     assert calls[-1]["existing_thread_id"] == "thread-1"
 
 
-def test_zotero_chat_stream_token_gate(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+def test_zotero_chat_stream_token_gate(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
     monkeypatch.setenv("RESEARCH_HARNESS_ZOTERO_CHAT_TOKEN", "secret-token")
 
     blocked = client.post(
@@ -364,7 +373,9 @@ def test_zotero_chat_stream_rejects_unknown_model(client: TestClient):
     assert response.status_code == 422
 
 
-def test_zotero_warmup_prewarms_codex_pool(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+def test_zotero_warmup_prewarms_codex_pool(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
     from research_harness_mcp import http_api
 
     calls: list[dict] = []
@@ -393,7 +404,9 @@ def test_zotero_chat_stream_returns_import_preview_for_current_collection(
     from research_harness_mcp import http_api
 
     def should_not_call_codex(**kwargs):
-        raise AssertionError("Codex stream should not run for current-collection import preview")
+        raise AssertionError(
+            "Codex stream should not run for current-collection import preview"
+        )
 
     monkeypatch.setattr(http_api, "_stream_zotero_codex_turn", should_not_call_codex)
 
@@ -417,15 +430,15 @@ def test_zotero_chat_stream_returns_import_preview_for_current_collection(
     assert "event: ready" in response.text
     assert "event: action_preview" in response.text
     assert "event: done" in response.text
-    assert "\"topic_id\":1" in response.text
-    assert "\"target_collection_key\":\"CURRDIR1\"" in response.text
-    assert "\"library_id\":\"1\"" in response.text
-    assert "\"library_type\":\"user\"" in response.text
-    assert "\"paper_ids\":[1]" in response.text
+    assert '"topic_id":1' in response.text
+    assert '"target_collection_key":"CURRDIR1"' in response.text
+    assert '"library_id":"1"' in response.text
+    assert '"library_type":"user"' in response.text
+    assert '"paper_ids":[1]' in response.text
     assert "导入当前目录" in response.text
-    assert "\"action_type\":\"sync_rh_papers_to_collection\"" in response.text
-    assert "\"type\":\"http_json\"" in response.text
-    assert "\"label\":\"确认导入\"" in response.text
+    assert '"action_type":"sync_rh_papers_to_collection"' in response.text
+    assert '"type":"http_json"' in response.text
+    assert '"label":"确认导入"' in response.text
 
 
 def test_zotero_chat_stream_can_infer_import_topic_from_current_directory(
@@ -434,7 +447,9 @@ def test_zotero_chat_stream_can_infer_import_topic_from_current_directory(
     from research_harness_mcp import http_api
 
     def should_not_call_codex(**kwargs):
-        raise AssertionError("Codex stream should not run for current-directory import preview")
+        raise AssertionError(
+            "Codex stream should not run for current-directory import preview"
+        )
 
     monkeypatch.setattr(http_api, "_stream_zotero_codex_turn", should_not_call_codex)
 
@@ -454,8 +469,8 @@ def test_zotero_chat_stream_can_infer_import_topic_from_current_directory(
 
     assert response.status_code == 200, response.text
     assert "event: action_preview" in response.text
-    assert "\"topic_id\":1" in response.text
-    assert "\"paper_ids\":[1]" in response.text
+    assert '"topic_id":1' in response.text
+    assert '"paper_ids":[1]' in response.text
 
 
 def test_zotero_import_preview_maps_local_user_library_to_web_user_id(
@@ -464,7 +479,9 @@ def test_zotero_import_preview_maps_local_user_library_to_web_user_id(
     from research_harness_mcp import http_api
 
     def should_not_call_codex(**kwargs):
-        raise AssertionError("Codex stream should not run for current-directory import preview")
+        raise AssertionError(
+            "Codex stream should not run for current-directory import preview"
+        )
 
     monkeypatch.setenv("ZOTERO_LIBRARY_ID", "16929158")
     monkeypatch.setenv("ZOTERO_LIBRARY_TYPE", "user")
@@ -486,8 +503,8 @@ def test_zotero_import_preview_maps_local_user_library_to_web_user_id(
 
     assert response.status_code == 200, response.text
     assert "event: action_preview" in response.text
-    assert "\"library_id\":\"16929158\"" in response.text
-    assert "\"library_type\":\"user\"" in response.text
+    assert '"library_id":"16929158"' in response.text
+    assert '"library_type":"user"' in response.text
 
 
 def test_zotero_import_preview_counts_existing_links_in_current_library_only(
@@ -496,7 +513,9 @@ def test_zotero_import_preview_counts_existing_links_in_current_library_only(
     from research_harness_mcp import http_api
 
     def should_not_call_codex(**kwargs):
-        raise AssertionError("Codex stream should not run for current-directory import preview")
+        raise AssertionError(
+            "Codex stream should not run for current-directory import preview"
+        )
 
     monkeypatch.setattr(http_api, "_stream_zotero_codex_turn", should_not_call_codex)
 
@@ -527,7 +546,7 @@ def test_zotero_import_preview_counts_existing_links_in_current_library_only(
         },
     )
     assert user_library.status_code == 200, user_library.text
-    assert "\"known_existing_count\":0" in user_library.text
+    assert '"known_existing_count":0' in user_library.text
 
     group_library = client.post(
         "/api/zotero/chat/stream",
@@ -543,7 +562,7 @@ def test_zotero_import_preview_counts_existing_links_in_current_library_only(
         },
     )
     assert group_library.status_code == 200, group_library.text
-    assert "\"known_existing_count\":1" in group_library.text
+    assert '"known_existing_count":1' in group_library.text
 
 
 def test_zotero_import_intent_classifier_avoids_generic_sync_chat():
@@ -562,7 +581,9 @@ def test_zotero_chat_stream_returns_pdf_attach_action_preview_without_codex(
     from research_harness_mcp import http_api
 
     def should_not_call_codex(**kwargs):
-        raise AssertionError("Codex stream should not run for PDF attachment action previews")
+        raise AssertionError(
+            "Codex stream should not run for PDF attachment action previews"
+        )
 
     monkeypatch.setattr(http_api, "_stream_zotero_codex_turn", should_not_call_codex)
     pdf_path = tmp_path / "paper.pdf"
@@ -591,10 +612,10 @@ def test_zotero_chat_stream_returns_pdf_attach_action_preview_without_codex(
     assert "event: done" in response.text
     assert "event: started" not in response.text
     assert "event: action_preview" in response.text
-    assert "\"action_type\":\"zotero_attach_pdf\"" in response.text
-    assert "\"handler\":\"zotero_import_file_attachment\"" in response.text
-    assert f"\"pdf_path\":\"{str(pdf_path)}\"" in response.text
-    assert "\"parent_item_key\":\"ABCD1234\"" in response.text
+    assert '"action_type":"zotero_attach_pdf"' in response.text
+    assert '"handler":"zotero_import_file_attachment"' in response.text
+    assert f'"pdf_path":"{str(pdf_path)}"' in response.text
+    assert '"parent_item_key":"ABCD1234"' in response.text
     assert "PDF 附件" in response.text
 
 
@@ -630,7 +651,7 @@ def test_zotero_chat_ready_payload_reports_context_and_actions(client: TestClien
     )
 
     assert response.status_code == 200, response.text
-    assert "\"kind\":\"collection\"" in response.text
+    assert '"kind":"collection"' in response.text
     assert "init_topic_from_collection" in response.text
     assert "sync_rh_missing_papers_to_collection" in response.text
 
@@ -673,7 +694,9 @@ def test_zotero_chat_stream_returns_seed_paper_preview_for_empty_collection(
         }
 
     def should_not_call_codex(**kwargs):
-        raise AssertionError("Codex stream should not run for deterministic seed previews")
+        raise AssertionError(
+            "Codex stream should not run for deterministic seed previews"
+        )
 
     monkeypatch.setattr(http_api, "_search_papers_impl", fake_search)
     monkeypatch.setattr(http_api, "_stream_zotero_codex_turn", should_not_call_codex)
@@ -710,9 +733,7 @@ def test_zotero_chat_stream_returns_seed_paper_preview_for_empty_collection(
 def test_zotero_seed_search_intent_classifier_catches_initial_folder_requests():
     from research_harness_mcp import http_api
 
-    assert http_api._looks_like_zotero_seed_search_request(
-        "帮我找到最开始的几篇文章"
-    )
+    assert http_api._looks_like_zotero_seed_search_request("帮我找到最开始的几篇文章")
     assert http_api._looks_like_zotero_seed_search_request(
         "这个空目录先推荐 5 篇 seed papers"
     )

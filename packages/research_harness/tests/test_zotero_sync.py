@@ -59,18 +59,30 @@ class FakeZoteroClient:
 
     def create_note(self, parent_item_key: str, note_html: str, tags: list[str]) -> str:
         key = self._key("N")
-        self.notes[key] = {"parentItem": parent_item_key, "note": note_html, "tags": tags}
+        self.notes[key] = {
+            "parentItem": parent_item_key,
+            "note": note_html,
+            "tags": tags,
+        }
         self.created_notes.append((parent_item_key, note_html, list(tags)))
         return key
 
     def update_note(
         self, note_key: str, parent_item_key: str, note_html: str, tags: list[str]
     ) -> None:
-        self.notes[note_key] = {"parentItem": parent_item_key, "note": note_html, "tags": tags}
+        self.notes[note_key] = {
+            "parentItem": parent_item_key,
+            "note": note_html,
+            "tags": tags,
+        }
         self.updated_notes.append((note_key, note_html, list(tags)))
 
     def add_child_note(
-        self, key: str, parent_item_key: str, note_html: str, tags: list[str] | None = None
+        self,
+        key: str,
+        parent_item_key: str,
+        note_html: str,
+        tags: list[str] | None = None,
     ) -> None:
         self.notes[key] = {
             "parentItem": parent_item_key,
@@ -78,7 +90,9 @@ class FakeZoteroClient:
             "tags": list(tags or []),
         }
 
-    def add_attachment(self, key: str, parent_item_key: str, title: str = "PDF") -> None:
+    def add_attachment(
+        self, key: str, parent_item_key: str, title: str = "PDF"
+    ) -> None:
         self.attachments[key] = {"parentItem": parent_item_key, "title": title}
 
     def add_annotation(
@@ -190,7 +204,9 @@ def _seed_db(path: Path) -> Database:
     db.migrate()
     conn = db.connect()
     try:
-        conn.execute("INSERT INTO topics (name, description) VALUES ('demo-topic', 'Demo topic')")
+        conn.execute(
+            "INSERT INTO topics (name, description) VALUES ('demo-topic', 'Demo topic')"
+        )
         conn.execute(
             """
             INSERT INTO papers
@@ -307,7 +323,9 @@ def test_zotero_sync_creates_collections_item_note_and_mapping(tmp_path):
 
     assert result.synced_count == 1
     assert fake.find_collection("Research Harness") is not None
-    topic_collection = fake.find_collection("demo-topic", fake.find_collection("Research Harness"))
+    topic_collection = fake.find_collection(
+        "demo-topic", fake.find_collection("Research Harness")
+    )
     assert topic_collection is not None
     assert len(fake.created_items) == 1
     assert len(fake.created_notes) == 1
@@ -317,8 +335,7 @@ def test_zotero_sync_creates_collections_item_note_and_mapping(tmp_path):
     conn = db.connect()
     try:
         row = conn.execute(
-            "SELECT * FROM zotero_item_links "
-            "WHERE paper_id = 1 AND topic_id = 1"
+            "SELECT * FROM zotero_item_links WHERE paper_id = 1 AND topic_id = 1"
         ).fetchone()
     finally:
         conn.close()
@@ -591,8 +608,7 @@ def test_zotero_pull_imports_user_notes_and_skips_rh_generated_notes(tmp_path):
             "WHERE source LIKE 'zotero:note:USERNOTE1:%'"
         ).fetchall()
         imports = conn.execute(
-            "SELECT * FROM zotero_import_links "
-            "WHERE zotero_child_key = 'USERNOTE1'"
+            "SELECT * FROM zotero_import_links WHERE zotero_child_key = 'USERNOTE1'"
         ).fetchall()
     finally:
         conn.close()
@@ -663,7 +679,9 @@ def test_zotero_pull_dry_run_cli_uses_resource_adapter(tmp_path, monkeypatch):
     fake = FakeZoteroClient()
     service = ZoteroSyncService(db_path=db.path, client=fake)
     push = service.sync_topic("demo-topic", include_notes=True)
-    fake.add_child_note("USERNOTE1", push.papers[0].zotero_item_key, "<p>CLI preview.</p>")
+    fake.add_child_note(
+        "USERNOTE1", push.papers[0].zotero_item_key, "<p>CLI preview.</p>"
+    )
     monkeypatch.setenv("RESEARCH_HUB_DB_PATH", str(db_path))
     monkeypatch.setattr(
         "research_harness.zotero_resource.create_zotero_resource_from_env",
@@ -851,8 +869,7 @@ def test_zotero_pull_imports_attachment_annotations(tmp_path):
             "WHERE source LIKE 'zotero:annotation:ANNOT001:%'"
         ).fetchall()
         imports = conn.execute(
-            "SELECT * FROM zotero_import_links "
-            "WHERE zotero_child_key = 'ANNOT001'"
+            "SELECT * FROM zotero_import_links WHERE zotero_child_key = 'ANNOT001'"
         ).fetchall()
     finally:
         conn.close()

@@ -401,6 +401,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.middleware("http")
 async def longtask_admin_token_middleware(request: Request, call_next):
     """Optional local admin token gate for LongTask HTTP endpoints."""
@@ -2847,7 +2848,9 @@ def _build_expansion_query(
         phrase = " ".join(words).strip()
         if phrase:
             phrases.append(phrase)
-    return "\n".join(part for part in [base, *phrases[:3]] if part).strip() or topic_name
+    return (
+        "\n".join(part for part in [base, *phrases[:3]] if part).strip() or topic_name
+    )
 
 
 def _deep_read_provider_pool() -> list[str]:
@@ -4122,7 +4125,9 @@ class ZoteroChatItemContext(BaseModel):
             text = str(value or "").strip()
             if not text:
                 continue
-            if not re.match(r"^data:image/(png|jpeg|jpg|webp);base64,", text, flags=re.I):
+            if not re.match(
+                r"^data:image/(png|jpeg|jpg|webp);base64,", text, flags=re.I
+            ):
                 raise ValueError("screenshots must be data:image base64 URLs")
             if len(text) > 4_000_000:
                 raise ValueError("each screenshot must be under 4MB as a data URL")
@@ -4226,7 +4231,8 @@ def sync_topic_zotero(topic_id: int, body: ZoteroSyncRequest, request: Request):
         push_result = service.sync_topic(
             topic["name"],
             root_collection=body.root_collection,
-            topic_collection_name=body.topic_collection_name or body.target_collection_name,
+            topic_collection_name=body.topic_collection_name
+            or body.target_collection_name,
             target_collection_key=body.target_collection_key,
             include_notes=not body.skip_notes,
             dry_run=body.dry_run,
@@ -4642,8 +4648,7 @@ def _zotero_codex_effort() -> str:
 
 def _zotero_codex_service_tier() -> str | None:
     return (
-        os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_SERVICE_TIER", "").strip()
-        or None
+        os.environ.get("RESEARCH_HARNESS_ZOTERO_CODEX_SERVICE_TIER", "").strip() or None
     )
 
 
@@ -4974,9 +4979,7 @@ def _find_paper_by_field(
     ).fetchone()
 
 
-def _zotero_chat_match_payload(
-    row: sqlite3.Row, *, source: str
-) -> dict[str, Any]:
+def _zotero_chat_match_payload(row: sqlite3.Row, *, source: str) -> dict[str, Any]:
     paper = {
         "id": int(row["paper_id"]),
         "title": row["title"] or "",
@@ -5073,7 +5076,9 @@ def _build_zotero_codex_handoff_prompt(
         f"- tags: {', '.join(item.tags[:40])}",
     ]
     if item.selected_text:
-        lines.extend(["", "## Zotero 选中文本", _truncate_text(item.selected_text, 6000)])
+        lines.extend(
+            ["", "## Zotero 选中文本", _truncate_text(item.selected_text, 6000)]
+        )
     if item.note_text:
         lines.extend(["", "## Zotero 笔记片段", _truncate_text(item.note_text, 6000)])
     if item.screenshots:
@@ -5217,9 +5222,7 @@ def _prepare_zotero_seed_papers_action(
         return None
 
     directory_name = (
-        body.item.current_directory_path
-        or body.item.current_directory_name
-        or ""
+        body.item.current_directory_path or body.item.current_directory_name or ""
     ).strip()
     if not directory_name or not str(body.item.current_directory_key or "").strip():
         return {
@@ -5349,7 +5352,9 @@ def _zotero_seed_candidate_preview(
         "arxiv_id": str(candidate.get("arxiv_id") or ""),
         "url": str(candidate.get("url") or ""),
         "source": source,
-        "snippet": str(candidate.get("snippet") or candidate.get("abstract") or "")[:800],
+        "snippet": str(candidate.get("snippet") or candidate.get("abstract") or "")[
+            :800
+        ],
         "citation_count": candidate.get("citation_count"),
     }
 
@@ -5390,9 +5395,7 @@ def _maybe_prepare_zotero_chat_action(
         return None
 
     directory_name = (
-        body.item.current_directory_path
-        or body.item.current_directory_name
-        or ""
+        body.item.current_directory_path or body.item.current_directory_name or ""
     ).strip()
     if not directory_name or not str(body.item.current_directory_key or "").strip():
         return {
@@ -5486,9 +5489,7 @@ def _maybe_prepare_zotero_chat_action(
             summary_filters.append(f"{len(records)} 篇")
         elif len(records) == 1:
             summary_filters.append("1 篇")
-        filter_text = (
-            f"（{'，'.join(summary_filters)}）" if summary_filters else ""
-        )
+        filter_text = f"（{'，'.join(summary_filters)}）" if summary_filters else ""
         return {
             "kind": "action_preview",
             "preview": {
@@ -5501,7 +5502,8 @@ def _maybe_prepare_zotero_chat_action(
                 "topic_id": int(topic["id"]),
                 "source_label": source_label,
                 "target_collection_key": body.item.current_directory_key,
-                "target_collection_name": body.item.current_directory_name or directory_name,
+                "target_collection_name": body.item.current_directory_name
+                or directory_name,
                 "target_collection_path": directory_name,
                 "target_label": directory_name,
                 "library_id": library_id,
@@ -5908,9 +5910,7 @@ def _infer_zotero_import_topic(
     ).fetchall()
     for row in rows:
         topic_name = str(row["name"] or "").strip()
-        if topic_name and (
-            topic_name in text or topic_name in directory_topic_hints
-        ):
+        if topic_name and (topic_name in text or topic_name in directory_topic_hints):
             return {"id": int(row["id"]), "name": topic_name}
     return None
 
@@ -5993,9 +5993,7 @@ def _looks_like_zotero_seed_search_request(message: str) -> bool:
     )
 
 
-def _zotero_seed_search_query(
-    body: ZoteroChatRequest, *, topic_name: str = ""
-) -> str:
+def _zotero_seed_search_query(body: ZoteroChatRequest, *, topic_name: str = "") -> str:
     message = str(body.message or "").strip()
     explicit_patterns = [
         r"(?:query|关键词|检索词|搜索词)\s*[:：=]\s*(.+)$",
@@ -6048,8 +6046,7 @@ def _message_targets_current_paper_only(message: str) -> bool:
 def _message_targets_deep_read_only(message: str) -> bool:
     lowered = str(message or "").lower()
     return any(
-        hint in lowered
-        for hint in ("精读", "deepread", "deep read", "deep-read")
+        hint in lowered for hint in ("精读", "deepread", "deep read", "deep-read")
     )
 
 

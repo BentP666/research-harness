@@ -45,7 +45,7 @@ def test_zotero_panel_registers_item_pane_and_calls_rh_api():
     panel_js = (PLUGIN_DIR / "content" / "rh-zotero-panel.js").read_text()
 
     assert "Zotero.ItemPaneManager.registerSection" in panel_js
-    assert 'paneID: PANE_ID' in panel_js
+    assert "paneID: PANE_ID" in panel_js
     assert 'CHROME_CONTENT_BASE = "chrome://researchharnesszotero/content/"' in panel_js
     assert 'PANE_ICON = CHROME_CONTENT_BASE + "icons/rh-icon-20.png"' in panel_js
     assert "/api/zotero/chat/stream" in panel_js
@@ -144,7 +144,7 @@ def test_zotero_panel_registers_item_pane_and_calls_rh_api():
     assert "renderIconButton" in panel_js
     assert "Services.wm.getMostRecentWindow" not in panel_js
     assert "syncMatchedTopicToZotero" not in panel_js
-    assert "selected_text: \"\"" not in panel_js
+    assert 'selected_text: ""' not in panel_js
     assert "检查 API" not in panel_js
     assert "tags: tagsFor(base)" in panel_js
     assert "conversationStore" in panel_js
@@ -174,7 +174,9 @@ def test_zotero_panel_registers_item_pane_and_calls_rh_api():
     assert ".rh-zotero-brand-logo" in panel_css
     assert ".rh-zotero-context-card" in panel_css
     assert ".rh-zotero-context-pill {\n  display: inline-flex;" in panel_css
-    context_pill_block = panel_css.split(".rh-zotero-context-pill {", 1)[1].split("}", 1)[0]
+    context_pill_block = panel_css.split(".rh-zotero-context-pill {", 1)[1].split(
+        "}", 1
+    )[0]
     assert "text-transform: uppercase" not in context_pill_block
     assert ".rh-zotero-start-page" in panel_css
     assert ".rh-zotero-suggestion-btn" in panel_css
@@ -234,7 +236,7 @@ def test_zotero_panel_can_auto_start_local_service_safely():
     assert "RESEARCH_HARNESS_HTTP_PORT" in panel_js
     assert "PYTHONPATH" in panel_js
     assert "RESEARCH_HARNESS_ZOTERO_CHAT_TOKEN" in panel_js
-    assert "url.protocol !== \"http:\"" in panel_js
+    assert 'url.protocol !== "http:"' in panel_js
     assert 'host === "localhost"' in panel_js
     assert 'host === "::1"' in panel_js
     assert 'host === "[::1]"' in panel_js

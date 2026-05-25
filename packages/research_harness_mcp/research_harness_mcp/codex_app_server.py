@@ -81,14 +81,18 @@ class SubprocessJsonRpcTransport:
     def read(self, timeout_seconds: float | None = None) -> dict[str, Any]:
         if self._process.stdout is None:
             raise CodexAppServerError("Codex app-server stdout is closed")
-        deadline = None if timeout_seconds is None else time.monotonic() + timeout_seconds
+        deadline = (
+            None if timeout_seconds is None else time.monotonic() + timeout_seconds
+        )
         while True:
             if self._process.poll() is not None:
                 stderr = self._drain_stderr()
                 raise CodexAppServerError(
                     f"Codex app-server exited with code {self._process.returncode}: {stderr}".strip()
                 )
-            remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+            remaining = (
+                None if deadline is None else max(0.0, deadline - time.monotonic())
+            )
             if remaining == 0.0:
                 raise TimeoutError("timed out waiting for Codex app-server message")
             readable, _, _ = select.select([self._process.stdout], [], [], remaining)
@@ -233,7 +237,9 @@ class CodexAppServerClient:
             raise CodexAppServerError("thread/start response did not include thread.id")
         return str(thread_id)
 
-    def resume_thread(self, thread_id: str, *, cwd: str | Path, instructions: str) -> str:
+    def resume_thread(
+        self, thread_id: str, *, cwd: str | Path, instructions: str
+    ) -> str:
         params: dict[str, Any] = {
             "threadId": thread_id,
             "cwd": str(Path(cwd).resolve()),
@@ -322,7 +328,10 @@ class CodexAppServerClient:
                     },
                 )
                 continue
-            if method == "thread/status/changed" and params.get("threadId") == thread_id:
+            if (
+                method == "thread/status/changed"
+                and params.get("threadId") == thread_id
+            ):
                 status_payload = params.get("status")
                 yield CodexStreamEvent(
                     "status",
@@ -369,7 +378,9 @@ class CodexAppServerClient:
             # only if the protocol changes. Keep this explicit so tests catch drift.
             logger.debug("Codex turn completed before turn/start response was observed")
 
-    def _request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request(
+        self, method: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         request_id = self._send_request(method, params)
         while True:
             message = self._read_next()
@@ -389,7 +400,9 @@ class CodexAppServerClient:
         self._ensure_transport().send(message)
         return request_id
 
-    def _send_notification(self, method: str, params: dict[str, Any] | None = None) -> None:
+    def _send_notification(
+        self, method: str, params: dict[str, Any] | None = None
+    ) -> None:
         message: dict[str, Any] = {"method": method}
         if params is not None:
             message["params"] = params
@@ -421,7 +434,9 @@ class CodexAppServerClient:
         if result is None:
             return {}
         if not isinstance(result, dict):
-            raise CodexAppServerError("Codex app-server response result was not an object")
+            raise CodexAppServerError(
+                "Codex app-server response result was not an object"
+            )
         return result
 
     @staticmethod

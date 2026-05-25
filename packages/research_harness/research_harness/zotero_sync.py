@@ -23,6 +23,7 @@ from .zotero_resource import (
     coerce_zotero_child,
     create_zotero_resource_from_env,
 )
+
 DEFAULT_ROOT_COLLECTION = "Research Harness"
 
 
@@ -254,7 +255,9 @@ def filter_sync_records_by_paper_ids(
     if not wanted_ids:
         return []
     record_by_id = {record.paper_id: record for record in records}
-    return [record_by_id[paper_id] for paper_id in wanted_ids if paper_id in record_by_id]
+    return [
+        record_by_id[paper_id] for paper_id in wanted_ids if paper_id in record_by_id
+    ]
 
 
 def build_zotero_item_payload(
@@ -472,7 +475,9 @@ class ZoteroSyncService:
             synced: list[ZoteroSyncedPaper] = []
             skipped = 0
             for record in records:
-                item_payload = build_zotero_item_payload(record, collection_key=topic_key)
+                item_payload = build_zotero_item_payload(
+                    record, collection_key=topic_key
+                )
                 note_html = build_zotero_note_html(record) if include_notes else ""
                 content_hash = build_content_hash(item_payload, note_html)
                 existing = self._existing_link(conn, record)
@@ -504,7 +509,10 @@ class ZoteroSyncService:
                 action = "created"
                 item_key = existing["zotero_item_key"] if existing else ""
                 if not item_key:
-                    item_key = self.client.find_item_by_tag(f"rh-paper-id:{record.paper_id}") or ""
+                    item_key = (
+                        self.client.find_item_by_tag(f"rh-paper-id:{record.paper_id}")
+                        or ""
+                    )
                 if item_key:
                     self.client.update_item(item_key, item_payload)
                     action = "updated"
@@ -533,11 +541,17 @@ class ZoteroSyncService:
                 if include_notes:
                     note_tags = _rh_note_tags(record.paper_id)
                     if note_key:
-                        self.client.update_note(note_key, item_key, note_html, note_tags)
+                        self.client.update_note(
+                            note_key, item_key, note_html, note_tags
+                        )
                     else:
-                        note_key = self.client.create_note(item_key, note_html, note_tags)
+                        note_key = self.client.create_note(
+                            item_key, note_html, note_tags
+                        )
 
-                self._upsert_link(conn, record, topic_key, item_key, note_key, content_hash)
+                self._upsert_link(
+                    conn, record, topic_key, item_key, note_key, content_hash
+                )
                 synced.append(
                     ZoteroSyncedPaper(
                         paper_id=record.paper_id,
@@ -604,9 +618,8 @@ class ZoteroSyncService:
                 for child in self._list_reading_children(item_key):
                     if not child.key:
                         continue
-                    if (
-                        not include_rh_generated
-                        and _is_rh_generated_child(child.key, child.tags, rh_note_key)
+                    if not include_rh_generated and _is_rh_generated_child(
+                        child.key, child.tags, rh_note_key
                     ):
                         skipped += 1
                         continue
@@ -814,7 +827,6 @@ class ZoteroSyncService:
                 content_hash,
             ),
         )
-
 
 
 def _load_topic_zotero_links(
@@ -1213,7 +1225,9 @@ def _cas_zone_label(value: Any) -> str:
     return text
 
 
-def _note_payload(parent_item_key: str, note_html: str, tags: list[str]) -> dict[str, Any]:
+def _note_payload(
+    parent_item_key: str, note_html: str, tags: list[str]
+) -> dict[str, Any]:
     return {
         "itemType": "note",
         "parentItem": parent_item_key,
@@ -1314,9 +1328,7 @@ def _brief_list(value: Any, *, max_items: int, max_chars: int) -> str:
     return "<ul>" + "".join(f"<li>{html.escape(item)}</li>" for item in items) + "</ul>"
 
 
-def _brief_zh_list(
-    value: Any, *, max_items: int, max_chars: int, fallback: str
-) -> str:
+def _brief_zh_list(value: Any, *, max_items: int, max_chars: int, fallback: str) -> str:
     if isinstance(value, list):
         zh_items = [str(item) for item in value if not _looks_mostly_english(str(item))]
         if zh_items:
@@ -1373,16 +1385,16 @@ def _deep_reading_html(raw: Any) -> list[str]:
     implications = data.get("research_implications")
     if isinstance(implications, list) and implications:
         parts.append("<h3>Research Implications</h3>")
-        items = "".join(
-            f"<li>{html.escape(str(item))}</li>" for item in implications
-        )
+        items = "".join(f"<li>{html.escape(str(item))}</li>" for item in implications)
         parts.append(f"<ul>{items}</ul>")
     return parts
 
 
 def _content_html(value: Any) -> str:
     if isinstance(value, (dict, list)):
-        return f"<pre>{html.escape(json.dumps(value, ensure_ascii=False, indent=2))}</pre>"
+        return (
+            f"<pre>{html.escape(json.dumps(value, ensure_ascii=False, indent=2))}</pre>"
+        )
     return _paragraph(str(value or ""))
 
 

@@ -49,7 +49,10 @@ _REFERENCE_HEADER_RE = re.compile(
     re.IGNORECASE,
 )
 _REFERENCE_LINE_RE = re.compile(r"^\s*\[(\d+)\]\s*(.*?)\s*$")
-_DOI_RE = re.compile(r"(?:doi:\s*|https?://(?:dx\.)?doi\.org/)?(10\.\d{4,9}/[^\s\]\)>,;]+)", re.IGNORECASE)
+_DOI_RE = re.compile(
+    r"(?:doi:\s*|https?://(?:dx\.)?doi\.org/)?(10\.\d{4,9}/[^\s\]\)>,;]+)",
+    re.IGNORECASE,
+)
 _ARXIV_RE = re.compile(
     r"(?:arxiv:\s*|https?://arxiv\.org/(?:abs|pdf)/)?"
     r"([a-z-]+/[0-9]{7}|\d{4}\.\d{4,5})(?:v\d+)?",
@@ -235,7 +238,9 @@ class SourceRegistry:
             return None
         if title in self._by_title:
             return self._by_title[title]
-        matches = [source for key, source in self._by_title.items() if key and key in title]
+        matches = [
+            source for key, source in self._by_title.items() if key and key in title
+        ]
         unique = {source.stable_key: source for source in matches}
         if len(unique) == 1:
             return next(iter(unique.values()))
@@ -305,7 +310,9 @@ def sanitize_citations(text: str, registry: SourceRegistry) -> CitationSanitizeR
     old_to_new: dict[int, int] = {}
     source_key_to_new: dict[str, int] = {}
     valid_citations: list[ValidCitation] = []
-    for new_number, (old_number, source_key, source, ref_text, repaired) in enumerate(kept, start=1):
+    for new_number, (old_number, source_key, source, ref_text, repaired) in enumerate(
+        kept, start=1
+    ):
         old_to_new[old_number] = new_number
         source_key_to_new[source_key] = new_number
         valid_citations.append(
@@ -337,7 +344,9 @@ def sanitize_citations(text: str, registry: SourceRegistry) -> CitationSanitizeR
     for new_number, (_, _, _, ref_text, _) in enumerate(kept, start=1):
         rendered_refs.append(f"[{new_number}] {ref_text}")
 
-    sanitized = cleaned_body.rstrip() + "\n\n" + "\n".join(rendered_refs).rstrip() + "\n"
+    sanitized = (
+        cleaned_body.rstrip() + "\n\n" + "\n".join(rendered_refs).rstrip() + "\n"
+    )
     return CitationSanitizeResult(
         sanitized_text=sanitized,
         valid_citations=valid_citations,

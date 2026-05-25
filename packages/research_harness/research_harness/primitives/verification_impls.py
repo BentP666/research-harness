@@ -173,9 +173,7 @@ def citation_sanitize(
         )
 
     result = sanitize_citations(text, registry)
-    recorded = _record_hallucinated_citations(
-        db, topic_id, result.removed_citations
-    )
+    recorded = _record_hallucinated_citations(db, topic_id, result.removed_citations)
 
     items: list[CitationSanitizeItem] = []
     for item in result.valid_citations:
