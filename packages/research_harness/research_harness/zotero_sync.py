@@ -16,10 +16,8 @@ from pathlib import Path
 from typing import Any
 
 from .zotero_resource import (
-    ZOTERO_API_BASE,
     ZoteroChild,
     ZoteroResource,
-    ZoteroResourceError,
     ZoteroWebApiResource,
     clean_zotero_note_html,
     coerce_zotero_child,
