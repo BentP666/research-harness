@@ -37,6 +37,19 @@ across sessions instead of losing progress in chat history.
 - Resume the same research state across agents, models, machines, and sessions.
 - Maintain public-safe Discovery issues and opportunity briefs from sanitized or synthetic evidence.
 
+## Zotero side panel
+
+Research Harness also ships an experimental Zotero side-panel plugin for
+paper-first and collection-first research conversations. The plugin reads the
+current Zotero item or collection, matches it to RH topics/papers, streams
+Codex-backed answers, and keeps RH-owned write actions behind explicit preview
+and confirmation gates.
+
+For normal local use, Zotero can now auto-start the loopback RH Python bridge
+when `http://127.0.0.1:8000` is unavailable, then prewarm the Codex app-server
+pool before the first question. See [`docs/zotero-rh-panel.md`](docs/zotero-rh-panel.md)
+for build/install steps, preferences, and the safety model.
+
 ## The easiest way to start
 
 You do not need to learn the whole configuration surface up front. Clone the

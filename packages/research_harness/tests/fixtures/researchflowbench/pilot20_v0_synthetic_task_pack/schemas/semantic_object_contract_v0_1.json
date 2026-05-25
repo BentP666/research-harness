@@ -1,0 +1,15 @@
+{
+  "object_types": [
+    "baseline",
+    "citation_link",
+    "claim",
+    "evidence_span",
+    "gate_decision",
+    "paper",
+    "review_issue",
+    "rollback_event",
+    "run_trace",
+    "section_draft"
+  ],
+  "synthetic": true
+}

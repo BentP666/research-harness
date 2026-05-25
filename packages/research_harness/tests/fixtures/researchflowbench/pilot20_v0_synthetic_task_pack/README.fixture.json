@@ -1,0 +1,6 @@
+{
+  "description": "Synthetic Pilot-20 task pack used only for public validator tests.",
+  "model_execution_performed": false,
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

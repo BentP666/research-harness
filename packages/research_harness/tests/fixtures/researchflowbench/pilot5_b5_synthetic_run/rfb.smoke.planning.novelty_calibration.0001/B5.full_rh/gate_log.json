@@ -1,0 +1,13 @@
+{
+  "advance_or_block": "advance_with_caveats",
+  "invalidated_objects": [],
+  "missing_evidence": [],
+  "preserved_objects": [
+    "obj.synthetic_baseline"
+  ],
+  "reasons": [
+    "Synthetic planning gate reason 3."
+  ],
+  "schema_version": "synthetic_b5_gate_log.v0",
+  "synthetic": true
+}

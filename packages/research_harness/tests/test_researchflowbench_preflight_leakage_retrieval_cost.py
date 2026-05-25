@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 from pathlib import Path
 
 from research_harness.eval.researchflowbench import validate_pilot20_task_pack
@@ -19,11 +18,9 @@ from research_harness.eval.researchflowbench.retrieval import (
     validate_retrieval_provenance,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-PILOT20_ROOT = REPO_ROOT / ".research-harness/reports/researchflowbench_pilot20_v0"
-FROZEN_PILOT5_PATHS = (
-    ".research-harness/reports/researchflowbench_pilot5_v0/manifest.json",
-    ".research-harness/reports/researchflowbench_pilot5_v0/runs/model_actual_cursor_full5_clean_20260520/",
+PILOT20_ROOT = (
+    Path(__file__).resolve().parent
+    / "fixtures/researchflowbench/pilot20_v0_synthetic_task_pack"
 )
 
 
@@ -197,13 +194,9 @@ def test_new_runtime_validators_integrate_with_existing_pilot20_validator():
     assert retrieval_report["retrieval_trace_complete"], retrieval_report
 
 
-def test_pilot5_frozen_files_remain_unmodified():
-    result = subprocess.run(
-        ["git", "status", "--short", "--", *FROZEN_PILOT5_PATHS],
-        cwd=REPO_ROOT,
-        check=True,
-        text=True,
-        capture_output=True,
-    )
+def test_public_synthetic_pilot20_fixture_declares_no_model_execution():
+    manifest = _load_json(PILOT20_ROOT / "pilot20_manifest_draft.json")
 
-    assert result.stdout == ""
+    assert manifest["synthetic"] is True
+    assert manifest["visibility"] == "public_safe_synthetic_fixture"
+    assert manifest["model_execution_performed"] is False

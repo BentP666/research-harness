@@ -1,0 +1,9 @@
+{
+  "corrupted_case_ids": [
+    "C03_composite_claim_partial_support"
+  ],
+  "example_ids": [],
+  "schema_version": "researchflowbench.dev_example_ids.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.partial_support_claim.0001"
+}

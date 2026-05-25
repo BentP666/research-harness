@@ -46,6 +46,9 @@ fi
 
 _rh_export_secret OPENALEX_API_KEY
 _rh_export_secret FAL_KEY
+_rh_export_secret ZOTERO_API_KEY
+_rh_export_secret ZOTERO_LIBRARY_ID
+_rh_export_secret ZOTERO_LIBRARY_TYPE
 
 # OpenReview only needs an enable flag for the public conference mirrors.
 export OPENREVIEW_ENABLE="${OPENREVIEW_ENABLE:-1}"

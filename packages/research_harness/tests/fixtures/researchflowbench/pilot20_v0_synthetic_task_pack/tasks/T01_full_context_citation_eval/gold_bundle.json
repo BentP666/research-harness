@@ -1,0 +1,23 @@
+{
+  "corrupted_case_ids": [
+    "C01_full_context_citation_contradiction"
+  ],
+  "gold_asset_ids": [
+    "evidence.T01.synthetic_public"
+  ],
+  "human_calibration_required": true,
+  "judge_only": true,
+  "leakage_canaries": [
+    "SYNTHETIC_HIDDEN_CANARY_T01"
+  ],
+  "outcome_oracle": {
+    "expected": "Synthetic outcome oracle for T01."
+  },
+  "process_oracle": {
+    "expected": "Synthetic process oracle for T01."
+  },
+  "release_grade": false,
+  "schema_version": "researchflowbench.gold_bundle.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.full_context_citation_eval.0001"
+}

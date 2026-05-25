@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-05-20T09:31:45Z",
+  "generated_at": "2026-05-24T08:13:04Z",
   "skills_dir": "skills",
   "skills": [
     {
@@ -38,6 +38,20 @@
       "path": "skills/literature-search",
       "skill_md": "skills/literature-search/SKILL.md",
       "description": "Run comprehensive literature search for Research Harness. Trigger on phrases like \"literature-search\", \"/literature-search\", \"文献检索\", \"系统检索论文\", \"帮我搜相关论文\", or equivalent requests to search, shortlist, and ingest relevant papers."
+    },
+    {
+      "name": "long-task-supervisor",
+      "path": "skills/long-task-supervisor",
+      "skill_md": "skills/long-task-supervisor/SKILL.md",
+      "description": "Use when a user wants Codex to run a long-horizon task with minimal manual intervention, split work into durable worker tasks, monitor execution, quarantine failures, and stop for mobile/human gate approvals."
+    },
+    {
+      "name": "paper-reading-annotation",
+      "path": "skills/paper-reading-annotation",
+      "skill_md": "skills/paper-reading-annotation/SKILL.md",
+      "description": "Create PhD-level PDF highlights/comments for newly added Zotero papers or RH PDFs. Trigger when importing/syncing a paper into Zotero, adding a PDF attachment, 精读标注, 论文批注, 博士生读论文, or equivalent requests to make a paper quickly graspable through PDF annotations.",
+      "category": "research",
+      "version": "0.1.0"
     },
     {
       "name": "paper-sync",

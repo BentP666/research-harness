@@ -1,0 +1,21 @@
+{
+  "advance_or_block": "block",
+  "invalidated_objects": [
+    "obj.draft_section"
+  ],
+  "missing_evidence": [
+    "synthetic follow-up review"
+  ],
+  "preserved_objects": [
+    "ev.X3",
+    "ev.X4",
+    "paper 2233",
+    "paper 2260",
+    "paper 2057"
+  ],
+  "reasons": [
+    "Synthetic rollback gate reason 5."
+  ],
+  "schema_version": "synthetic_b5_gate_log.v0",
+  "synthetic": true
+}

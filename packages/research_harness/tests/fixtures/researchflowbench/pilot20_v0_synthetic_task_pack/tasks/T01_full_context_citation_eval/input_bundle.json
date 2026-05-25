@@ -1,0 +1,13 @@
+{
+  "allowed_tools": [
+    "local_static_corpus"
+  ],
+  "external_search_policy": "forbidden_in_v0",
+  "prompt_context": "Synthetic public-safe context for T01.",
+  "schema_version": "researchflowbench.input_bundle.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.full_context_citation_eval.0001",
+  "visible_local_corpus_record_ids": [
+    "evidence.T01.synthetic_public"
+  ]
+}

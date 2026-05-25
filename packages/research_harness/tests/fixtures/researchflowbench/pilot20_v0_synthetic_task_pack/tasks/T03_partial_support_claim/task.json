@@ -1,0 +1,42 @@
+{
+  "allowed_tools": [
+    "local_static_corpus"
+  ],
+  "corrupted_case_ids": [
+    "C03_composite_claim_partial_support"
+  ],
+  "expected_semantic_objects": [
+    "claim",
+    "evidence_span",
+    "citation_link",
+    "review_issue",
+    "gate_decision",
+    "run_trace"
+  ],
+  "external_search_policy": "forbidden_in_v0",
+  "gold_asset_ids": [
+    "evidence.T03.synthetic_public"
+  ],
+  "pilot_pack_id": "researchflowbench.synthetic_public_pilot20_v0",
+  "schema_version": "researchflowbench.task.v0.synthetic",
+  "scoring": {
+    "combined": {
+      "axis_separation_required": true,
+      "rubric": "synthetic combined axis"
+    },
+    "outcome": {
+      "rubric": "synthetic outcome axis"
+    },
+    "process": {
+      "rubric": "synthetic process axis"
+    }
+  },
+  "source_snapshot_id": "synthetic_public_static_corpus_v0",
+  "split": "draft_dev",
+  "stage": "synthesis",
+  "status": "draft_not_release_grade",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.partial_support_claim.0001",
+  "template_id": "researchflowbench.synthetic-T03",
+  "visibility": "public_safe_synthetic_fixture"
+}

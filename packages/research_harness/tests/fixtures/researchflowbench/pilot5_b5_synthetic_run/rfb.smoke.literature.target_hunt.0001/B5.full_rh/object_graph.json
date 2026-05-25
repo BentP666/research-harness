@@ -1,0 +1,34 @@
+{
+  "edges": [
+    {
+      "from": "obj.literature_claim",
+      "relation": "supported_by",
+      "to": "ev.X1"
+    },
+    {
+      "from": "ev.X1",
+      "relation": "cites",
+      "to": "obj.paper.synthetic_2233"
+    }
+  ],
+  "objects": [
+    {
+      "id": "obj.paper.synthetic_2233",
+      "paper_id": "2233",
+      "status": "retrieved",
+      "type": "candidate_paper"
+    },
+    {
+      "evidence_id": "X1",
+      "id": "ev.X1",
+      "type": "evidence_span"
+    },
+    {
+      "id": "obj.literature_claim",
+      "type": "claim"
+    }
+  ],
+  "schema_version": "synthetic_b5_object_graph.v0",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

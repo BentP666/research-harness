@@ -23,6 +23,9 @@ _No unreleased changes._
 - **Codex workflow surface**: project `.codex/config.toml`, repo skill bridge,
   verification scripts, manual Codex review workflow, and RH-specific Codex
   skills for resume, checkpointing, verification, and artifact recording.
+- **Codex LongTask Supervisor 1.0**: durable state machine, CLI control plane,
+  signed mobile/phone-friendly gates, secure LongTask API, and `/longrun`
+  execution-path dashboard for supervised long-horizon runs.
 
 ### Changed
 

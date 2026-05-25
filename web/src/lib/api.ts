@@ -22,6 +22,7 @@ import type {
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const LONGTASK_ADMIN_TOKEN = process.env.NEXT_PUBLIC_LONGTASK_ADMIN_TOKEN ?? "";
 
 /** Direct URL of the streamed PDF for a paper — useful for <a href> downloads
  *  or <iframe src> embedding. Returns 404 when no PDF is on file. */
@@ -70,17 +71,153 @@ export function explainSelection(
 }
 
 // ---------------------------------------------------------------------------
+// Codex LongTask Supervisor
+// ---------------------------------------------------------------------------
+
+export interface LongTaskRunSummary {
+  id: string;
+  title: string;
+  objective?: string;
+  status: string;
+  max_workers: number;
+  created_at: string;
+  updated_at: string;
+  task_count?: number;
+  complete_count?: number;
+  pending_gate_count?: number;
+}
+
+export interface LongTaskTask {
+  id: string;
+  run_id?: string;
+  title: string;
+  status: string;
+  summary: string;
+  dependencies?: string[];
+  write_scope?: string[];
+  risk_level?: string;
+}
+
+export interface LongTaskGate {
+  id: string;
+  run_id?: string;
+  task_id?: string | null;
+  gate_type: string;
+  title: string;
+  status: string;
+  token_required?: boolean;
+  decision?: string | null;
+  note?: string | null;
+  actor?: string | null;
+  notification?: LongTaskGateNotification;
+}
+
+export interface LongTaskGateNotification {
+  gate_id: string;
+  run_id: string;
+  task_id?: string | null;
+  gate_type: string;
+  title: string;
+  status: string;
+  expires_at: number;
+  action_url: string;
+  actions: Record<
+    string,
+    {
+      label: string;
+      decision: string;
+      method: string;
+      url: string;
+    }
+  >;
+}
+
+export interface LongTaskRunDetail {
+  run: LongTaskRunSummary & { objective: string };
+  tasks: LongTaskTask[];
+  gates: LongTaskGate[];
+  attempts: Array<Record<string, unknown>>;
+  events: Array<Record<string, unknown>>;
+}
+
+export function fetchLongTaskRuns(): Promise<LongTaskRunSummary[]> {
+  return apiFetch<LongTaskRunSummary[]>("/api/longtasks/runs");
+}
+
+export function fetchLongTaskRun(runId: string): Promise<LongTaskRunDetail> {
+  return apiFetch<LongTaskRunDetail>(`/api/longtasks/runs/${runId}`);
+}
+
+export function createLongTaskGate(
+  runId: string,
+  body: {
+    title: string;
+    task_id?: string | null;
+    gate_type?: string;
+    token?: string;
+  }
+): Promise<LongTaskGate> {
+  return apiFetch(`/api/longtasks/runs/${runId}/gates`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function decideLongTaskGate(
+  gateId: string,
+  body: {
+    decision: "approved" | "rejected" | "paused" | "replan_requested";
+    actor: string;
+    token?: string;
+    note?: string;
+  }
+): Promise<{ accepted: boolean; gate_id: string; status: string; message: string }> {
+  return apiFetch(`/api/longtasks/gates/${gateId}/decision`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function dispatchLongTaskRun(
+  runId: string,
+  body: { limit?: number; execute?: boolean } = {}
+): Promise<{ run_id: string; dispatched: number; results: Array<Record<string, unknown>> }> {
+  return apiFetch(`/api/longtasks/runs/${runId}/dispatch`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function superviseLongTaskRun(
+  runId: string,
+  body: { max_cycles?: number; limit_per_cycle?: number; execute?: boolean } = {}
+): Promise<{
+  run_id: string;
+  cycles: number;
+  dispatched: number;
+  stop_reason: string;
+  status: string;
+}> {
+  return apiFetch(`/api/longtasks/runs/${runId}/supervise`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Generic fetcher
 // ---------------------------------------------------------------------------
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  if (path.startsWith("/api/longtasks") && LONGTASK_ADMIN_TOKEN) {
+    headers.set("X-LongTask-Token", LONGTASK_ADMIN_TOKEN);
+  }
   const res = await fetch(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {

@@ -1,0 +1,21 @@
+{
+  "external_search_policy": "forbidden_in_v0",
+  "file_hashes_sha256": {
+    "input_bundle.json": "d50278570aea9e5d1074ab5c22a651c50a3d4a416f127133e48b9bb691f2d67f",
+    "prompt.md": "71c69dcf8f3f1444034df5bdc4260026beddbada7814313f07d2b43e2782e001",
+    "tool_fixtures/local_static_corpus.jsonl": "1bc0f43063459662549343a98b2100c1745946a946a354df8fb2d2f9fd755680"
+  },
+  "gold_blind": true,
+  "judge_only_hidden": [
+    "gold_bundle.json",
+    "judge_bundle.json"
+  ],
+  "schema_version": "researchflowbench.visible_input_manifest.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.false_novelty_baseline_gap.0001",
+  "visible_to_agent": [
+    "prompt.md",
+    "input_bundle.json",
+    "tool_fixtures/local_static_corpus.jsonl"
+  ]
+}

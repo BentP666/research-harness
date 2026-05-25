@@ -553,6 +553,70 @@ _CONVENIENCE_TOOLS: dict[str, Tool] = {
             "required": ["advisory_id"],
         },
     ),
+    "zotero_sync": Tool(
+        name="zotero_sync",
+        description=(
+            "Synchronize an RH topic with Zotero as a first-class RH resource. "
+            "Use direction=push for RH→Zotero, pull for Zotero→RH notes/annotations, "
+            "or both for bidirectional sync. Push dry-run reads only the RH database; "
+            "pull dry-run still needs Zotero API access because it reads Zotero."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "topic": {"type": "string", "description": "RH topic name"},
+                "direction": {
+                    "type": "string",
+                    "enum": ["push", "pull", "both"],
+                    "default": "push",
+                },
+                "root_collection": {
+                    "type": "string",
+                    "description": "Top-level Zotero collection for RH-managed topics",
+                    "default": "Research Harness",
+                },
+                "library_id": {
+                    "type": "string",
+                    "description": "Zotero user/group library ID; defaults to env",
+                },
+                "library_type": {
+                    "type": "string",
+                    "enum": ["user", "group"],
+                    "default": "user",
+                },
+                "api_key": {
+                    "type": "string",
+                    "description": "Zotero API key; defaults to env",
+                },
+                "api_base": {
+                    "type": "string",
+                    "description": "Zotero API base URL override",
+                },
+                "limit": {"type": "integer", "minimum": 1},
+                "skip_notes": {
+                    "type": "boolean",
+                    "description": "Do not create/update RH-generated child notes on push",
+                    "default": False,
+                },
+                "force": {
+                    "type": "boolean",
+                    "description": "Push even if the RH content hash is unchanged",
+                    "default": False,
+                },
+                "include_rh_generated": {
+                    "type": "boolean",
+                    "description": "When pulling, also import RH-generated Zotero notes",
+                    "default": False,
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "Preview without mutating RH/Zotero",
+                    "default": True,
+                },
+            },
+            "required": ["topic"],
+        },
+    ),
     "paper_purge": Tool(
         name="paper_purge",
         description=(
@@ -742,6 +806,9 @@ def _execute_convenience(name: str, arguments: dict[str, Any]) -> dict[str, Any]
                 "cost_usd": sum(r["cost_usd"] for r in rows),
             }
             return {"topic_id": topic_id, "agents": rows, "totals": totals}
+
+        elif name == "zotero_sync":
+            return _execute_zotero_sync(db, arguments)
 
         elif name == "paper_dismiss":
             paper_id = int(arguments["paper_id"])
@@ -1033,6 +1100,76 @@ def _execute_convenience(name: str, arguments: dict[str, Any]) -> dict[str, Any]
         return {"error": f"Unknown convenience tool: {name}"}
     finally:
         conn.close()
+
+
+def _execute_zotero_sync(db: Database, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Execute RH-owned Zotero sync from MCP/HTTP surfaces."""
+    from research_harness import zotero_resource
+    from research_harness.zotero_sync import DEFAULT_ROOT_COLLECTION, ZoteroSyncService
+
+    topic = str(arguments.get("topic") or "").strip()
+    if not topic:
+        return {"error": "topic is required"}
+
+    direction = str(arguments.get("direction") or "push").strip()
+    if direction not in {"push", "pull", "both"}:
+        return {"error": "direction must be one of: push, pull, both"}
+
+    dry_run = bool(arguments.get("dry_run", True))
+    library_id = str(arguments.get("library_id") or os.getenv("ZOTERO_LIBRARY_ID", ""))
+    library_type = str(
+        arguments.get("library_type") or os.getenv("ZOTERO_LIBRARY_TYPE", "user")
+    )
+    if library_type not in {"user", "group"}:
+        return {"error": "library_type must be 'user' or 'group'"}
+
+    client = None
+    needs_zotero_client = (not dry_run) or direction in {"pull", "both"}
+    if needs_zotero_client:
+        client = zotero_resource.create_zotero_resource_from_env(
+            library_id=library_id,
+            library_type=library_type,
+            api_key=str(arguments.get("api_key") or os.getenv("ZOTERO_API_KEY", "")),
+            base_url=str(arguments.get("api_base") or os.getenv("ZOTERO_API_BASE", "")),
+        )
+
+    limit_value = arguments.get("limit")
+    limit = int(limit_value) if limit_value is not None else None
+    service = ZoteroSyncService(
+        db_path=db.path,
+        client=client,
+        library_id=library_id,
+        library_type=library_type,
+    )
+
+    push_result = None
+    pull_result = None
+    if direction in {"push", "both"}:
+        push_result = service.sync_topic(
+            topic,
+            root_collection=str(
+                arguments.get("root_collection") or DEFAULT_ROOT_COLLECTION
+            ),
+            include_notes=not bool(arguments.get("skip_notes", False)),
+            dry_run=dry_run,
+            limit=limit,
+            force=bool(arguments.get("force", False)),
+        )
+    if direction in {"pull", "both"}:
+        pull_result = service.pull_topic(
+            topic,
+            dry_run=dry_run,
+            limit=limit,
+            include_rh_generated=bool(arguments.get("include_rh_generated", False)),
+        )
+
+    return {
+        "topic": topic,
+        "direction": direction,
+        "dry_run": dry_run,
+        "push": push_result.to_dict() if push_result is not None else None,
+        "pull": pull_result.to_dict() if pull_result is not None else None,
+    }
 
 
 # ---------------------------------------------------------------------------

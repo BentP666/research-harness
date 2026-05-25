@@ -1,0 +1,132 @@
+{
+  "fixture_id": "RFB-ER01.public_fixture.v1.failed_run",
+  "task_id": "RFB-ER01.failed_run_quarantine_triage.0001",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture_log",
+  "created_date": "2026-05-21",
+  "scenario_role": "archived external-search attempt plus incomplete parse-failure attempt",
+  "run_manifest": {
+    "cell_id": "synthetic_cell_ER01_A",
+    "baseline_id": "B5.full_rh.synthetic_stub",
+    "final_attempt_id": "attempt_final_success",
+    "final_attempt_path": "fixtures/researchflowbench/er01/success_like_log.json#attempts/0",
+    "archived_attempt_ids": [
+      "attempt_archived_external_search"
+    ],
+    "incomplete_attempt_ids": [
+      "attempt_incomplete_parse_failure"
+    ],
+    "model_execution_performed": false,
+    "external_search_allowed": false,
+    "audit_records_must_be_preserved": true
+  },
+  "attempts": [
+    {
+      "attempt_id": "attempt_archived_external_search",
+      "attempt_status": "archived",
+      "valid_experiment_result": false,
+      "quarantined": true,
+      "quarantine_reason": "forbidden external search self-report in output",
+      "returncode": 0,
+      "parse_ok": true,
+      "hard_failures": [
+        "external_search_reference_in_output"
+      ],
+      "sidecars": {
+        "agent_output.json": {
+          "answer": {
+            "diagnosis": "I used an external web search reference to decide the answer.",
+            "recommended_action": "do_not_score_until_reviewed",
+            "supporting_record_ids": [
+              "visible_record_A",
+              "outside_visible_bundle_reference"
+            ]
+          },
+          "external_search_used": true,
+          "diagnostic_limitations": "This output is intentionally invalid for ER01 triage."
+        },
+        "eval_report.json": {
+          "outcome_pass": true,
+          "process_pass": false,
+          "combined_pass": false,
+          "valid_schema_output": true,
+          "output_shape_pass": true,
+          "preflight_pass": true,
+          "leakage_pass": false,
+          "valid_experiment_result": false,
+          "hard_failures": [
+            "external_search_reference_in_output"
+          ]
+        },
+        "leakage_audit_report.json": {
+          "external_search_reference_in_output": true,
+          "hidden_material_reference_detected": false,
+          "hard_failures": [
+            "external_search_reference_in_output"
+          ]
+        },
+        "run_trace.json": {
+          "events": [
+            {
+              "event_type": "read_static_fixture",
+              "path": "fixtures/researchflowbench/er01/failed_run_log.json"
+            },
+            {
+              "event_type": "archive_attempt",
+              "reason": "external_search_reference_in_output"
+            }
+          ],
+          "executor_returncode": 0
+        }
+      }
+    },
+    {
+      "attempt_id": "attempt_incomplete_parse_failure",
+      "attempt_status": "incomplete",
+      "valid_experiment_result": false,
+      "quarantined": true,
+      "quarantine_reason": "executor returncode non-zero and parser failed",
+      "returncode": 1,
+      "parse_ok": false,
+      "hard_failures": [
+        "nonzero_returncode",
+        "parse_failed"
+      ],
+      "sidecars": {
+        "parse_metadata.json": {
+          "parse_ok": false,
+          "parser_error_type": "truncated_json",
+          "parsed_agent_output_path": null
+        },
+        "run_trace.json": {
+          "events": [
+            {
+              "event_type": "start_static_fixture_parse",
+              "path": "fixtures/researchflowbench/er01/failed_run_log.json"
+            },
+            {
+              "event_type": "executor_exit",
+              "returncode": 1
+            },
+            {
+              "event_type": "parse_failed",
+              "parser_error_type": "truncated_json"
+            }
+          ],
+          "executor_returncode": 1
+        },
+        "raw_stdout.txt": "{\"answer\": {\"diagnosis\": \"truncated synthetic payload"
+      }
+    }
+  ],
+  "decoy_summary_row": {
+    "row_id": "decoy_summary_counts_archived_and_incomplete",
+    "claimed_valid_final_attempt_ids": [
+      "attempt_final_success",
+      "attempt_archived_external_search",
+      "attempt_incomplete_parse_failure"
+    ],
+    "claimed_valid_final_count": 3,
+    "why_invalid": "Includes archived and incomplete attempts that must be preserved as audit records but excluded from scoring."
+  }
+}

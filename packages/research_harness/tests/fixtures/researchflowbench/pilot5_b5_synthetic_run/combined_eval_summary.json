@@ -1,0 +1,73 @@
+{
+  "process_gate_threshold": 0.8,
+  "rows": [
+    {
+      "baseline_id": "B5.full_rh",
+      "combined_verdict": {
+        "combined_pass": true
+      },
+      "outcome_verdict": {
+        "pass": true
+      },
+      "process_verdict": {
+        "pass": true
+      },
+      "task_id": "rfb.smoke.literature.target_hunt.0001"
+    },
+    {
+      "baseline_id": "B5.full_rh",
+      "combined_verdict": {
+        "combined_pass": true
+      },
+      "outcome_verdict": {
+        "pass": true
+      },
+      "process_verdict": {
+        "pass": true
+      },
+      "task_id": "rfb.smoke.synthesis.citation_supported_paragraph.0001"
+    },
+    {
+      "baseline_id": "B5.full_rh",
+      "combined_verdict": {
+        "combined_pass": true
+      },
+      "outcome_verdict": {
+        "pass": true
+      },
+      "process_verdict": {
+        "pass": true
+      },
+      "task_id": "rfb.smoke.planning.novelty_calibration.0001"
+    },
+    {
+      "baseline_id": "B5.full_rh",
+      "combined_verdict": {
+        "combined_pass": true
+      },
+      "outcome_verdict": {
+        "pass": true
+      },
+      "process_verdict": {
+        "pass": false
+      },
+      "task_id": "rfb.smoke.governance.integrity_refusal.0001"
+    },
+    {
+      "baseline_id": "B5.full_rh",
+      "combined_verdict": {
+        "combined_pass": true
+      },
+      "outcome_verdict": {
+        "pass": true
+      },
+      "process_verdict": {
+        "pass": false
+      },
+      "task_id": "rfb.smoke.cross_stage.upstream_error_propagation.0001"
+    }
+  ],
+  "schema_version": "0.2.0",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

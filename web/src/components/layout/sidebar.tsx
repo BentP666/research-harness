@@ -14,6 +14,7 @@ import {
   Bot,
   FileText,
   Sparkles,
+  GitBranch,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/lib/theme-provider";
@@ -105,6 +106,13 @@ export function Sidebar() {
           hint: "Connected AI models",
           href: "/agents",
           icon: Bot,
+        },
+        {
+          key: "longrun",
+          label: t("nav.longrun"),
+          hint: "Long-running Codex tasks and mobile gates",
+          href: "/longrun",
+          icon: GitBranch,
         },
       ],
     },

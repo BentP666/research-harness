@@ -1,0 +1,19 @@
+{
+  "checks": [
+    {
+      "check": "year_alignment",
+      "detail": "Synthetic year bounds align.",
+      "pass": true
+    },
+    {
+      "check": "anti_hallucination",
+      "detail": "Synthetic warning preserved.",
+      "result": "warn"
+    }
+  ],
+  "risks": [
+    "synthetic_fixture_only"
+  ],
+  "schema_version": "synthetic_b5_verification_report.v0",
+  "synthetic": true
+}

@@ -1,0 +1,22 @@
+{
+  "manifest_version": 2,
+  "name": "Research Harness Zotero Panel",
+  "version": "0.2.14",
+  "description": "A thin Research Harness-owned Zotero side panel for RH↔Zotero conversations.",
+  "homepage_url": "https://github.com/54yyyu/research-harness-oss",
+  "author": "Research Harness",
+  "icons": {
+    "16": "content/icons/rh-icon-16.png",
+    "32": "content/icons/rh-icon-32.png",
+    "48": "content/icons/rh-icon-48.png",
+    "96": "content/icons/rh-icon-96.png"
+  },
+  "applications": {
+    "zotero": {
+      "id": "research-harness-zotero@github.com.54yyyu",
+      "update_url": "https://github.com/54yyyu/research-harness-oss/releases/download/release/update.json",
+      "strict_min_version": "6.999",
+      "strict_max_version": "9999.*"
+    }
+  }
+}

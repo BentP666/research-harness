@@ -144,6 +144,7 @@ def _load_local_dispatch() -> None:
         # Write-stage integrity (no LLM)
         "paper_verify_numbers",
         "citation_verify",
+        "citation_sanitize",
         "evidence_trace",
         # Evolution (manages own LLM calls)
         "strategy_distill",

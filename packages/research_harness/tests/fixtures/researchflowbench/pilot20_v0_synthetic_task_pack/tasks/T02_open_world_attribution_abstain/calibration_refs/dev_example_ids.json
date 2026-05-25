@@ -1,0 +1,9 @@
+{
+  "corrupted_case_ids": [
+    "C02_open_world_ambiguous_or_missing_source"
+  ],
+  "example_ids": [],
+  "schema_version": "researchflowbench.dev_example_ids.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.open_world_attribution_abstain.0001"
+}

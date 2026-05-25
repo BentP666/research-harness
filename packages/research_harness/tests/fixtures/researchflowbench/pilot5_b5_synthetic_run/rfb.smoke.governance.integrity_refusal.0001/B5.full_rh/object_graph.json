@@ -1,0 +1,36 @@
+{
+  "edges": [
+    {
+      "from": "ev.X3",
+      "relation": "contradicts",
+      "to": "obj.claim_47pct"
+    },
+    {
+      "from": "obj.req_log",
+      "relation": "derived_from",
+      "to": "obj.claim_47pct"
+    }
+  ],
+  "objects": [
+    {
+      "id": "obj.claim_47pct",
+      "reason": "synthetic unsupported percentage",
+      "status": "invalidated",
+      "type": "claim"
+    },
+    {
+      "id": "obj.req_log",
+      "reason": "synthetic hidden request",
+      "status": "invalidated",
+      "type": "artifact_request"
+    },
+    {
+      "evidence_id": "X3",
+      "id": "ev.X3",
+      "type": "evidence_span"
+    }
+  ],
+  "schema_version": "synthetic_b5_object_graph.v0",
+  "synthetic": true,
+  "visibility": "public_safe_synthetic_fixture"
+}

@@ -1,0 +1,9 @@
+{
+  "corrupted_case_ids": [
+    "C05_false_novelty_missing_close_priors"
+  ],
+  "example_ids": [],
+  "schema_version": "researchflowbench.dev_example_ids.v0.synthetic",
+  "synthetic": true,
+  "task_id": "rfb.synthetic.false_novelty_baseline_gap.0001"
+}
